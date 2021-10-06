@@ -23,8 +23,11 @@ From admin UI perspective (different from the legacy plugin) the global settings
 - [] uninstall legacy plugin upon installation(?)
 - [] tbd
 
-## Todo additional features
+## Todo new features
 - [] separate payment gateway: allow combinations with other gw, e.g. allow invoice to be paid by L-USDT and HAT token (use case of token used as coupon codes for discounts)
 - [] refunds
 - [] tbd
 
+## To decide before release
+- do we hijack the existing plugin on wordpress org and go on with a 4.x release or
+- do we create a new plugin entry and reference that in the old plugin
