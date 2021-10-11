@@ -31,6 +31,7 @@ class GlobalSettings extends \WC_Settings_Page {
 	}
 
 	private function getGlobalSettings(): array {
+		// todo: link to logs
 		$logs_href = '';
 		return [
 			'title'                 => [
@@ -69,13 +70,13 @@ class GlobalSettings extends \WC_Settings_Page {
 				'default'     => '',
 				'id' => 'btcpay_gf_store_id'
 			],
-			'explanation'                     => [
-				'title'       => esc_html_x( 'Customer Message', BTCPAYSERVER_TEXTDOMAIN ),
+			'default_description'                     => [
+				'title'       => esc_html_x( 'Default Customer Message', BTCPAYSERVER_TEXTDOMAIN ),
 				'type'        => 'textarea',
-				'desc' => esc_html_x( 'Message to explain how the customer will be paying for the purchase.', BTCPAYSERVER_TEXTDOMAIN ),
+				'desc' => esc_html_x( 'Message to explain how the customer will be paying for the purchase. Can be overwritten on a per gateway basis.', BTCPAYSERVER_TEXTDOMAIN ),
 				'default'     => esc_html_x('You will be redirected to BTCPay to complete your purchase.', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
 				'desc_tip'    => true,
-				'id' => 'btcpay_gf_explanation'
+				'id' => 'btcpay_gf_default_description'
 			],
 			'transaction_speed'               => [
 				'title'       => esc_html_x( 'Invoice pass to "confirmed" state after', BTCPAYSERVER_TEXTDOMAIN ),
@@ -104,6 +105,13 @@ class GlobalSettings extends \WC_Settings_Page {
 				'default'     => 'no',
 				'desc' => '<br>' . _x( 'Make all supported and enabled payment methods available as their own payment gateway. This opens new possibilities like discounts for specific payment methods. See our <a href="todo-input-link-here" target="_blank">full guide here</a>', 'global_settings', BTCPAYSERVER_TEXTDOMAIN ),
 				'id' => 'btcpay_gf_separate_gateways'
+			],
+			'customer_data'                           => [
+				'title'       => __( 'Send customer data to BTCPayServer', BTCPAYSERVER_TEXTDOMAIN ),
+				'type'        => 'checkbox',
+				'default'     => 'no',
+				'desc' => '<br>' . _x( 'If you want customer email, address, etc. sent to BTCPay Server enable this option. By default for privacy and GDPR reasons this is disabled.', 'global_settings', BTCPAYSERVER_TEXTDOMAIN ),
+				'id' => 'btcpay_gf_send_customer_data'
 			],
 			'debug'                           => [
 				'title'       => __( 'Debug Log', BTCPAYSERVER_TEXTDOMAIN ),

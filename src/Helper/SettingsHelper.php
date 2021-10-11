@@ -7,10 +7,6 @@ class SettingsHelper {
 		$defaultTitle,
 		$defaultDescription
 	) {
-		//$this->log('    [Info] Entered init_form_fields()...');
-		$log_file = 'btcpay-' . sanitize_file_name( wp_hash( 'btcpay' ) ) . '-log';
-		$logs_href = get_bloginfo('wpurl') . '/wp-admin/admin.php?page=wc-status&tab=logs&log_file=' . $log_file;
-
 		$this->form_fields = [
 			'title' => [
 				'title'       => __('Title', BTCPAYSERVER_TEXTDOMAIN),
@@ -27,10 +23,6 @@ class SettingsHelper {
 				'desc_tip'    => true,
 			],
 		];
-
-		//$this->log('    [Info] Initialized form fields: ' . var_export($this->form_fields, true));
-		//$this->log('    [Info] Leaving init_form_fields()...');
-
 
 		return $this->form_fields;
 	}

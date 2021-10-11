@@ -12,21 +12,22 @@ The basic structure is a mix of the plugin generator by WP cli tool (filestructu
 From admin UI perspective (different from the legacy plugin) the global settings for BTCPayServer like the host, api key, store id, confirmation times etc. have been moved out of the default payment gateway to a separate settings form. The payment gateways will only have related config options like displayed text, icons, etc.
 
 ## Todo until feature parity with current plugin
-- [] check, create webhook, WC Api endpoint for processing the response
-- [] make default gateway work
-- [] add API key convenience function button and routine
-- [] separate payment gateways by store supported payment method
-- [] order states mapping/configurabilty
-- [] make build system work
-- [] show admin notice if plugin not configured yet with link to config page
-- [] ensure warning/uninstallable for PHP < 7.3 (plugin metadata or notice)
-- [] uninstall legacy plugin upon installation(?)
-- [] tbd
+- [ ] check, create webhook, WC Api endpoint for processing the response
+- [ ] make default gateway work
+- [ ] add API key convenience function button and routine
+- [ ] separate payment gateways by store supported payment method
+- [ ] order states mapping/configurabilty
+- [ ] make build system work
+- [ ] show admin notice if plugin not configured yet with link to config page
+- [ ] ensure warning/uninstallable for PHP < 7.3 (plugin metadata or notice)
+- [ ] uninstall legacy plugin upon installation(?)
+- [x] add logging / debug mode
+- [ ] tbd
 
 ## Todo new features
-- [] separate payment gateway: allow combinations with other gw, e.g. allow invoice to be paid by L-USDT and HAT token (use case of token used as coupon codes for discounts)
-- [] refunds
-- [] tbd
+- [ ] separate payment gateway: allow combinations with other gw, e.g. allow invoice to be paid by L-USDT and HAT token (use case of token used as coupon codes for discounts)
+- [ ] refunds
+- [ ] tbd
 
 ## To decide before release
 - do we hijack the existing plugin on wordpress org and go on with a 4.x release or

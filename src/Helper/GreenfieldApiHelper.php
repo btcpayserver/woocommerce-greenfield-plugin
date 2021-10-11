@@ -9,9 +9,22 @@ use BTCPayServer\Client\StorePaymentMethod;
 use BTCPayServer\Result\AbstractStorePaymentMethodResult;
 
 class GreenfieldApiHelper {
-	protected $url;
-	protected $apiKey;
+	public $configured = false;
+	public $url;
+	public $apiKey;
+	public $storeId;
 
+	// todo: perf static instance
+	public function __construct() {
+		if ($config = self::getConfig()) {
+			$this->url = $config['url'];
+			$this->apiKey = $config['api_key'];
+			$this->storeId = $config['store_id'];
+			$this->configured = true;
+		}
+	}
+
+	// todo: maybe remove static class and make GFConfig object or similar
 	public static function getConfig(): array {
 		$url = get_option('btcpay_gf_url');
 		$key = get_option('btcpay_gf_api_key');
@@ -56,5 +69,11 @@ class GreenfieldApiHelper {
 		}
 
 		return $paymentMethods;
+	}
+
+	public function getInvoiceRedirectUrl($invoiceId) {
+		if ($this->configured) {
+			return $this->url . '/i/' . urlencode($invoiceId);
+		}
 	}
 }

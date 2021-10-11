@@ -15,11 +15,13 @@ class DefaultGateway extends AbstractGateway {
 
 // load additional classes / payment methods
 
+// todo fix why settings are not saved and loaded properly.
 
 	public function __construct() {
+		// todo maybe move to bottom and clean duplicates up
 		parent::__construct();
 		// General
-		$this->id                 = 'btcpay_default';
+		$this->id                 = 'btcpaygf_default';
 		$this->order_button_text  = __('Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN);
 		$this->method_title       = 'BTCPay NEWWW';
 		$this->method_description = 'BTCPay allows you to accept bitcoin payments on your WooCommerce store.';
@@ -29,17 +31,28 @@ class DefaultGateway extends AbstractGateway {
 		$this->init_settings();
 
 		// Define user set variables
-		$this->title              = $this->get_option('title');
-		$this->description        = $this->get_option('description');
-		$this->order_states       = $this->get_option('order_states');
+		$this->title              = $this->getDefaultTitle();
+		$this->description        = $this->getDefaultDescription(); //$this->get_option('description');
+
+		// Actions
+		add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
+		add_action('woocommerce_api_btcpaygf_default', [$this, 'processWebhook']);
+
+
+		/*
+		var_dump($this->id);
+		var_dump($this->description);
+		var_dump($this->get_option('description'));
+		*/
+
 	}
 
 	public function getDefaultTitle(): string {
-		return "d: getDefaultTitle()";
+		return $this->get_option('title', 'BTCPay (Bitcoin, Lightning Network, ...)');
 	}
 
 	protected function getDefaultDescription(): string {
-		return "d: getDefaultDescription()";
+		return $this->get_option('description', 'You will be redirected to BTCPay to complete your purchase 3434.');
 	}
 
 	protected function getSettingsDescription(): string {
@@ -60,6 +73,8 @@ class DefaultGateway extends AbstractGateway {
 			],
 		];
 	}
+
+
 
 
 }
