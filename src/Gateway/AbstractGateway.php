@@ -97,12 +97,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		Logger::debug('Creating invoice on BTCPay Server');
 		if ($invoice = $this->createInvoice($order)) {
 
-			// todo: update order status and BTCPay meta data.
+			// Todo: update order status and BTCPay meta data.
 
 			Logger::debug('Invoice creation successful, redirecting user.');
 			return array(
 				'result'   => 'success',
-				'redirect' => $this->apiHelper->getInvoiceRedirectUrl($invoice->getData()['id']),
+				'redirect' => $invoice->getData()['checkoutLink'],
 			);
 		}
 	}
@@ -161,31 +161,87 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$checkoutOptions->setRedirectURL($redirectUrl);
 			Logger::debug('Setting redirect url to: ' . $redirectUrl);
 
+			$metadata = [];
+
 			// Send customer data only if option is set.
 			if (get_option('btcpay_gf_send_customer_data') === 'yes') {
-				// todo: implement customer metadata.
+				$metadata += $this->prepareCustomerMetadata($order);
 			}
 
-			// todo: Handle posData array // all metadata?
+			// Set included tax amount.
+			$metadata['taxIncluded'] = $order->get_cart_tax();
+
+			$metadata['posData'] = $this->preparePosMetadata($order);
 
 			// todo: handle payment methods.
 
-			// todo: transaction speed
+			// todo: transaction speed / checkout settings.
 
 			// Create the invoice on BTCPay Server.
 			$client = new Invoice($this->apiHelper->url, $this->apiHelper->apiKey);
 			try {
-				return $client->createInvoice(
+				$invoice = $client->createInvoice(
 					$this->apiHelper->storeId,
 					$order->get_currency(),
 					PreciseNumber::parseString($order->get_total()), // unlike method signature, it returns string.
-					$orderNumber
+					$orderNumber,
+					null,
+					$metadata
 				);
+
+				$this->updateOrderMetadata($order->get_id(), $invoice);
+
+				return $invoice;
+
 			} catch (\Throwable $e) {
 				Logger::debug($e->getMessage(), true);
 				// todo: should we throw exception here to make sure there is an visible error on the page and not silently failing?
 			}
 	}
+
+	protected function prepareCustomerMetadata(\WC_Order $order): array {
+		return [
+			'buyerEmail' => $order->get_billing_email(),
+			'buyerName' => $order->get_formatted_billing_full_name(),
+			'buyerAddress1' => $order->get_billing_address_1(),
+			'buyerAddress2' => $order->get_billing_address_2(),
+			'buyerCity' => $order->get_billing_city(),
+			'buyerState' => $order->get_billing_state(),
+			'buyerZip' => $order->get_billing_postcode(),
+			'buyerCountry' => $order->get_billing_country()
+		];
+	}
+
+	protected function preparePosMetadata($order): string {
+		$posData = [
+			'WooCommerce' => [
+				'Order ID' => $order->get_id(),
+				'Order Number' => $order->get_order_number(),
+				'Order URL' => $order->get_edit_order_url(),
+				'Plugin Version' => constant('BTCPAYSERVER_VERSION')
+			]
+		];
+
+		return json_encode($posData, JSON_THROW_ON_ERROR);
+	}
+
+	protected function updateOrderMetadata( int $orderId, \BTCPayServer\Result\Invoice $invoice ) {
+		// Store relevant BTCPay invoice data.
+		update_post_meta($orderId, 'BTCPay_redirect', $invoice->getData()['checkoutLink']);
+		update_post_meta($orderId, 'BTCPay_id', $invoice->getData()['id']);
+
+		// todo: discuss: below data taken from old plugin, not sure if this is needed; payment data needs to get fetched separately
+		// by "Get invoice payment methods endpoint".
+		/*
+		update_post_meta($orderId, 'BTCPay_rate', $invoice->getRate());
+		$formattedRate = number_format($invoice->getRate(), wc_get_price_decimals(), wc_get_price_decimal_separator(), wc_get_price_thousand_separator());
+		update_post_meta($orderId, 'BTCPay_formatted_rate', $formattedRate);
+		update_post_meta($orderId, 'BTCPay_btcPrice', $responseData->data->btcPrice);
+		update_post_meta($orderId, 'BTCPay_btcPaid', $responseData->data->btcPaid);
+		update_post_meta($orderId, 'BTCPay_BTCaddress', $responseData->data->bitcoinAddress);
+		*/
+	}
+
 	/**
 	 * @return string
 	 */
