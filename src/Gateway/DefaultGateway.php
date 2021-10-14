@@ -51,11 +51,11 @@ class DefaultGateway extends AbstractGateway {
 		return $this->get_option('title', 'BTCPay (Bitcoin, Lightning Network, ...)');
 	}
 
-	protected function getDefaultDescription(): string {
+	public function getDefaultDescription(): string {
 		return $this->get_option('description', 'You will be redirected to BTCPay to complete your purchase 3434.');
 	}
 
-	protected function getSettingsDescription(): string {
+	public function getSettingsDescription(): string {
 		return "d: setSettingsDescription()";
 	}
 
@@ -74,6 +74,15 @@ class DefaultGateway extends AbstractGateway {
 		];
 	}
 
+	public function getPaymentMethods(): array {
+		if ($this->get_option('enforce_payment_tokens') === 'yes') {
+			// todo: handle option to enforce payment tokens.
+			// Logger::debug('Setting payment methods to: ');
+			return [];
+		}
+
+		return [];
+	}
 
 
 
