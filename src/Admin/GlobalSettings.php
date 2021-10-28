@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BTCPayServer\WC\Admin;
 
+use BTCPayServer\WC\Helper\OrderStates;
+
 /**
  * todo: add validation of host/url
  * todo: check connection on safe and show notice if not working
@@ -15,7 +17,8 @@ class GlobalSettings extends \WC_Settings_Page {
 	{
 		$this->id = 'btcpay_settings';
 		$this->label = __( 'BTCPay Settings', BTCPAYSERVER_TEXTDOMAIN );
-
+		// Register custom field type order_states with OrderStatesField class.
+		add_action('woocommerce_admin_field_order_states', [(new OrderStates()), 'renderOrderStatesHtml']);
 		parent::__construct();
 	}
 
@@ -30,7 +33,7 @@ class GlobalSettings extends \WC_Settings_Page {
 		return $this->getGlobalSettings();
 	}
 
-	private function getGlobalSettings(): array {
+	public function getGlobalSettings(): array {
 		// todo: link to logs
 		$logs_href = '';
 		return [
@@ -93,12 +96,10 @@ class GlobalSettings extends \WC_Settings_Page {
 				'desc_tip'    => true,
 				'id' => 'btcpay_gf_transaction_speed'
 			],
-			// todo: make order states mappings work
-			/*
 			'order_states'                    => [
-				'type' => 'order_states'
+				'type' => 'order_states',
+				'id' => 'btcpay_gf_order_states'
 			],
-			*/
 			'separate_gateways'                           => [
 				'title'       => __( 'Separate Payment Gateways', BTCPAYSERVER_TEXTDOMAIN ),
 				'type'        => 'checkbox',

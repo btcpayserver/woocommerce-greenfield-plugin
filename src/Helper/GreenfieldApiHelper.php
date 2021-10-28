@@ -76,4 +76,13 @@ class GreenfieldApiHelper {
 			return $this->url . '/i/' . urlencode($invoiceId);
 		}
 	}
+
+	public function validWebhookRequest(string $signature, string $requestData): bool {
+		if ($this->configured) {
+			if ($signature === "sha256=" . hash_hmac('sha256', $requestData, $this->apiKey)) {
+				return true;
+			}
+		}
+		return false;
+	}
 }

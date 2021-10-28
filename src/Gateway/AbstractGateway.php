@@ -9,6 +9,7 @@ use BTCPayServer\Client\InvoiceCheckoutOptions;
 use BTCPayServer\Util\PreciseNumber;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\Logger;
+use BTCPayServer\WC\Helper\OrderStates;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
 // initialze
@@ -110,9 +111,124 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	public function processWebhook() {
-		echo "process webhook btcpay";
-		var_dump( new \WC_Order() );
-		die( 'works' );
+		// handle events
+		//A new invoice has been created / InvoiceCreated
+		//A new payment has been received / InvoiceReceivedPayment
+		//An invoice is processing / InvoiceProcessing
+		//An invoice has expired / InvoiceExpired
+		//An invoice has been settled / InvoiceSettled
+		//An invoice became invalid / InvoiceInvalid
+
+		if ($rawPostData = file_get_contents("php://input")) {
+			// Validate webhook request.
+			$headers = getallheaders();
+			if (isset($headers['BTCPay-Sig']) && !$this->apiHelper->validWebhookRequest($headers['BTCPay-Sig'], $rawPostData)) {
+				Logger::debug('Failed to validate signature of webhook request.');
+				wp_die('Webhook request validation failed.');
+			}
+
+			try {
+				$postData = json_decode($rawPostData, false, 512, JSON_THROW_ON_ERROR);
+
+				// Load the order by metadata field BTCPay_id
+				$orders = wc_get_orders([
+					'meta_key' => 'BTCPay_id',
+					'meta_value' => $postData->invoiceId
+				]);
+
+				// Abort if no orders found.
+				if (count($orders) === 0) {
+					Logger::debug('Could not load order by BTCPay invoiceId: ' . $postData->invoiceId);
+					wp_die('No order found for this invoiceId.', '', ['response' => 404]);
+				}
+
+				// todo: Handle multiple orders found.
+				if (count($orders) > 1) {
+					Logger::debug('Found multiple orders for invoiceId: ' . $postData->invoiceId);
+					Logger::debug($orders);
+					wp_die('Multiple orders found for this invoiceId, aborting.');
+				}
+
+				$this->updateOrderStatus($orders[0], $postData);
+
+			} catch (\Throwable $e) {
+				Logger::debug('Error decoding webook payload: ' . $e->getMessage());
+				Logger::debug($rawPostData);
+			}
+
+		}
+	}
+
+	protected function updateOrderStatus(\WC_Order $order, \stdClass $webhookData) {
+		// We ignore invoice created webhook as we created the invoice.
+		$allowedBTCPayEvents = [
+			'InvoiceReceivedPayment',
+			'InvoiceProcessing',
+			'InvoiceExpired',
+			'InvoiceSettled',
+			'InvoiceInvalid'
+		];
+
+		if (!in_array($webhookData->type, $allowedBTCPayEvents)) {
+			Logger::debug('Webhook event received but ignored: ' . $webhookData->type);
+			return;
+		}
+
+		Logger::debug('Updating order status with webhook event received for processing: ' . $webhookData->type);
+
+		// Get configured order states or fall back to defaults.
+		if (!$configuredOrderStates = get_option('btcpay_gf_order_states')) {
+			$configuredOrderStates = (new OrderStates())->getDefaultOrderStateMappings();
+		}
+
+		switch ($webhookData->type) {
+			case 'InvoicePaymentReceived':
+				if ($webhookData->afterExpiration) {
+					if ($order->get_status() === $configuredOrderStates[OrderStates::EXPIRED]) {
+						$order->update_status($configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
+						$order->add_order_note(__('Invoice payment received after invoice was already expired.'));
+					}
+				} else {
+					// No need to change order status here, only leave a note.
+					$order->add_order_note(__('Invoice (partial) payment received. Waiting for full payment.'));
+				}
+				break;
+			case 'InvoiceProcessing': // The invoice is paid in full.
+				$order->update_status($configuredOrderStates[OrderStates::PROCESSING]);
+				if ($webhookData->overPaid) {
+					$order->add_order_note(__('Invoice payment received fully with overpayment, waiting for settlement.'));
+				} else {
+					$order->add_order_note(__('Invoice payment received fully, waiting for settlement.'));
+				}
+				break;
+			case 'InvoiceInvalid':
+				$order->update_status($configuredOrderStates[OrderStates::INVALID]);
+				if ($webhookData->manuallyMarked) {
+					$order->add_order_note(__('Invoice manually marked invalid.'));
+				} else {
+					$order->add_order_note(__('Invoice became invalid.'));
+				}
+				break;
+			case 'InvoiceExpired':
+				if ($webhookData->partiallyPaid) {
+					$order->update_status($configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
+					$order->add_order_note(__('Invoice expired but was paid partially, please check.'));
+				} else {
+					$order->update_status($configuredOrderStates[OrderStates::EXPIRED]);
+					$order->add_order_note(__('Invoice expired.'));
+				}
+				break;
+			case 'InvoiceSettled':
+				if ($webhookData->overPaid) {
+					$order->add_order_note(__('Invoice payment settled but was overpaid.'));
+					$order->update_status($configuredOrderStates[OrderStates::SETTLED_PAID_OVER]);
+				} else {
+					$order->add_order_note(__('Invoice payment settled.'));
+					$order->update_status($configuredOrderStates[OrderStates::SETTLED]);
+				}
+				$order->payment_complete();
+				break;
+		}
 	}
 
 	/**
@@ -132,7 +248,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				Logger::debug( 'Trying to fetch existing invoice from BTCPay Server.' );
 				$invoice       = $client->getInvoice( $this->apiHelper->storeId, $invoiceId );
 				$invalidStates = [ 'Expired', 'Invalid' ];
-				if ( in_array( $invoice->getData(), $invalidStates ) ) {
+				if ( in_array( $invoice->getData()['status'], $invalidStates ) ) {
 					return false;
 				} else {
 					return true;
