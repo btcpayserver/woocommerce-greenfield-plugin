@@ -19,8 +19,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 
 	public function __construct() {
-		// General
-		//$this->id                = strtolower( self::class );
+		// General gateway setup.
 		$this->icon              = plugin_dir_url( __FILE__ ) . 'assets/img/icon.png';
 		$this->has_fields        = false;
 		$this->order_button_text = __( 'Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN );
@@ -33,10 +32,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$this->init_form_fields();
 		$this->init_settings();
 
-		// Define user set variables
-		//$this->title        = $this->get_option( 'title' );
-		//$this->description  = $this->get_option( 'description' );
-		//$this->order_states = $this->get_option( 'order_states' );
+		// Define user set variables.
+		$this->title        = $this->getDefaultTitle();
+		$this->description  = $this->getDefaultDescription();
 
 		$this->apiHelper = new GreenfieldApiHelper();
 		// Debugging & informational settings.
@@ -47,7 +45,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	/**
 	 * Initialise Gateway Settings Form Fields
 	 */
-	public function init_form_fields(): void {
+	public function init_form_fields() {
 		$this->form_fields = [
 			'title'       => [
 				'title'       => __( 'Title', BTCPAYSERVER_TEXTDOMAIN ),
@@ -111,14 +109,6 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	public function processWebhook() {
-		// handle events
-		//A new invoice has been created / InvoiceCreated
-		//A new payment has been received / InvoiceReceivedPayment
-		//An invoice is processing / InvoiceProcessing
-		//An invoice has expired / InvoiceExpired
-		//An invoice has been settled / InvoiceSettled
-		//An invoice became invalid / InvoiceInvalid
-
 		if ($rawPostData = file_get_contents("php://input")) {
 			// Validate webhook request.
 			$headers = getallheaders();
@@ -182,7 +172,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 
 		switch ($webhookData->type) {
-			case 'InvoicePaymentReceived':
+			case 'InvoiceReceivedPayment':
 				if ($webhookData->afterExpiration) {
 					if ($order->get_status() === $configuredOrderStates[OrderStates::EXPIRED]) {
 						$order->update_status($configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
@@ -369,6 +359,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		// todo: discuss: below data taken from old plugin, not sure if this is needed; payment data needs to get fetched separately
 		// by "Get invoice payment methods endpoint".
+		// should be per payment method, USDBTC_price, USDBTC_paid, ... etc
 		/*
 		update_post_meta($orderId, 'BTCPay_rate', $invoice->getRate());
 		$formattedRate = number_format($invoice->getRate(), wc_get_price_decimals(), wc_get_price_decimal_separator(), wc_get_price_thousand_separator());
@@ -379,11 +370,11 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		*/
 	}
 
-	abstract public function getDefaultTitle(): string;
+	abstract public function getDefaultTitle();
 
-	abstract protected function getSettingsDescription(): string;
+	abstract protected function getSettingsDescription();
 
-	abstract protected function getDefaultDescription(): string;
+	abstract protected function getDefaultDescription();
 
-	abstract public function getPaymentMethods(): array;
+	abstract public function getPaymentMethods();
 }

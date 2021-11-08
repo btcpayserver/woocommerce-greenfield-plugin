@@ -1,6 +1,6 @@
 # BTCPay Greenfield Plugin for WooCommerce
 
-## WARNING: Plugin work in progress and not working, do not use yet ;)
+## WARNING: Plugin work in progress, do not use yet on production ;)
 
 
 ## Considerations
@@ -12,11 +12,12 @@ The basic structure is a mix of the plugin generator by WP cli tool (filestructu
 From admin UI perspective (different from the legacy plugin) the global settings for BTCPayServer like the host, api key, store id, confirmation times etc. have been moved out of the default payment gateway to a separate settings form. The payment gateways will only have related config options like displayed text, icons, etc.
 
 ## Todo until feature parity with current plugin
-- [ ] check, create webhook, WC Api endpoint for processing the response
-- [ ] make default gateway work
+- [x] check, create webhook, WC Api endpoint for processing the response
+- [x] make default gateway work
 - [ ] add API key convenience function button and routine
-- [ ] separate payment gateways by store supported payment method
-- [ ] order states mapping/configurabilty
+- [x] separate payment gateways by store supported payment method
+- [ ] separate payment gateways caching
+- [x] order states mapping/configurability
 - [ ] make build system work
 - [ ] show admin notice if plugin not configured yet with link to config page
 - [ ] ensure warning/uninstallable for PHP < 7.3 (plugin metadata or notice)

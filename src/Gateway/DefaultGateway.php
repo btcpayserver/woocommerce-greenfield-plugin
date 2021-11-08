@@ -20,19 +20,18 @@ class DefaultGateway extends AbstractGateway {
 	public function __construct() {
 		// todo maybe move to bottom and clean duplicates up
 		parent::__construct();
-		// General
+		// General gateway setup.
 		$this->id                 = 'btcpaygf_default';
 		$this->order_button_text  = __('Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN);
-		$this->method_title       = 'BTCPay NEWWW';
-		$this->method_description = 'BTCPay allows you to accept bitcoin payments on your WooCommerce store.';
+		$this->method_title       = 'BTCPay (default)';
 
 		// Load the settings.
 		$this->init_form_fields();
 		$this->init_settings();
 
-		// Define user set variables
+		// Define user set variables.
 		$this->title              = $this->getDefaultTitle();
-		$this->description        = $this->getDefaultDescription(); //$this->get_option('description');
+		$this->description        = $this->getDefaultDescription();
 
 		// Actions
 		add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
@@ -52,11 +51,11 @@ class DefaultGateway extends AbstractGateway {
 	}
 
 	public function getDefaultDescription(): string {
-		return $this->get_option('description', 'You will be redirected to BTCPay to complete your purchase 3434.');
+		return $this->get_option('description', 'You will be redirected to BTCPay to complete your purchase.');
 	}
 
 	public function getSettingsDescription(): string {
-		return "d: setSettingsDescription()";
+		return __('BTCPay default gateway supporting all available tokens on your BTCPay store.', BTCPAYSERVER_TEXTDOMAIN);
 	}
 
 	public function init_form_fields(): void {
@@ -83,7 +82,5 @@ class DefaultGateway extends AbstractGateway {
 
 		return [];
 	}
-
-
 
 }
