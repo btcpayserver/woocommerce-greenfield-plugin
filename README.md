@@ -16,7 +16,7 @@ From admin UI perspective (different from the legacy plugin) the global settings
 - [x] make default gateway work
 - [ ] add API key convenience function button and routine
 - [x] separate payment gateways by store supported payment method
-- [ ] separate payment gateways caching
+- [x] separate payment gateways caching
 - [x] order states mapping/configurability
 - [ ] make build system work
 - [ ] show admin notice if plugin not configured yet with link to config page

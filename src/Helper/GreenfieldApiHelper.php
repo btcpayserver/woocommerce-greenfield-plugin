@@ -9,6 +9,7 @@ use BTCPayServer\Client\StorePaymentMethod;
 use BTCPayServer\Result\AbstractStorePaymentMethodResult;
 
 class GreenfieldApiHelper {
+	const PM_CACHE_KEY = 'btcpay_payment_methods';
 	public $configured = false;
 	public $url;
 	public $apiKey;
@@ -52,8 +53,13 @@ class GreenfieldApiHelper {
 	}
 
 	public static function supportedPaymentMethods(): array {
-		// todo: add some caching for a few minutes to avoid too many requests.
 		$paymentMethods = [];
+
+		// Use transients API to cache pm for a few minutes to avoid too many requests to BTCPay Server.
+		if ($cachedPaymentMethods = get_transient(self::PM_CACHE_KEY)) {
+			return $cachedPaymentMethods;
+		}
+
 		if ($config = self::getConfig()) {
 			$client = new StorePaymentMethod($config['url'], $config['api_key']);
 			if ($storeId = get_option('btcpay_gf_store_id')) {
@@ -71,6 +77,9 @@ class GreenfieldApiHelper {
 				}
 			}
 		}
+
+		// Store payment methods into cache.
+		set_transient( self::PM_CACHE_KEY, $paymentMethods,5 * MINUTE_IN_SECONDS );
 
 		return $paymentMethods;
 	}

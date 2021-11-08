@@ -10,6 +10,7 @@ use BTCPayServer\WC\Helper\OrderStates;
  * todo: add validation of host/url
  * todo: check connection on safe and show notice if not working
  * todo: create webhook if it does not exist
+ * todo: clear the pm payment method transient cache on save
  */
 class GlobalSettings extends \WC_Settings_Page {
 
