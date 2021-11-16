@@ -20,6 +20,7 @@ use BTCPayServer\WC\Helper\SettingsHelper;
 defined( 'ABSPATH' ) || exit();
 
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
+define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
 define( 'BTCPAYSERVER_TEXTDOMAIN', 'btcpay-greenfield-for-woocommerce' );
 define( 'BTCPAYSERVER_VERSION', '0.0.1' );
 define( 'BTCPAYSERVER_PLUGIN_ID', 'btcpay-greenfield-for-woocommerce' );

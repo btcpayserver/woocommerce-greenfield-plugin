@@ -20,7 +20,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 	public function __construct() {
 		// General gateway setup.
-		$this->icon              = plugin_dir_url( __FILE__ ) . 'assets/img/icon.png';
+		$this->icon              = BTCPAYSERVER_PLUGIN_URL . 'assets/images/btcpay-logo.svg';
 		$this->has_fields        = false;
 		$this->order_button_text = __( 'Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN );
 
