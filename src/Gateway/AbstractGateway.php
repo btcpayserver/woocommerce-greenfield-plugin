@@ -8,15 +8,13 @@ use BTCPayServer\Client\Invoice;
 use BTCPayServer\Client\InvoiceCheckoutOptions;
 use BTCPayServer\Util\PreciseNumber;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
+use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
 use BTCPayServer\WC\Helper\Logger;
 use BTCPayServer\WC\Helper\OrderStates;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
-// initialze
 
-// setup config
 	protected $apiHelper;
-
 
 	public function __construct() {
 		// General gateway setup.
@@ -112,13 +110,20 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		if ($rawPostData = file_get_contents("php://input")) {
 			// Validate webhook request.
 			$headers = getallheaders();
-			if (isset($headers['BTCPay-Sig']) && !$this->apiHelper->validWebhookRequest($headers['BTCPay-Sig'], $rawPostData)) {
+			$signature = $headers['Btcpay-Sig'] ?? null;
+
+			if (!isset($signature) || !$this->apiHelper->validWebhookRequest($signature, $rawPostData)) {
 				Logger::debug('Failed to validate signature of webhook request.');
 				wp_die('Webhook request validation failed.');
 			}
 
 			try {
 				$postData = json_decode($rawPostData, false, 512, JSON_THROW_ON_ERROR);
+
+				if (!isset($postData->invoiceId)) {
+					Logger::debug('No BTCPay invoiceId provided, aborting.');
+					wp_die('No BTCPay invoiceId provided, aborting.');
+				}
 
 				// Load the order by metadata field BTCPay_id
 				$orders = wc_get_orders([
@@ -132,7 +137,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					wp_die('No order found for this invoiceId.', '', ['response' => 404]);
 				}
 
-				// todo: Handle multiple orders found.
+				// TODO: Handle multiple matching orders.
 				if (count($orders) > 1) {
 					Logger::debug('Found multiple orders for invoiceId: ' . $postData->invoiceId);
 					Logger::debug($orders);
@@ -145,21 +150,11 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				Logger::debug('Error decoding webook payload: ' . $e->getMessage());
 				Logger::debug($rawPostData);
 			}
-
 		}
 	}
 
 	protected function updateOrderStatus(\WC_Order $order, \stdClass $webhookData) {
-		// We ignore invoice created webhook as we created the invoice.
-		$allowedBTCPayEvents = [
-			'InvoiceReceivedPayment',
-			'InvoiceProcessing',
-			'InvoiceExpired',
-			'InvoiceSettled',
-			'InvoiceInvalid'
-		];
-
-		if (!in_array($webhookData->type, $allowedBTCPayEvents)) {
+		if (!in_array($webhookData->type, GreenfieldApiWebhook::WEBHOOK_EVENTS)) {
 			Logger::debug('Webhook event received but ignored: ' . $webhookData->type);
 			return;
 		}
@@ -253,12 +248,8 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 	/**
 	 * Create an invoice on BTCPay Server.
-	 *
-	 * @param \WC_Order $order
-	 *
-	 * @return \BTCPayServer\Result\Invoice|void
 	 */
-	protected function createInvoice( \WC_Order $order ) {
+	public function createInvoice( \WC_Order $order ): ?\BTCPayServer\Result\Invoice {
 		// In case some plugins customizing the order number we need to pass that along, defaults to internal ID.
 		$orderNumber = $order->get_order_number();
 		Logger::debug( 'Got order number: ' . $orderNumber . ' and order ID: ' . $order->get_id() );
@@ -322,6 +313,8 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			Logger::debug( $e->getMessage(), true );
 			// todo: should we throw exception here to make sure there is an visible error on the page and not silently failing?
 		}
+
+		return null;
 	}
 
 	protected function prepareCustomerMetadata( \WC_Order $order ): array {
@@ -349,8 +342,6 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		return json_encode( $posData, JSON_THROW_ON_ERROR );
 	}
-
-
 
 	protected function updateOrderMetadata( int $orderId, \BTCPayServer\Result\Invoice $invoice ) {
 		// Store relevant BTCPay invoice data.

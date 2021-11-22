@@ -36,14 +36,6 @@ class DefaultGateway extends AbstractGateway {
 		// Actions
 		add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
 		add_action('woocommerce_api_btcpaygf_default', [$this, 'processWebhook']);
-
-
-		/*
-		var_dump($this->id);
-		var_dump($this->description);
-		var_dump($this->get_option('description'));
-		*/
-
 	}
 
 	public function getDefaultTitle(): string {

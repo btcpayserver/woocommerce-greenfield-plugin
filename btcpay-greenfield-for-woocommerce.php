@@ -43,6 +43,7 @@ class BTCPayServerWCPlugin {
 					return $settings;
 				}
 			);
+			add_action( 'wp_ajax_handle_ajax_api_url', [$this, 'processAjaxApiUrl'] );
 		}
 
 
@@ -168,6 +169,49 @@ class BTCPayServerWCPlugin {
 		$message = 'WooCommerce seems to be not installed. Make sure you do before you activate BTCPayServer Payment Gateway.';
 		echo '<div class="notice notice-error"><p style="font-size: 16px">' . $message . '</p></div>';
 	}
+
+	/**
+	 * Handles the AJAX callback from the GlobalSettings form. Unfortunately with namespaces it seems to not work
+	 * to have this method on the GlobalSettings class. So keeping it here for the time being.
+	 */
+	public function processAjaxApiUrl() {
+		$nonce = $_POST['apiNonce'];
+		if ( ! wp_verify_nonce( $nonce, 'btcpaygf-api-url-nonce' ) ) {
+			wp_die('Unauthorized!', '', ['response' => 401]);
+		}
+
+		if ( current_user_can( 'manage_options' ) ) {
+			$host = $_POST['host'];
+
+			if (!filter_var($host, FILTER_VALIDATE_URL) || (substr( $host, 0, 7 ) !== "http://" && substr( $host, 0, 8 ) !== "https://")) {
+				wp_send_json_error("Error validating BTCPayServer URL.");
+			}
+
+			try {
+				// Create the redirect url to BTCPay instance.
+				$url = \BTCPayServer\Client\ApiKey::getAuthorizeUrl(
+					$host,
+					\BTCPayServer\WC\Helper\GreenfieldApiAuthorization::REQUIRED_PERMISSIONS,
+					'WooCommerce',
+					true,
+					true,
+					home_url('btcpay-settings-callback'),
+					null
+				);
+
+				// Store the host to options before we leave the site.
+				update_option('btcpay_gf_url', $host);
+
+				// Return the redirect url.
+				wp_send_json_success(['url' => $url]);
+			} catch (\Throwable $e) {
+				\BTCPayServer\WC\Helper\Logger::debug('Error fetching redirect url from BTCPay Server.');
+			}
+		}
+
+		wp_send_json_error("Error processing Ajax request.");
+	}
+
 }
 
 // Start everything up.
@@ -175,5 +219,55 @@ function init_btcpay_greenfield() {
 	new BTCPayServerWCPlugin();
 }
 
+// Setting up and handling custom endpoint for api key redirect from BTCPay Server.
+add_action('init', function() {
+	add_rewrite_endpoint('btcpay-settings-callback', EP_ROOT);
+});
+
+// To be able to use the endpoint without appended url segments we need to do this.
+add_filter('request', function($vars) {
+	if (isset($vars['btcpay-settings-callback'])) {
+		$vars['btcpay-settings-callback'] = true;
+	}
+	return $vars;
+});
+
+// Adding template redirect handling for btcpay-settings-callback.
+add_action( 'template_redirect', function() {
+	global $wp_query;
+
+	// Only continue on a btcpay-settings-callback request.
+	if (! isset( $wp_query->query_vars['btcpay-settings-callback'] ) ) {
+		return;
+	}
+
+	$btcPaySettingsUrl = admin_url('admin.php?page=wc-settings&tab=btcpay_settings');
+
+	$rawData = file_get_contents('php://input');
+	$data = json_decode( $rawData, TRUE );
+
+	// Seems data does get submitted with url-encoded payload.
+	if (!empty($_POST)) {
+		$data = $_POST;
+	}
+
+	if (isset($data['apiKey']) && isset($data['permissions'])) {
+		$apiData = new \BTCPayServer\WC\Helper\GreenfieldApiAuthorization($data);
+		if ($apiData->hasSingleStore() && $apiData->hasRequiredPermissions()) {
+			update_option('btcpay_gf_api_key', $apiData->getApiKey());
+			update_option('btcpay_gf_store_id', $apiData->getStoreID());
+			\WC_Admin_Settings::add_message(__('Successfully received api key and store id from BTCPay Server API.', BTCPAYSERVER_TEXTDOMAIN));
+			wp_redirect($btcPaySettingsUrl);
+		} else {
+			\WC_Admin_Settings::add_error(__('Please make sure you only select one store on the BTCPay API authorization page.', BTCPAYSERVER_TEXTDOMAIN));
+			wp_redirect($btcPaySettingsUrl);
+		}
+	}
+
+	\WC_Admin_Settings::add_error(__('Error processing the data from BTCPay. Please try again.', BTCPAYSERVER_TEXTDOMAIN));
+	wp_redirect($btcPaySettingsUrl);
+});
+
+// Initialze payment gateways and plugin.
 add_filter( 'woocommerce_payment_gateways', [ 'BTCPayServerWCPlugin', 'initPaymentGateways' ] );
 add_action( 'plugins_loaded', 'init_btcpay_greenfield', 0 );

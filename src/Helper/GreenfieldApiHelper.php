@@ -6,6 +6,7 @@ namespace BTCPayServer\WC\Helper;
 
 use BTCPayServer\Client\Store;
 use BTCPayServer\Client\StorePaymentMethod;
+use BTCPayServer\Client\Webhook;
 use BTCPayServer\Result\AbstractStorePaymentMethodResult;
 
 class GreenfieldApiHelper {
@@ -21,6 +22,7 @@ class GreenfieldApiHelper {
 			$this->url = $config['url'];
 			$this->apiKey = $config['api_key'];
 			$this->storeId = $config['store_id'];
+			$this->webhook = $config['webhook'];
 			$this->configured = true;
 		}
 	}
@@ -33,7 +35,8 @@ class GreenfieldApiHelper {
 			return [
 				'url' => $url,
 				'api_key' => $key,
-				'store_id' => get_option('btcpay_gf_store_id', NULL)
+				'store_id' => get_option('btcpay_gf_store_id', null),
+				'webhook' => get_option('btcpay_gf_webhook', null)
 			];
 		}
 		else {
@@ -52,6 +55,9 @@ class GreenfieldApiHelper {
 		return false;
 	}
 
+	/**
+	 * List supported payment methods by BTCPay Server.
+	 */
 	public static function supportedPaymentMethods(): array {
 		$paymentMethods = [];
 
@@ -84,18 +90,48 @@ class GreenfieldApiHelper {
 		return $paymentMethods;
 	}
 
-	public function getInvoiceRedirectUrl($invoiceId) {
+	/**
+	 * Deletes local cache of supported payment methods.
+	 */
+	public static function clearSupportedPaymentMethodsCache(): bool {
+		return delete_transient( self::PM_CACHE_KEY );
+	}
+
+	/**
+	 * Returns BTCPay Server invoice url.
+	 */
+	public function getInvoiceRedirectUrl($invoiceId): ?string {
 		if ($this->configured) {
 			return $this->url . '/i/' . urlencode($invoiceId);
 		}
+		return null;
 	}
 
+	/**
+	 * Check webhook signature to be a valid request.
+	 */
 	public function validWebhookRequest(string $signature, string $requestData): bool {
 		if ($this->configured) {
-			if ($signature === "sha256=" . hash_hmac('sha256', $requestData, $this->apiKey)) {
-				return true;
-			}
+			return Webhook::isIncomingWebhookRequestValid($requestData, $signature, $this->webhook['secret']);
 		}
 		return false;
 	}
+
+	/**
+	 * Checks if the provided API config already exists in options table.
+	 */
+	public static function apiCredentialsExist(string $apiUrl, string $apiKey, string $storeId): bool {
+		if ($config = self::getConfig()) {
+			if (
+				$config['url'] === $apiUrl &&
+				$config['api_key'] === $apiKey &&
+				$config['store_id'] === $storeId
+			) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 }

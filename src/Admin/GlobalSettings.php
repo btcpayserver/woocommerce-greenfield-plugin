@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace BTCPayServer\WC\Admin;
 
+use BTCPayServer\Client\ApiKey;
+use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
+use BTCPayServer\WC\Helper\GreenfieldApiHelper;
+use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
 use BTCPayServer\WC\Helper\OrderStates;
 
 /**
@@ -20,6 +24,17 @@ class GlobalSettings extends \WC_Settings_Page {
 		$this->label = __( 'BTCPay Settings', BTCPAYSERVER_TEXTDOMAIN );
 		// Register custom field type order_states with OrderStatesField class.
 		add_action('woocommerce_admin_field_order_states', [(new OrderStates()), 'renderOrderStatesHtml']);
+		if (is_admin()) {
+			// Register and include JS.
+			wp_register_script('btcpay_gf_global_settings', BTCPAYSERVER_PLUGIN_URL . 'assets/js/apiKeyRedirect.js', ['jquery'], BTCPAYSERVER_VERSION);
+			wp_enqueue_script('btcpay_gf_global_settings');
+			wp_localize_script( 'btcpay_gf_global_settings',
+				'BTCPayGlobalSettings',
+				[
+					'url' => admin_url( 'admin-ajax.php' ),
+					'apiNonce' => wp_create_nonce( 'btcpaygf-api-url-nonce' ),
+				]);
+		}
 		parent::__construct();
 	}
 
@@ -34,7 +49,8 @@ class GlobalSettings extends \WC_Settings_Page {
 		return $this->getGlobalSettings();
 	}
 
-	public function getGlobalSettings(): array {
+	public function getGlobalSettings(): array
+	{
 		// todo: link to logs
 		$logs_href = '';
 		return [
@@ -63,7 +79,7 @@ class GlobalSettings extends \WC_Settings_Page {
 			'api_key'                  => [
 				'title'       => esc_html_x( 'BTCPay API Key', 'global_settings',BTCPAYSERVER_TEXTDOMAIN ),
 				'type'        => 'text',
-				'desc' => _x( 'Your BTCPay API Key. If you do not have any yet <a href="#" class="btcpay-api-key-link">click here to generate API keys.</a>', 'global_settings', BTCPAYSERVER_TEXTDOMAIN ),
+				'desc' => _x( 'Your BTCPay API Key. If you do not have any yet <a href="#" class="btcpay-api-key-link" target="_blank">click here to generate API keys.</a>', 'global_settings', BTCPAYSERVER_TEXTDOMAIN ),
 				'default'     => '',
 				'id' => 'btcpay_gf_api_key'
 			],
@@ -151,5 +167,74 @@ class GlobalSettings extends \WC_Settings_Page {
 				'id' => 'btcpay_gf',
 			],
 		];
+	}
+
+	public function save() {
+		// If we have url, storeID and apiKey we want to check if the api key works and register a webhook.
+		if ( $this->hasNeededApiCredentials() ) {
+			// Check if api key works for this store.
+			$apiUrl  = esc_url_raw( $_POST['btcpay_gf_url'] );
+			$apiKey  = sanitize_text_field( $_POST['btcpay_gf_api_key'] );
+			$storeId = sanitize_text_field( $_POST['btcpay_gf_store_id'] );
+
+			if ( GreenfieldApiHelper::apiCredentialsExist($apiUrl, $apiKey, $storeId) ) {
+				// Check if the provided API key has the right scope and permissions.
+				try {
+					$apiClient  = new ApiKey( $apiUrl, $apiKey );
+					$apiKeyData = $apiClient->getCurrent();
+					$apiAuth    = new GreenfieldApiAuthorization( $apiKeyData->getData() );
+					$hasError   = false;
+
+					if ( ! $apiAuth->hasSingleStore() ) {
+						\WC_Admin_Settings::add_error( __( 'The provided API key scope is valid for multiple stores, please make sure to create one for a single store.', BTCPAYSERVER_TEXTDOMAIN ) );
+						$hasError = true;
+					}
+
+					if ( ! $apiAuth->hasRequiredPermissions() ) {
+						\WC_Admin_Settings::add_error( sprintf(
+							__( 'The provided API key does not match the required permissions. Please make sure the following permissions are are given: %s', BTCPAYSERVER_TEXTDOMAIN ),
+							implode( ', ', GreenfieldApiAuthorization::REQUIRED_PERMISSIONS )
+						) );
+					}
+
+					// Check if a webhook for our callback url exists.
+					if ( false === $hasError ) {
+						// Check if we already have a webhook registered for that store.
+						if ( GreenfieldApiWebhook::webhookExists( $apiUrl, $apiKey, $storeId ) ) {
+							\WC_Admin_Settings::add_message( __( 'Reusing existing webhook.', BTCPAYSERVER_TEXTDOMAIN ) );
+						} else {
+							// Register a new webhook.
+							if ( GreenfieldApiWebhook::registerWebhook( $apiUrl, $apiKey, $storeId ) ) {
+								\WC_Admin_Settings::add_message( __( 'Successfully registered a new webhook on BTCPay Server.', BTCPAYSERVER_TEXTDOMAIN ) );
+							} else {
+								\WC_Admin_Settings::add_error( __( 'Could not register a new webhook on the store.', BTCPAYSERVER_TEXTDOMAIN ) );
+							}
+						}
+					}
+				} catch ( \Throwable $e ) {
+					\WC_Admin_Settings::add_error( sprintf(
+						__( 'Error fetching data for this API key from server. Please check if the key is valid. Error: %s', BTCPAYSERVER_TEXTDOMAIN ),
+						$e->getMessage()
+					) );
+				}
+
+			}
+		}
+
+		parent::save();
+
+		// Purge separate payment methods cache if enabled.
+		GreenfieldApiHelper::clearSupportedPaymentMethodsCache();
+	}
+
+	private function hasNeededApiCredentials(): bool {
+		if (
+			!empty($_POST['btcpay_gf_url']) &&
+			!empty($_POST['btcpay_gf_api_key']) &&
+			!empty($_POST['btcpay_gf_store_id'])
+		) {
+			return true;
+		}
+		return false;
 	}
 }
