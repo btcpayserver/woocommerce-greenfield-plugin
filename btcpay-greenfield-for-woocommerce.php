@@ -268,6 +268,6 @@ add_action( 'template_redirect', function() {
 	wp_redirect($btcPaySettingsUrl);
 });
 
-// Initialze payment gateways and plugin.
+// Initialize payment gateways and plugin.
 add_filter( 'woocommerce_payment_gateways', [ 'BTCPayServerWCPlugin', 'initPaymentGateways' ] );
 add_action( 'plugins_loaded', 'init_btcpay_greenfield', 0 );

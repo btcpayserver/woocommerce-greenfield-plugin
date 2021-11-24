@@ -13,8 +13,6 @@ use BTCPayServer\WC\Helper\OrderStates;
 /**
  * todo: add validation of host/url
  * todo: check connection on safe and show notice if not working
- * todo: create webhook if it does not exist
- * todo: clear the pm payment method transient cache on save
  */
 class GlobalSettings extends \WC_Settings_Page {
 
@@ -169,6 +167,9 @@ class GlobalSettings extends \WC_Settings_Page {
 		];
 	}
 
+	/**
+	 * On saving the settings form make sure to check if the API key works and register a webhook if needed.
+	 */
 	public function save() {
 		// If we have url, storeID and apiKey we want to check if the api key works and register a webhook.
 		if ( $this->hasNeededApiCredentials() ) {

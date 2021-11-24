@@ -15,12 +15,13 @@ class OrderStates {
 	const INVALID = 'Invalid';
 	const EXPIRED = 'Expired';
 	const EXPIRED_PAID_PARTIAL = 'ExpiredPaidPartial';
+	const IGNORE = 'BTCPAY_IGNORE';
 
 	public function getDefaultOrderStateMappings(): array {
 		return [
 			self::NEW => 'wc-pending',
 			self::PROCESSING => 'wc-on-hold',
-			self::SETTLED => 'wc-processing',
+			self::SETTLED => self::IGNORE,
 			self::SETTLED_PAID_OVER => 'wc-processing',
 			self::INVALID => 'wc-failed',
 			self::EXPIRED => 'wc-cancelled',
@@ -30,13 +31,13 @@ class OrderStates {
 
 	public function getOrderStateLabels(): array {
 		return [
-			self::NEW => __('New', BTCPAYSERVER_TEXTDOMAIN),
-			self::PROCESSING => __('Paid', BTCPAYSERVER_TEXTDOMAIN),
-			self::SETTLED => __('Settled', BTCPAYSERVER_TEXTDOMAIN),
-			self::SETTLED_PAID_OVER => __('Settled (paid over)', BTCPAYSERVER_TEXTDOMAIN),
-			self::INVALID => __('Invalid', BTCPAYSERVER_TEXTDOMAIN),
-			self::EXPIRED => __('Expired', BTCPAYSERVER_TEXTDOMAIN),
-			self::EXPIRED_PAID_PARTIAL => __('Expired with partial payment', BTCPAYSERVER_TEXTDOMAIN)
+			self::NEW => _x('New', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
+			self::PROCESSING => _x('Paid', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
+			self::SETTLED => _x('Settled', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
+			self::SETTLED_PAID_OVER => _x('Settled (paid over)', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
+			self::INVALID => _x('Invalid', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
+			self::EXPIRED => _x('Expired', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
+			self::EXPIRED_PAID_PARTIAL => _x('Expired with partial payment', 'global_settings', BTCPAYSERVER_TEXTDOMAIN)
 		];
 	}
 
@@ -46,7 +47,7 @@ class OrderStates {
 		$defaultStates = $this->getDefaultOrderStateMappings();
 
 		$wcStates = wc_get_order_statuses();
-		$wcStates = ['BTCPAY_IGNORE' => __('- do nothing -', 'BTCPAYSERVER_TEXTDOMAIN')] + $wcStates;
+		$wcStates = [self::IGNORE => _x('- no mapping / defaults -', 'global_settings', BTCPAYSERVER_TEXTDOMAIN)] + $wcStates;
 		$orderStates = get_option($value['id']);
 		?>
 		<tr valign="top">
@@ -85,6 +86,9 @@ class OrderStates {
 
 					?>
 				</table>
+				<p class="description">
+					<?php echo _x( 'By keeping default behavior for the "Settled" status you make sure that WooCommerce handles orders of virtual and downloadable products only properly and set those orders to "complete" instead of "processing" like for orders containing physical products.', 'global_settings', BTCPAYSERVER_TEXTDOMAIN ); ?>
+				</p>
 			</td>
 		</tr>
 		<?php

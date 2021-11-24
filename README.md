@@ -14,7 +14,7 @@ From admin UI perspective (different from the legacy plugin) the global settings
 ## Todo until feature parity with current plugin
 - [x] check, create webhook, WC Api endpoint for processing the response
 - [x] make default gateway work
-- [ ] add API key convenience function button and routine
+- [x] add API key convenience function button and routine
 - [x] separate payment gateways by store supported payment method
 - [x] separate payment gateways caching
 - [x] order states mapping/configurability

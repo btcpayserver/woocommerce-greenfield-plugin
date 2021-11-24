@@ -144,7 +144,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					wp_die('Multiple orders found for this invoiceId, aborting.');
 				}
 
-				$this->updateOrderStatus($orders[0], $postData);
+				$this->processOrderStatus($orders[0], $postData);
 
 			} catch (\Throwable $e) {
 				Logger::debug('Error decoding webook payload: ' . $e->getMessage());
@@ -153,14 +153,13 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 	}
 
-	protected function updateOrderStatus(\WC_Order $order, \stdClass $webhookData) {
+	protected function processOrderStatus(\WC_Order $order, \stdClass $webhookData) {
 		if (!in_array($webhookData->type, GreenfieldApiWebhook::WEBHOOK_EVENTS)) {
 			Logger::debug('Webhook event received but ignored: ' . $webhookData->type);
 			return;
 		}
 
 		Logger::debug('Updating order status with webhook event received for processing: ' . $webhookData->type);
-
 		// Get configured order states or fall back to defaults.
 		if (!$configuredOrderStates = get_option('btcpay_gf_order_states')) {
 			$configuredOrderStates = (new OrderStates())->getDefaultOrderStateMappings();
@@ -170,7 +169,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			case 'InvoiceReceivedPayment':
 				if ($webhookData->afterExpiration) {
 					if ($order->get_status() === $configuredOrderStates[OrderStates::EXPIRED]) {
-						$order->update_status($configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
+						$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
 						$order->add_order_note(__('Invoice payment received after invoice was already expired.'));
 					}
 				} else {
@@ -179,7 +178,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				}
 				break;
 			case 'InvoiceProcessing': // The invoice is paid in full.
-				$order->update_status($configuredOrderStates[OrderStates::PROCESSING]);
+				$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::PROCESSING]);
 				if ($webhookData->overPaid) {
 					$order->add_order_note(__('Invoice payment received fully with overpayment, waiting for settlement.'));
 				} else {
@@ -187,7 +186,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				}
 				break;
 			case 'InvoiceInvalid':
-				$order->update_status($configuredOrderStates[OrderStates::INVALID]);
+				$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::INVALID]);
 				if ($webhookData->manuallyMarked) {
 					$order->add_order_note(__('Invoice manually marked invalid.'));
 				} else {
@@ -196,22 +195,22 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				break;
 			case 'InvoiceExpired':
 				if ($webhookData->partiallyPaid) {
-					$order->update_status($configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
+					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
 					$order->add_order_note(__('Invoice expired but was paid partially, please check.'));
 				} else {
-					$order->update_status($configuredOrderStates[OrderStates::EXPIRED]);
+					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED]);
 					$order->add_order_note(__('Invoice expired.'));
 				}
 				break;
 			case 'InvoiceSettled':
+				$order->payment_complete();
 				if ($webhookData->overPaid) {
 					$order->add_order_note(__('Invoice payment settled but was overpaid.'));
-					$order->update_status($configuredOrderStates[OrderStates::SETTLED_PAID_OVER]);
+					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::SETTLED_PAID_OVER]);
 				} else {
 					$order->add_order_note(__('Invoice payment settled.'));
-					$order->update_status($configuredOrderStates[OrderStates::SETTLED]);
+					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::SETTLED]);
 				}
-				$order->payment_complete();
 				break;
 		}
 	}
@@ -244,6 +243,15 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Update WC order status (if a valid mapping is set).
+	 */
+	public function updateWCOrderStatus(\WC_Order $order, string $status): void {
+		if ($status !== OrderStates::IGNORE) {
+			$order->update_status($status);
+		}
 	}
 
 	/**
