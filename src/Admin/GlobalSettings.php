@@ -22,6 +22,7 @@ class GlobalSettings extends \WC_Settings_Page {
 		$this->label = __( 'BTCPay Settings', BTCPAYSERVER_TEXTDOMAIN );
 		// Register custom field type order_states with OrderStatesField class.
 		add_action('woocommerce_admin_field_order_states', [(new OrderStates()), 'renderOrderStatesHtml']);
+
 		if (is_admin()) {
 			// Register and include JS.
 			wp_register_script('btcpay_gf_global_settings', BTCPAYSERVER_PLUGIN_URL . 'assets/js/apiKeyRedirect.js', ['jquery'], BTCPAYSERVER_VERSION);
@@ -59,7 +60,7 @@ class GlobalSettings extends \WC_Settings_Page {
 					BTCPAYSERVER_TEXTDOMAIN
 				),
 				'type'        => 'title',
-				'desc' => sprintf( _x( 'This plugin version is %s and your PHP version is %s. If you need assistance, please come on our chat <a href="https://chat.btcpayserver.org" target="_blank">https://chat.btcpayserver.org</a>. Thank you for using BTCPay!', BTCPAYSERVER_TEXTDOMAIN ), BTCPAYSERVER_VERSION, PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ),
+				'desc' => sprintf( _x( 'This plugin version is %s and your PHP version is %s. If you need assistance, please come on our chat <a href="https://chat.btcpayserver.org" target="_blank">https://chat.btcpayserver.org</a>. Thank you for using BTCPay!', 'global_settings', BTCPAYSERVER_TEXTDOMAIN ), BTCPAYSERVER_VERSION, PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ),
 				'id' => 'btcpay_gf'
 			],
 			'url'                      => [

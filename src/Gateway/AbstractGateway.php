@@ -14,6 +14,8 @@ use BTCPayServer\WC\Helper\OrderStates;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
 
+	public $tokenType;
+	public $primaryPaymentMethod;
 	protected $apiHelper;
 
 	public function __construct() {
@@ -22,22 +24,25 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$this->has_fields        = false;
 		$this->order_button_text = __( 'Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN );
 
-		// Set gateway title, only shown for admins in WC payments settings tab.
-		$this->method_title       = 'BTCPay - ' . $this->getDefaultTitle();
-		$this->method_description = $this->getSettingsDescription();
-
 		// Load the settings.
 		$this->init_form_fields();
 		$this->init_settings();
 
-		// Define user set variables.
-		$this->title        = $this->getDefaultTitle();
-		$this->description  = $this->getDefaultDescription();
+		// Define user facing set variables.
+		$this->title        = $this->getTitle();
+		$this->description  = $this->getDescription();
 
 		$this->apiHelper = new GreenfieldApiHelper();
 		// Debugging & informational settings.
 		$this->debug_php_version    = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
 		$this->debug_plugin_version = BTCPAYSERVER_VERSION;
+
+		// Actions
+		add_action('woocommerce_update_options_payment_gateways_' . $this->getId(), [$this, 'process_admin_options']);
+	}
+
+	public function getId(): string {
+		return $this->id;
 	}
 
 	/**
@@ -49,14 +54,14 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				'title'       => __( 'Title', BTCPAYSERVER_TEXTDOMAIN ),
 				'type'        => 'text',
 				'description' => __( 'Controls the name of this payment method as displayed to the customer during checkout.', BTCPAYSERVER_TEXTDOMAIN ),
-				'default'     => $this->getDefaultTitle(),
+				'default'     => $this->getTitle(),
 				'desc_tip'    => true,
 			],
 			'description' => [
 				'title'       => __( 'Customer Message', BTCPAYSERVER_TEXTDOMAIN ),
 				'type'        => 'textarea',
 				'description' => __( 'Message to explain how the customer will be paying for the purchase.', BTCPAYSERVER_TEXTDOMAIN ),
-				'default'     => $this->getDefaultDescription(),
+				'default'     => $this->getDescription(),
 				'desc_tip'    => true,
 			],
 		];
@@ -85,10 +90,10 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$existingInvoiceId = get_post_meta( $orderId, 'BTCPay_id', true );
 			Logger::debug( 'Found existing BTCPay Server invoice and redirecting to it. Invoice id: ' . $existingInvoiceId );
 
-			return array(
+			return [
 				'result'   => 'success',
 				'redirect' => $this->apiHelper->getInvoiceRedirectUrl( $existingInvoiceId ),
-			);
+			];
 		}
 
 		// Create an invoice.
@@ -99,13 +104,16 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 			Logger::debug( 'Invoice creation successful, redirecting user.' );
 
-			return array(
+			return [
 				'result'   => 'success',
 				'redirect' => $invoice->getData()['checkoutLink'],
-			);
+			];
 		}
 	}
 
+	/**
+	 * Process webhooks from BTCPay.
+	 */
 	public function processWebhook() {
 		if ($rawPostData = file_get_contents("php://input")) {
 			// Validate webhook request.
@@ -300,13 +308,23 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$checkoutOptions->setPaymentMethods($paymentMethods);
 		}
 
+		// Handle payment methods of type "promotion".
+		// Promotion type set 1 token per each quantity.
+		if ($this->getTokenType() === 'promotion') {
+			$currency = $this->primaryPaymentMethod ?? null;
+			$amount = PreciseNumber::parseInt( $this->getOrderTotalItemsQuantity($order));
+		} else { // Defaults.
+			$currency = $order->get_currency();
+			$amount = PreciseNumber::parseString( $order->get_total() ); // unlike method signature suggests, it returns string.
+		}
+
 		// Create the invoice on BTCPay Server.
 		$client = new Invoice( $this->apiHelper->url, $this->apiHelper->apiKey );
 		try {
 			$invoice = $client->createInvoice(
 				$this->apiHelper->storeId,
-				$order->get_currency(),
-				PreciseNumber::parseString( $order->get_total() ), // unlike method signature says, it returns string.
+				$currency,
+				$amount,
 				$orderNumber,
 				null, // this is null here as we handle it in the metadata.
 				$metadata,
@@ -325,6 +343,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		return null;
 	}
 
+	/**
+	 * Maps customer billing metadata.
+	 */
 	protected function prepareCustomerMetadata( \WC_Order $order ): array {
 		return [
 			'buyerEmail'    => $order->get_billing_email(),
@@ -338,6 +359,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		];
 	}
 
+	/**
+	 * Maps POS metadata.
+	 */
 	protected function preparePosMetadata( $order ): string {
 		$posData = [
 			'WooCommerce' => [
@@ -351,6 +375,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		return json_encode( $posData, JSON_THROW_ON_ERROR );
 	}
 
+	/**
+	 * References WC order metadata with BTCPay invoice data.
+	 */
 	protected function updateOrderMetadata( int $orderId, \BTCPayServer\Result\Invoice $invoice ) {
 		// Store relevant BTCPay invoice data.
 		update_post_meta( $orderId, 'BTCPay_redirect', $invoice->getData()['checkoutLink'] );
@@ -369,11 +396,41 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		*/
 	}
 
-	abstract public function getDefaultTitle();
+	/**
+	 * Return the total quantity of the whole order for all line items.
+	 */
+	public function getOrderTotalItemsQuantity(\WC_Order $order): int {
+		$total = 0;
+		foreach ($order->get_items() as $item ) {
+			$total += $item->get_quantity();
+		}
 
-	abstract protected function getSettingsDescription();
+		return $total;
+	}
 
-	abstract protected function getDefaultDescription();
+	/**
+	 * Get customer visible gateway title.
+	 */
+	public function getTitle(): string {
+		return $this->get_option('title', 'BTCPay (Bitcoin, Lightning Network, ...)');
+	}
 
-	abstract public function getPaymentMethods();
+	/**
+	 * Get customer facing gateway description.
+	 */
+	public function getDescription(): string {
+		return $this->get_option('description', 'You will be redirected to BTCPay to complete your purchase.');
+	}
+
+	/**
+	 * Get type of BTCPay payment method/token as configured. Can be payment or promotion.
+	 */
+	public function getTokenType(): string {
+		return $this->get_option('token_type', 'payment');
+	}
+
+	/**
+	 * Get allowed BTCPay payment methods (needed for limiting invoices to specific payment methods).
+	 */
+	abstract public function getPaymentMethods(): array;
 }

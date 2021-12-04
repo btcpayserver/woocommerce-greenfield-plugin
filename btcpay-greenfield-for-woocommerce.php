@@ -15,7 +15,6 @@
  */
 
 use BTCPayServer\WC\Gateway\DefaultGateway;
-use BTCPayServer\WC\Helper\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit();
 
@@ -35,6 +34,7 @@ class BTCPayServerWCPlugin {
 		$this->includes();
 
 		if (is_admin()) {
+			// Register our custom global settings page.
 			add_filter(
 				'woocommerce_get_settings_pages',
 				function ($settings) {
@@ -45,8 +45,6 @@ class BTCPayServerWCPlugin {
 			);
 			add_action( 'wp_ajax_handle_ajax_api_url', [$this, 'processAjaxApiUrl'] );
 		}
-
-
 	}
 
 	public function includes() {
@@ -67,11 +65,12 @@ class BTCPayServerWCPlugin {
 		// todo: check if api keys configured (could also be in constructor)
 		// if not show admin notice in admin UI with link: BTCPayServer API keys missing Please [set your API keys here].
 
-		// Load payment methods from BTCPS as separate gateways.
+		// Load payment methods from BTCPay Server as separate gateways.
 		if (get_option('btcpay_gf_separate_gateways') === 'yes') {
 			// Call init separate payment gateways here.
 			if ($separateGateways = \BTCPayServer\WC\Helper\GreenfieldApiHelper::supportedPaymentMethods()) {
-				self::initSeparatePaymentGateways($separateGateways);
+
+				\BTCPayServer\WC\Gateway\SeparateGateways::generateClasses();
 
 				foreach ($separateGateways as $gw) {
 					$gateways[] = $gw['className'];
@@ -80,62 +79,6 @@ class BTCPayServerWCPlugin {
 		}
 
 		return $gateways;
-	}
-
-	public function initSeparatePaymentGateways(array $gateways) {
-		foreach ( $gateways as $gw ) {
-			$className = $gw['className'];
-			$symbol = $gw['symbol'];
-			$id = 'btcpaygf_' . strtolower($symbol);
-			// todo: mode (payment, promotion)
-			// todo: icon upload
-			if ( ! class_exists( $className ) ) {
-				// Build the class structure.
-				//$classcode = "declare( strict_types=1 );";
-				//$classcode .= "namespace BTCPayServer\WC\Gateway;";
-				$classcode = "use BTCPayServer\WC\Gateway\AbstractGateway;";
-				$classcode .= "class {$className} extends AbstractGateway { ";
-				// $classcode .= "public \$token_mode;";
-				$classcode .= "public \$token_symbol;";
-				$classcode .= "public function __construct() { ";
-				$classcode .= "parent::__construct();";
-				$classcode .= "\$this->id = '{$id}';";
-				$classcode .= "\$this->method_title = 'BTCPay Asset NEWWW: {$symbol}';";
-				$classcode .= "\$this->method_description = 'This is an additional asset managed by BTCPay.';";
-				//$classcode .= "\$this->title = '{$symbol}';"; // todo: get name from config
-				//$classcode .= "\$this->token_mode = '{$token['mode']}';";
-				$classcode .= "\$this->token_symbol = '{$symbol}';";
-				//$classcode .= "\$this->icon = '{$token['icon']}';"; // todo get from config
-				$classcode .= "\$this->init_settings();";
-				$classcode .= "}" . PHP_EOL;
-				$classcode .= "public function getDefaultTitle() { ";
-				$classcode .= "return \$this->get_option('title', '{$symbol}');";
-				$classcode .= "}" . PHP_EOL;
-				$classcode .= "public function getDefaultDescription() { " ;
-				$classcode .= "return \$this->get_option('description', 'You will be redirected to BTCPay to complete your purchase.');";
-				$classcode .= "}" . PHP_EOL;
-				$classcode .= "public function getSettingsDescription() { " ;
-				$classcode .= "return \"default settings description alt\";";
-				$classcode .= "}" . PHP_EOL;
-				$classcode .= "public function getPaymentMethods() {
-									return ['{$symbol}'];
-			                   }";
-				$classcode .= "}";
-
-				// Initialize it on the fly.
-				eval( $classcode );
-			}
-		}
-	}
-
-	public static function getSettingsHelper() {
-		static $settings_helper;
-
-		if ( ! $settings_helper ) {
-			$settings_helper = new SettingsHelper();
-		}
-
-		return $settings_helper;
 	}
 
 	public function checkDependencies() {

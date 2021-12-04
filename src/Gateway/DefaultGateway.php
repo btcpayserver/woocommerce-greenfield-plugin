@@ -2,74 +2,79 @@
 
 namespace BTCPayServer\WC\Gateway;
 
-// todo extract common things to abstract class
-// todo think about global config for api connection, order states and
-// keep payment method config focused on the payment method itself
-
-
-
+/**
+ * Default Gateway that provides all available payment methods of BTCPay Server store configuration.
+ */
 class DefaultGateway extends AbstractGateway {
-// initialze
-
-// setup config
-
-// load additional classes / payment methods
-
-// todo fix why settings are not saved and loaded properly.
 
 	public function __construct() {
-		// todo maybe move to bottom and clean duplicates up
-		parent::__construct();
-		// General gateway setup.
+		// Set the id first.
 		$this->id                 = 'btcpaygf_default';
+
+		// Call parent constructor.
+		parent::__construct();
+
+		// todo: maybe make the button text configurable via settings.
+		// General gateway setup.
 		$this->order_button_text  = __('Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN);
+		// Admin facing title and description.
 		$this->method_title       = 'BTCPay (default)';
+		$this->method_description = __('BTCPay default gateway supporting all available tokens on your BTCPay store.', BTCPAYSERVER_TEXTDOMAIN);
 
-		// Load the settings.
-		$this->init_form_fields();
-		$this->init_settings();
-
-		// Define user set variables.
-		$this->title              = $this->getDefaultTitle();
-		$this->description        = $this->getDefaultDescription();
-
-		// Actions
-		add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
+		// Actions.
 		add_action('woocommerce_api_btcpaygf_default', [$this, 'processWebhook']);
 	}
 
-	public function getDefaultTitle(): string {
+	/**
+	 * @inheritDoc
+	 */
+	public function getTitle(): string {
 		return $this->get_option('title', 'BTCPay (Bitcoin, Lightning Network, ...)');
 	}
 
-	public function getDefaultDescription(): string {
+	/**
+	 * @inheritDoc
+	 */
+	public function getDescription(): string {
 		return $this->get_option('description', 'You will be redirected to BTCPay to complete your purchase.');
 	}
 
-	public function getSettingsDescription(): string {
-		return __('BTCPay default gateway supporting all available tokens on your BTCPay store.', BTCPAYSERVER_TEXTDOMAIN);
-	}
-
+	/**
+	 * @inheritDoc
+	 */
 	public function init_form_fields(): void {
 		parent::init_form_fields();
 		$this->form_fields += [
 			'enforce_payment_tokens' => [
 				'title'       => __( 'Enforce payment tokens', BTCPAYSERVER_TEXTDOMAIN ),
 				'type'        => 'checkbox',
-				'label'       => __( 'Limit default payment methods to listed "payment" tokens.', BTCPAYSERVER_TEXTDOMAIN ),
-				'default'     => 'no',
+				'label'       => __( 'Enforce payment methods "payment". This way tokens of type promotion will be excluded for this gateway.', BTCPAYSERVER_TEXTDOMAIN ),
+				'default'     => 'yes',
 				'value'       => 'yes',
-				'desc' => __( 'This will override the default btcpay payment method (defaults to all supported by BTCPay Server) and enforce to tokens of type "payment". This is useful if you want full control on what is available on BTCPay Server payment page.', BTCPAYSERVER_TEXTDOMAIN ),
+				'description' => __( 'This will override the default btcpay payment method (defaults to all supported by BTCPay Server) and enforce to tokens of type "payment". This is useful if you have enabled separate payment gateways and want full control on what is available on BTCPay Server payment page.', BTCPAYSERVER_TEXTDOMAIN ),
 				'desc_tip'    => true,
 			],
 		];
 	}
 
+	/**
+	 * @inheritDoc
+	 */
 	public function getPaymentMethods(): array {
 		if ($this->get_option('enforce_payment_tokens') === 'yes') {
-			// todo: handle option to enforce payment tokens.
-			// Logger::debug('Setting payment methods to: ');
-			return [];
+			$gateways = WC()->payment_gateways->get_available_payment_gateways();
+			$btcPayPaymentGW = [];
+			/** @var  $gateway AbstractGateway */
+			foreach ($gateways as $id => $gateway) {
+				if (
+					$gateway->enabled === 'yes' &&
+					strpos($id, 'btcpaygf') !== FALSE
+					&& (isset($gateway->tokenType) && $gateway->tokenType === 'payment')
+				) {
+					$btcPayPaymentGW[] = $gateway->primaryPaymentMethod;
+				}
+			}
+			return $btcPayPaymentGW;
 		}
 
 		return [];
