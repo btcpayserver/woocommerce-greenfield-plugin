@@ -13,14 +13,14 @@ use BTCPayServer\WC\Helper\Logger;
 use BTCPayServer\WC\Helper\OrderStates;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
-
+	const ICON_MEDIA_OPTION = 'icon_media_id';
 	public $tokenType;
 	public $primaryPaymentMethod;
 	protected $apiHelper;
 
 	public function __construct() {
 		// General gateway setup.
-		$this->icon              = BTCPAYSERVER_PLUGIN_URL . 'assets/images/btcpay-logo.svg';
+		$this->icon              = $this->getIcon();
 		$this->has_fields        = false;
 		$this->order_button_text = __( 'Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN );
 
@@ -37,18 +37,30 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$this->debug_php_version    = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
 		$this->debug_plugin_version = BTCPAYSERVER_VERSION;
 
-		// Actions
+		// Actions.
 		add_action('woocommerce_update_options_payment_gateways_' . $this->getId(), [$this, 'process_admin_options']);
-	}
-
-	public function getId(): string {
-		return $this->id;
 	}
 
 	/**
 	 * Initialise Gateway Settings Form Fields
 	 */
 	public function init_form_fields() {
+		wp_register_script(
+			'btcpay_gf_abstract_gateway',
+			BTCPAYSERVER_PLUGIN_URL . 'assets/js/gatewayIconMedia.js',
+			['jquery'],
+			BTCPAYSERVER_VERSION
+		);
+		wp_enqueue_script('btcpay_gf_abstract_gateway');
+		wp_localize_script(
+			'btcpay_gf_abstract_gateway',
+			'btcpaygfGatewayData',
+			[
+				'buttonText' => __('Use this image', BTCPAYSERVER_TEXTDOMAIN),
+				'titleText' => __('Insert image', BTCPAYSERVER_TEXTDOMAIN),
+			]
+		);
+
 		$this->form_fields = [
 			'title'       => [
 				'title'       => __( 'Title', BTCPAYSERVER_TEXTDOMAIN ),
@@ -63,6 +75,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				'description' => __( 'Message to explain how the customer will be paying for the purchase.', BTCPAYSERVER_TEXTDOMAIN ),
 				'default'     => $this->getDescription(),
 				'desc_tip'    => true,
+			],
+			'icon_upload' => [
+				'type'        => 'icon_upload',
 			],
 		];
 	}
@@ -108,6 +123,77 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				'result'   => 'success',
 				'redirect' => $invoice->getData()['checkoutLink'],
 			];
+		}
+	}
+
+	public function process_admin_options() {
+		// Store media id.
+		$iconFieldName = 'woocommerce_' . $this->getId() . '_' . self::ICON_MEDIA_OPTION;
+		if ($mediaId = sanitize_key($_POST[$iconFieldName])) {
+			if ($mediaId !== $this->get_option(self::ICON_MEDIA_OPTION)) {
+				$this->update_option(self::ICON_MEDIA_OPTION, $mediaId);
+			}
+		} else {
+			// Reset to empty otherwise.
+			$this->update_option(self::ICON_MEDIA_OPTION, '');
+		}
+		return parent::process_admin_options();
+	}
+
+	/**
+	 * Generate html for handling icon uploads with media manager.
+	 *
+	 * Note: `generate_$type_html()` is a pattern you can use from WooCommerce Settings API to render custom fields.
+	 */
+	public function generate_icon_upload_html() {
+		$mediaId = $this->get_option(self::ICON_MEDIA_OPTION);
+		$mediaSrc = '';
+		if ($mediaId) {
+			$mediaSrc = wp_get_attachment_image_src($mediaId)[0];
+		}
+		$iconFieldName = 'woocommerce_' . $this->getId() . '_' . self::ICON_MEDIA_OPTION;
+
+		ob_start();
+		?>
+		<tr valign="top">
+			<th scope="row" class="titledesc"><?php echo __('Gateway Icon:', BTCPAYSERVER_TEXTDOMAIN); ?></th>
+			<td class="forminp" id="btcpay_gf_icon">
+				<div id="btcpay_gf_icon_container">
+					<input class="btcpay-gf-icon-button" type="button"
+						   name="woocommerce_btcpaygf_icon_upload_button"
+						   value="<?php echo __('Upload or select icon', BTCPAYSERVER_TEXTDOMAIN); ?>"
+						   style="<?php echo $mediaId ? 'display:none;' : ''; ?>"
+					/>
+					<img class="btcpay-gf-icon-image" src="<?php echo $mediaSrc; ?>" style="<?php echo $mediaId ? '' : 'display:none;'; ?>" />
+					<input class="btcpay-gf-icon-remove" type="button"
+						   name="woocommerce_btcpaygf_icon_button_remove"
+						   value="<?php echo __('Remove image', BTCPAYSERVER_TEXTDOMAIN); ?>"
+						   style="<?php echo $mediaId ? '' : 'display:none;'; ?>"
+					/>
+					<input class="input-text regular-input btcpay-gf-icon-value" type="hidden"
+						   name="<?php echo $iconFieldName; ?>"
+						   id="<?php echo $iconFieldName; ?>"
+						   value="<?php echo $mediaId; ?>"
+					/>
+				</div>
+			</td>
+		</tr>
+        <?php
+		return ob_get_clean();
+	}
+
+	public function getId(): string {
+		return $this->id;
+	}
+
+	/**
+	 * Get custom gateway icon, if any.
+	 */
+	public function getIcon(): string {
+		if ($mediaId = $this->get_option(self::ICON_MEDIA_OPTION)) {
+			return wp_get_attachment_image_src($mediaId)[0];
+		} else {
+			return BTCPAYSERVER_PLUGIN_URL . 'assets/images/btcpay-logo.svg';
 		}
 	}
 
