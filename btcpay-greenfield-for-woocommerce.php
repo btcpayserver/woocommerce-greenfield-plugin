@@ -23,11 +23,6 @@ define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
 define( 'BTCPAYSERVER_VERSION', '0.0.1' );
 define( 'BTCPAYSERVER_PLUGIN_ID', 'btcpay-greenfield-for-woocommerce' );
 
-
-// todo: textdomain
-// https://github.com/btcpayserver/woocommerce-plugin/commit/e9938a4260b5585be6ca9b84b33e892bf5016020
-
-
 class BTCPayServerWCPlugin {
 	public function __construct() {
 		$this->includes();
