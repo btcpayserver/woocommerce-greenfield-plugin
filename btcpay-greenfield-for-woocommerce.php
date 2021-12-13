@@ -5,16 +5,13 @@
  * Description:     PLUGIN DESCRIPTION HERE
  * Author:          YOUR NAME HERE
  * Author URI:      YOUR SITE HERE
- * Text Domain:     btcpay-greenfield
+ * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
  * Version:         0.1.0
  * Requires PHP:    7.4
  * Tested up to:    5.8
  * Requires at least: 5.2
  *
- * @package         Btcpay_Greenfield_For_Woocommerce
- *
- * todo: textdomain needs to match plugin slug, re-use or new slug? https://developer.wordpress.org/plugins/internationalization/how-to-internationalize-your-plugin/
  */
 
 use BTCPayServer\WC\Gateway\DefaultGateway;
@@ -23,7 +20,6 @@ defined( 'ABSPATH' ) || exit();
 
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
-define( 'BTCPAYSERVER_TEXTDOMAIN', 'btcpay-greenfield-for-woocommerce' );
 define( 'BTCPAYSERVER_VERSION', '0.0.1' );
 define( 'BTCPAYSERVER_PLUGIN_ID', 'btcpay-greenfield-for-woocommerce' );
 
@@ -88,7 +84,7 @@ class BTCPayServerWCPlugin {
 			$message = sprintf(
 				esc_html__(
 					'Plugin not configured yet, please %1$sconfigure the plugin here%2$s',
-					BTCPAYSERVER_TEXTDOMAIN
+					'btcpay-greenfield-for-woocommerce'
 				),
 				'<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=btcpay_settings')) . '">',
 				'</a>'
@@ -101,7 +97,7 @@ class BTCPayServerWCPlugin {
 	public function dependenciesNotification() {
 		// Check PHP version.
 		if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
-			$versionMessage = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 7.4+.', BTCPAYSERVER_TEXTDOMAIN ), PHP_VERSION );
+			$versionMessage = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 7.4+.', 'btcpay-greenfield-for-woocommerce' ), PHP_VERSION );
 			\BTcpayServer\WC\Admin\Notice::addNotice('error', $versionMessage);
 		}
 
@@ -114,7 +110,7 @@ class BTCPayServerWCPlugin {
 		) {
 			// All good.
 		} else {
-			$wcMessage = __('WooCommerce seems to be not installed. Make sure you do before you activate BTCPayServer Payment Gateway.', BTCPAYSERVER_TEXTDOMAIN);
+			$wcMessage = __('WooCommerce seems to be not installed. Make sure you do before you activate BTCPayServer Payment Gateway.', 'btcpay-greenfield-for-woocommerce');
 			\BTcpayServer\WC\Admin\Notice::addNotice('error', $wcMessage);
 		}
 
@@ -169,8 +165,13 @@ function init_btcpay_greenfield() {
 	new BTCPayServerWCPlugin();
 }
 
-// Setting up and handling custom endpoint for api key redirect from BTCPay Server.
+/**
+ * Bootstrap stuff on init.
+ */
 add_action('init', function() {
+	// Adding textdomain and translation support.
+	load_plugin_textdomain('btcpay-greenfield-for-woocommerce', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/');
+	// Setting up and handling custom endpoint for api key redirect from BTCPay Server.
 	add_rewrite_endpoint('btcpay-settings-callback', EP_ROOT);
 });
 
@@ -206,15 +207,15 @@ add_action( 'template_redirect', function() {
 		if ($apiData->hasSingleStore() && $apiData->hasRequiredPermissions()) {
 			update_option('btcpay_gf_api_key', $apiData->getApiKey());
 			update_option('btcpay_gf_store_id', $apiData->getStoreID());
-			\WC_Admin_Settings::add_message(__('Successfully received api key and store id from BTCPay Server API.', BTCPAYSERVER_TEXTDOMAIN));
+			\WC_Admin_Settings::add_message(__('Successfully received api key and store id from BTCPay Server API.', 'btcpay-greenfield-for-woocommerce'));
 			wp_redirect($btcPaySettingsUrl);
 		} else {
-			\WC_Admin_Settings::add_error(__('Please make sure you only select one store on the BTCPay API authorization page.', BTCPAYSERVER_TEXTDOMAIN));
+			\WC_Admin_Settings::add_error(__('Please make sure you only select one store on the BTCPay API authorization page.', 'btcpay-greenfield-for-woocommerce'));
 			wp_redirect($btcPaySettingsUrl);
 		}
 	}
 
-	\WC_Admin_Settings::add_error(__('Error processing the data from BTCPay. Please try again.', BTCPAYSERVER_TEXTDOMAIN));
+	\WC_Admin_Settings::add_error(__('Error processing the data from BTCPay. Please try again.', 'btcpay-greenfield-for-woocommerce'));
 	wp_redirect($btcPaySettingsUrl);
 });
 

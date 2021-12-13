@@ -45,14 +45,14 @@ class SeparateGateways {
 										parent::init_form_fields();
 										\$this->form_fields += [
 											'token_type' => [
-												'title' => __( 'Token type', BTCPAYSERVER_TEXTDOMAIN ),
+												'title' => __( 'Token type', 'btcpay-greenfield-for-woocommerce' ),
 												'type' => 'select',
 												'options' => [
 													'payment' => 'Payment',
 													'promotion' => 'Promotion'
 												],
 												'default' => 'payment',
-												'description' => __( 'Tokens of type promotion will not have a FIAT (USD, EUR, ..) exchange rate but counted as 1 per item quantity. See <a target=\"_blank\" href=\"https://docs.btcpayserver.org/FAQ/Integrations/#token-types\">here</a> for more details.', BTCPAYSERVER_TEXTDOMAIN ),
+												'description' => __( 'Tokens of type promotion will not have a FIAT (USD, EUR, ..) exchange rate but counted as 1 per item quantity. See <a target=\"_blank\" href=\"https://docs.btcpayserver.org/FAQ/Integrations/#token-types\">here</a> for more details.', 'btcpay-greenfield-for-woocommerce' ),
 												'desc_tip' => false,
 											],
 										];

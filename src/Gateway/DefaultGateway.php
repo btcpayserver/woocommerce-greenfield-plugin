@@ -16,10 +16,10 @@ class DefaultGateway extends AbstractGateway {
 
 		// todo: maybe make the button text configurable via settings.
 		// General gateway setup.
-		$this->order_button_text  = __('Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN);
+		$this->order_button_text  = __('Proceed to BTCPay', 'btcpay-greenfield-for-woocommerce');
 		// Admin facing title and description.
 		$this->method_title       = 'BTCPay (default)';
-		$this->method_description = __('BTCPay default gateway supporting all available tokens on your BTCPay store.', BTCPAYSERVER_TEXTDOMAIN);
+		$this->method_description = __('BTCPay default gateway supporting all available tokens on your BTCPay store.', 'btcpay-greenfield-for-woocommerce');
 
 		// Actions.
 		add_action('woocommerce_api_btcpaygf_default', [$this, 'processWebhook']);
@@ -46,12 +46,12 @@ class DefaultGateway extends AbstractGateway {
 		parent::init_form_fields();
 		$this->form_fields += [
 			'enforce_payment_tokens' => [
-				'title'       => __( 'Enforce payment tokens', BTCPAYSERVER_TEXTDOMAIN ),
+				'title'       => __( 'Enforce payment tokens', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'checkbox',
-				'label'       => __( 'Enforce payment methods "payment". This way tokens of type promotion will be excluded for this gateway.', BTCPAYSERVER_TEXTDOMAIN ),
+				'label'       => __( 'Enforce payment methods "payment". This way tokens of type promotion will be excluded for this gateway.', 'btcpay-greenfield-for-woocommerce' ),
 				'default'     => 'yes',
 				'value'       => 'yes',
-				'description' => __( 'This will override the default btcpay payment method (defaults to all supported by BTCPay Server) and enforce to tokens of type "payment". This is useful if you have enabled separate payment gateways and want full control on what is available on BTCPay Server payment page.', BTCPAYSERVER_TEXTDOMAIN ),
+				'description' => __( 'This will override the default btcpay payment method (defaults to all supported by BTCPay Server) and enforce to tokens of type "payment". This is useful if you have enabled separate payment gateways and want full control on what is available on BTCPay Server payment page.', 'btcpay-greenfield-for-woocommerce' ),
 				'desc_tip'    => true,
 			],
 		];

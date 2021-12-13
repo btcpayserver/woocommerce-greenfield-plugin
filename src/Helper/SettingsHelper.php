@@ -9,16 +9,16 @@ class SettingsHelper {
 	) {
 		$this->form_fields = [
 			'title' => [
-				'title'       => __('Title', BTCPAYSERVER_TEXTDOMAIN),
+				'title'       => __('Title', 'btcpay-greenfield-for-woocommerce'),
 				'type'        => 'text',
-				'description' => __('Controls the name of this payment method as displayed to the customer during checkout.', BTCPAYSERVER_TEXTDOMAIN),
-				'default'     => __('BTCPay (Bitcoin, Lightning Network, ...)', BTCPAYSERVER_TEXTDOMAIN),
+				'description' => __('Controls the name of this payment method as displayed to the customer during checkout.', 'btcpay-greenfield-for-woocommerce'),
+				'default'     => __('BTCPay (Bitcoin, Lightning Network, ...)', 'btcpay-greenfield-for-woocommerce'),
 				'desc_tip'    => true,
 			],
 			'description' => [
-				'title'       => __('Customer Message', BTCPAYSERVER_TEXTDOMAIN),
+				'title'       => __('Customer Message', 'btcpay-greenfield-for-woocommerce'),
 				'type'        => 'textarea',
-				'description' => __('Message to explain how the customer will be paying for the purchase.', BTCPAYSERVER_TEXTDOMAIN),
+				'description' => __('Message to explain how the customer will be paying for the purchase.', 'btcpay-greenfield-for-woocommerce'),
 				'default'     => 'You will be redirected to BTCPay to complete your purchase.',
 				'desc_tip'    => true,
 			],

@@ -31,13 +31,13 @@ class OrderStates {
 
 	public function getOrderStateLabels(): array {
 		return [
-			self::NEW => _x('New', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
-			self::PROCESSING => _x('Paid', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
-			self::SETTLED => _x('Settled', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
-			self::SETTLED_PAID_OVER => _x('Settled (paid over)', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
-			self::INVALID => _x('Invalid', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
-			self::EXPIRED => _x('Expired', 'global_settings', BTCPAYSERVER_TEXTDOMAIN),
-			self::EXPIRED_PAID_PARTIAL => _x('Expired with partial payment', 'global_settings', BTCPAYSERVER_TEXTDOMAIN)
+			self::NEW => _x('New', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::PROCESSING => _x('Paid', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::SETTLED => _x('Settled', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::SETTLED_PAID_OVER => _x('Settled (paid over)', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::INVALID => _x('Invalid', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::EXPIRED => _x('Expired', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::EXPIRED_PAID_PARTIAL => _x('Expired with partial payment', 'global_settings', 'btcpay-greenfield-for-woocommerce')
 		];
 	}
 
@@ -47,7 +47,7 @@ class OrderStates {
 		$defaultStates = $this->getDefaultOrderStateMappings();
 
 		$wcStates = wc_get_order_statuses();
-		$wcStates = [self::IGNORE => _x('- no mapping / defaults -', 'global_settings', BTCPAYSERVER_TEXTDOMAIN)] + $wcStates;
+		$wcStates = [self::IGNORE => _x('- no mapping / defaults -', 'global_settings', 'btcpay-greenfield-for-woocommerce')] + $wcStates;
 		$orderStates = get_option($value['id']);
 		?>
 		<tr valign="top">
@@ -87,7 +87,7 @@ class OrderStates {
 					?>
 				</table>
 				<p class="description">
-					<?php echo _x( 'By keeping default behavior for the "Settled" status you make sure that WooCommerce handles orders of virtual and downloadable products only properly and set those orders to "complete" instead of "processing" like for orders containing physical products.', 'global_settings', BTCPAYSERVER_TEXTDOMAIN ); ?>
+					<?php echo _x( 'By keeping default behavior for the "Settled" status you make sure that WooCommerce handles orders of virtual and downloadable products only properly and set those orders to "complete" instead of "processing" like for orders containing physical products.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ); ?>
 				</p>
 			</td>
 		</tr>

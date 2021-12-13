@@ -22,7 +22,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// General gateway setup.
 		$this->icon              = $this->getIcon();
 		$this->has_fields        = false;
-		$this->order_button_text = __( 'Proceed to BTCPay', BTCPAYSERVER_TEXTDOMAIN );
+		$this->order_button_text = __( 'Proceed to BTCPay', 'btcpay-greenfield-for-woocommerce' );
 
 		// Load the settings.
 		$this->init_form_fields();
@@ -56,23 +56,23 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			'btcpay_gf_abstract_gateway',
 			'btcpaygfGatewayData',
 			[
-				'buttonText' => __('Use this image', BTCPAYSERVER_TEXTDOMAIN),
-				'titleText' => __('Insert image', BTCPAYSERVER_TEXTDOMAIN),
+				'buttonText' => __('Use this image', 'btcpay-greenfield-for-woocommerce'),
+				'titleText' => __('Insert image', 'btcpay-greenfield-for-woocommerce'),
 			]
 		);
 
 		$this->form_fields = [
 			'title'       => [
-				'title'       => __( 'Title', BTCPAYSERVER_TEXTDOMAIN ),
+				'title'       => __( 'Title', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'text',
-				'description' => __( 'Controls the name of this payment method as displayed to the customer during checkout.', BTCPAYSERVER_TEXTDOMAIN ),
+				'description' => __( 'Controls the name of this payment method as displayed to the customer during checkout.', 'btcpay-greenfield-for-woocommerce' ),
 				'default'     => $this->getTitle(),
 				'desc_tip'    => true,
 			],
 			'description' => [
-				'title'       => __( 'Customer Message', BTCPAYSERVER_TEXTDOMAIN ),
+				'title'       => __( 'Customer Message', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'textarea',
-				'description' => __( 'Message to explain how the customer will be paying for the purchase.', BTCPAYSERVER_TEXTDOMAIN ),
+				'description' => __( 'Message to explain how the customer will be paying for the purchase.', 'btcpay-greenfield-for-woocommerce' ),
 				'default'     => $this->getDescription(),
 				'desc_tip'    => true,
 			],
@@ -89,7 +89,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		if ( ! $this->apiHelper->configured ) {
 			Logger::debug( 'BTCPay Server API connection not configured, aborting. Please go to BTCPay Server settings and set it up.' );
 			// todo: show error notice/make sure it fails
-			throw new \Exception( __( "Can't process order. Please contact us if the problem persists.", BTCPAYSERVER_TEXTDOMAIN ) );
+			throw new \Exception( __( "Can't process order. Please contact us if the problem persists.", 'btcpay-greenfield-for-woocommerce' ) );
 		}
 
 		// Load the order and check it.
@@ -156,18 +156,18 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		ob_start();
 		?>
 		<tr valign="top">
-			<th scope="row" class="titledesc"><?php echo __('Gateway Icon:', BTCPAYSERVER_TEXTDOMAIN); ?></th>
+			<th scope="row" class="titledesc"><?php echo __('Gateway Icon:', 'btcpay-greenfield-for-woocommerce'); ?></th>
 			<td class="forminp" id="btcpay_gf_icon">
 				<div id="btcpay_gf_icon_container">
 					<input class="btcpay-gf-icon-button" type="button"
 						   name="woocommerce_btcpaygf_icon_upload_button"
-						   value="<?php echo __('Upload or select icon', BTCPAYSERVER_TEXTDOMAIN); ?>"
+						   value="<?php echo __('Upload or select icon', 'btcpay-greenfield-for-woocommerce'); ?>"
 						   style="<?php echo $mediaId ? 'display:none;' : ''; ?>"
 					/>
 					<img class="btcpay-gf-icon-image" src="<?php echo $mediaSrc; ?>" style="<?php echo $mediaId ? '' : 'display:none;'; ?>" />
 					<input class="btcpay-gf-icon-remove" type="button"
 						   name="woocommerce_btcpaygf_icon_button_remove"
-						   value="<?php echo __('Remove image', BTCPAYSERVER_TEXTDOMAIN); ?>"
+						   value="<?php echo __('Remove image', 'btcpay-greenfield-for-woocommerce'); ?>"
 						   style="<?php echo $mediaId ? '' : 'display:none;'; ?>"
 					/>
 					<input class="input-text regular-input btcpay-gf-icon-value" type="hidden"
