@@ -29,6 +29,7 @@ class GreenfieldApiHelper {
 
 	// todo: maybe remove static class and make GFConfig object or similar
 	public static function getConfig(): array {
+		// todo: perf: maybe add caching
 		$url = get_option('btcpay_gf_url');
 		$key = get_option('btcpay_gf_api_key');
 		if ($url && $key) {

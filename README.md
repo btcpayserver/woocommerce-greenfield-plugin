@@ -25,7 +25,7 @@ From admin UI perspective (different from the legacy plugin) the global settings
 - [ ] ensure warning/uninstallable for PHP < 7.3 (plugin metadata or notice)
 - [ ] uninstall legacy plugin upon installation(?)
 - [x] add logging / debug mode
-- [x] support for
+- [ ] i18n support
 
 ## Todo new features
 - [ ] separate payment gateway: allow combinations with other gw, e.g. allow invoice to be paid by L-USDT and HAT token (use case of token used as coupon codes for discounts)

@@ -8,6 +8,9 @@
  * Text Domain:     btcpay-greenfield
  * Domain Path:     /languages
  * Version:         0.1.0
+ * Requires PHP:    7.4
+ * Tested up to:    5.8
+ * Requires at least: 5.2
  *
  * @package         Btcpay_Greenfield_For_Woocommerce
  *
@@ -44,10 +47,12 @@ class BTCPayServerWCPlugin {
 				}
 			);
 			add_action( 'wp_ajax_handle_ajax_api_url', [$this, 'processAjaxApiUrl'] );
+
+			$this->notConfiguredNotification();
 		}
 	}
 
-	public function includes() {
+	public function includes(): void {
 		$autoloader = BTCPAYSERVER_PLUGIN_FILE_PATH . 'vendor/autoload.php';
 		if (file_exists($autoloader)) {
 			/** @noinspection PhpIncludeInspection */
@@ -58,12 +63,9 @@ class BTCPayServerWCPlugin {
 		}
 	}
 
-	public function initPaymentGateways() {
+	public function initPaymentGateways(): array {
 		// We always load the default gateway that covers all payment methods available on BTCPayServer.
 		$gateways[] = DefaultGateway::class;
-
-		// todo: check if api keys configured (could also be in constructor)
-		// if not show admin notice in admin UI with link: BTCPayServer API keys missing Please [set your API keys here].
 
 		// Load payment methods from BTCPay Server as separate gateways.
 		if (get_option('btcpay_gf_separate_gateways') === 'yes') {
@@ -81,36 +83,41 @@ class BTCPayServerWCPlugin {
 		return $gateways;
 	}
 
-	public function checkDependencies() {
-		// Check PHP version
-		// todo there should be a built in functionality, eg. plugin dockblock or similar
-		if ( version_compare( PHP_VERSION, '7.3', '<' ) ) {
-			add_action( 'admin_init', [$this, 'phpVersionNotice'] );
+	public function notConfiguredNotification(): void {
+		if (!\BTCPayServer\WC\Helper\GreenfieldApiHelper::getConfig()) {
+			$message = sprintf(
+				esc_html__(
+					'Plugin not configured yet, please %1$sconfigure the plugin here%2$s',
+					BTCPAYSERVER_TEXTDOMAIN
+				),
+				'<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=btcpay_settings')) . '">',
+				'</a>'
+			);
+
+			\BTCPayServer\WC\Admin\Notice::addNotice('error', $message);
+		}
+	}
+
+	public function dependenciesNotification() {
+		// Check PHP version.
+		if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
+			$versionMessage = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 7.4+.', BTCPAYSERVER_TEXTDOMAIN ), PHP_VERSION );
+			\BTcpayServer\WC\Admin\Notice::addNotice('error', $versionMessage);
 		}
 
-		// Check if WooCommerce is installed. Taken from WC docs.
+		// Check if WooCommerce is installed (taken from WC docs).
 		$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . 'woocommerce/woocommerce.php';
 
 		if (
 			in_array( $plugin_path, wp_get_active_and_valid_plugins() )
 			|| in_array( $plugin_path, wp_get_active_network_plugins() )
 		) {
-			// all good
+			// All good.
 		} else {
-			add_action( 'admin_init', [$this, 'wooCommerceNotice'] );
+			$wcMessage = __('WooCommerce seems to be not installed. Make sure you do before you activate BTCPayServer Payment Gateway.', BTCPAYSERVER_TEXTDOMAIN);
+			\BTcpayServer\WC\Admin\Notice::addNotice('error', $wcMessage);
 		}
 
-	}
-
-	// todo: move to Notification class
-	private function phpVersionNotice() {
-		$message = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 7.3+.', BTCPAYSERVER_TEXTDOMAIN ), PHP_VERSION );
-		echo '<div class="notice notice-error"><p style="font-size: 16px">' . $message . '</p></div>';
-	}
-
-	private function wooCommerceNotice() {
-		$message = 'WooCommerce seems to be not installed. Make sure you do before you activate BTCPayServer Payment Gateway.';
-		echo '<div class="notice notice-error"><p style="font-size: 16px">' . $message . '</p></div>';
 	}
 
 	/**
