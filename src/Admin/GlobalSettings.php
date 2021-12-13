@@ -8,6 +8,7 @@ use BTCPayServer\Client\ApiKey;
 use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
+use BTCPayServer\WC\Helper\Logger;
 use BTCPayServer\WC\Helper\OrderStates;
 
 /**
@@ -50,8 +51,7 @@ class GlobalSettings extends \WC_Settings_Page {
 
 	public function getGlobalSettings(): array
 	{
-		// todo: link to logs
-		$logs_href = '';
+		Logger::debug('Entering Global Settings form.');
 		return [
 			'title'                 => [
 				'title' => esc_html_x(
@@ -120,23 +120,21 @@ class GlobalSettings extends \WC_Settings_Page {
 				'title'       => __( 'Separate Payment Gateways', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'checkbox',
 				'default'     => 'no',
-				'desc' => '<br>' . _x( 'Make all supported and enabled payment methods available as their own payment gateway. This opens new possibilities like discounts for specific payment methods. See our <a href="todo-input-link-here" target="_blank">full guide here</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'desc' => _x( 'Make all supported and enabled payment methods available as their own payment gateway. This opens new possibilities like discounts for specific payment methods. See our <a href="todo-input-link-here" target="_blank">full guide here</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'id' => 'btcpay_gf_separate_gateways'
 			],
 			'customer_data'                           => [
 				'title'       => __( 'Send customer data to BTCPayServer', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'checkbox',
 				'default'     => 'no',
-				'desc' => '<br>' . _x( 'If you want customer email, address, etc. sent to BTCPay Server enable this option. By default for privacy and GDPR reasons this is disabled.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'desc' =>  _x( 'If you want customer email, address, etc. sent to BTCPay Server enable this option. By default for privacy and GDPR reasons this is disabled.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'id' => 'btcpay_gf_send_customer_data'
 			],
 			'debug'                           => [
 				'title'       => __( 'Debug Log', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'checkbox',
-				'label'       => sprintf( _x( 'Enable logging <a href="%s" class="button">View Logs</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), $logs_href ),
 				'default'     => 'no',
-				'desc' => sprintf( _x( 'Log BTCPay events, such as IPN requests, inside <code>%s</code>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), wc_get_log_file_path( 'btcpaygf' ) ),
-				'desc_tip'    => true,
+				'desc'        => sprintf( _x( 'Enable logging <a href="%s" class="button">View Logs</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), Logger::getLogFileUrl()),
 				'id' => 'btcpay_gf_debug'
 			],
 			// todo: not sure if callback and redirect url should be overridable; can be done via woocommerce hooks if

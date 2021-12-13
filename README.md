@@ -21,11 +21,11 @@ From admin UI perspective (different from the legacy plugin) the global settings
 - [x] allow custom gateway icon upload by reusing media library (BTCPay default icon)
 - [x] order states mapping/configurability
 - [ ] make build system work
-- [ ] show admin notice if plugin not configured yet with link to config page
-- [ ] ensure warning/uninstallable for PHP < 7.3 (plugin metadata or notice)
-- [ ] uninstall legacy plugin upon installation(?)
+- [x] show admin notice if plugin not configured yet with link to config page
+- [x] ensure warning/uninstallable for PHP < 7.4 (plugin metadata or notice)
+- [ ] show warning on legacy plugin
 - [x] add logging / debug mode
-- [ ] i18n support
+- [x] i18n support
 
 ## Todo new features
 - [ ] separate payment gateway: allow combinations with other gw, e.g. allow invoice to be paid by L-USDT and HAT token (use case of token used as coupon codes for discounts)
