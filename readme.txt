@@ -1,115 +1,114 @@
 === BTCPay Greenfield For Woocommerce ===
 Contributors: (this should be a list of wordpress.org userid's)
 Donate link: https://example.com/
-Tags: comments, spam
+Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway, accept bitcoin, bitcoin plugin, bitcoin payment processor, bitcoin e-commerce, Lightning Network, Litecoin, cryptocurrency
 Requires at least: 4.5
 Tested up to: 5.8.2
 Requires PHP: 7.4
 Stable tag: 0.1.0
-License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+License: MIT
+License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
-Here is a short description of the plugin.  This should be no more than 150 characters.  No markup here.
+BTCPay Server is a free and open-source bitcoin payment processor which allows you to receive payments in Bitcoin and altcoins directly, with no fees, transaction cost or a middleman.
 
 == Description ==
 
-This is the long description.  No limit, and you can use Markdown (as well as in the following sections).
+BTCPay Server is a free and open-source cryptocurrency payment processor which allows you to receive payments in Bitcoin and altcoins directly, with no fees, transaction cost or a middleman.
 
-For backwards compatibility, if this section is missing, the full length of the short description will be used, and
-Markdown parsed.
+BTCPay Server is a non-custodial invoicing system which eliminates the involvement of a third-party. Payments with BTCPay WooCommerce Plugin go directly to your wallet, which increases the privacy and security. Your private keys are never uploaded to the server. There is no address re-use since each invoice generates a new address deriving from your xPub key.
 
-A few notes about the sections above:
+You can run BTCPay as a self-hosted solution on your own server, or use a third-party host.
 
-*   "Contributors" is a comma separated list of wp.org/wp-plugins.org usernames
-*   "Tags" is a comma separated list of tags that apply to the plugin
-*   "Requires at least" is the lowest version that the plugin will work on
-*   "Tested up to" is the highest version that you've *successfully used to test the plugin*. Note that it might work on
-higher versions... this is just the highest one you've verified.
-*   Stable tag should indicate the Subversion "tag" of the latest stable version, or "trunk," if you use `/trunk/` for
-stable.
+The self-hosted solution allows you not only to attach an unlimited number of stores and use the Lightning Network but also become the payment processor for others.
 
-    Note that the `readme.txt` of the stable tag is the one that is considered the defining one for the plugin, so
-if the `/trunk/readme.txt` file says that the stable tag is `4.3`, then it is `/tags/4.3/readme.txt` that'll be used
-for displaying information about the plugin.  In this situation, the only thing considered from the trunk `readme.txt`
-is the stable tag pointer.  Thus, if you develop in trunk, you can update the trunk `readme.txt` to reflect changes in
-your in-development version, without having that information incorrectly disclosed about the current stable version
-that lacks those changes -- as long as the trunk's `readme.txt` points to the correct stable tag.
-
-    If no stable tag is provided, it is assumed that trunk is stable, but you should specify "trunk" if that's where
-you put the stable version, in order to eliminate any doubt.
+* Direct, peer-to-peer Bitcoin and altcoin payments
+* No transaction fees (other than mining fees by cryptocurrency network itself)
+* No processing fees
+* No middleman
+* No KYC
+* User has complete control over private keys
+* Enhanced privacy (no address re-use, no IP leaks to third parties)
+* Enhanced security
+* Self-hosted
+* SegWit, Taproot support
+* Lightning Network support (LND, c-lightning and Eclair)
+* Altcoin support
+* Attach unlimited stores, process payments for friends
+* Easy-embeddable Payment buttons
+* Point of Sale app
 
 == Installation ==
 
-This section describes how to install the plugin and get it working.
+This plugin requires Woocommerce. Please make sure you have Woocommerce installed.
 
-e.g.
+<img src="https://github.com/btcpayserver/btcpayserver-doc/blob/master/img/BTCPayWooCommerceInfoggraphic.png" alt="Infographic" />
 
-1. Upload `plugin-name.php` to the `/wp-content/plugins/` directory
-1. Activate the plugin through the 'Plugins' menu in WordPress
-1. Place `<?php do_action('plugin_name_hook'); ?>` in your templates
+To integrate BTCPay Server into an existing WooCommerce store, follow the steps below.
+
+### 1. Install BTCPay WooCommerce Plugin ###
+
+### 2. Deploy BTCPay Server ###
+
+To launch your BTCPay server, you can self-host it, or use a third party host.
+
+#### 2.1 Self-hosted BTCPay ####
+
+There are various ways to [launch a self-hosted BTCPay](https://github.com/btcpayserver/btcpayserver-doc#deployment). If you do not have technical knowledge, use the [web-wizard method](https://launchbtcpay.lunanode.com) and follow the video below.
+
+https://www.youtube.com/watch?v=NjslXYvp8bk
+
+For the self-hosted solutions, you will have to wait for your node to sync fully before proceeding to step 3.
+
+#### 2.2 Third-party host ####
+
+Those who want to test BTCPay out, or are okay with the limitations of a third-party hosting (dependency and privacy, as well as lack of some features) can use a one of many [third-party hosts](ThirdPartyHosting.md).
+
+The video below shows you how to connect your store to such host.
+
+https://www.youtube.com/watch?v=IT2K8It3S3o
+
+### 3. Pairing the store ###
+
+BTCPay WooCommerce plugin is a bridge between your BTCPay Server (payment processor) and your e-commerce store. No matter if you are using a self-hosted or third-party solution from step 2, the pairing process is identical.
+
+Go to your store dashboard. WooCommerce > Settings > BTCPay Settings.
+
+1. In the field, enter the full URL of your host (including the https) – https://btcpay.mydomain.com
+2. Click on the "click here to generate API keys" link to get redirected to BTCPay Server Authorization page.
+3. On BTCPay Server make sure you select one single store you want to connect your WooCommerce shop.
+4. Click on the [Authorize app] button, you will get redirected back to WooCommerce BTCPay Settings page and your store ID will already be prefilled.
+5. Optional: Change other settings as needed.
+6. Click [Save] button.
+7. You can now enable BTCPay payment gateway in WooCommerce > Settings > Payments
+
+
+###  4. Connecting your wallet ###
+
+No matter if you're using self-hosted or server hosted by a third-party, the process of configuring your wallet is the same.
+
+https://www.youtube.com/watch?v=xX6LyQej0NQ
+
+### 5. Testing the checkout ###
+
+Making a small test-purchase from your own store, will give you a piece of mind. Always make sure that everything is set up correctly before going live. The final video, guides you through the steps of setting a gap limit in your Electrum wallet and testing the checkout process.
+
+https://www.youtube.com/watch?v=Fi3pYpzGmmo
+
+Depending on your business model and store settings, you may want to [configure your order statuses](https://nbitstack.com/t/how-to-set-up-order-statuses-in-woocommerce-and-btcpay/67).
 
 == Frequently Asked Questions ==
 
-= A question that someone might have =
-
-An answer to that question.
-
-= What about foo bar? =
-
-Answer to foo bar dilemma.
+You'll find extensive documentation and answers to many of your questions on [docs.btcpayserver.org](https://docs.btcpayserver.org/).
 
 == Screenshots ==
 
-1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
-the /assets directory or the directory that contains the stable readme.txt (tags or trunk). Screenshots in the /assets
-directory take precedence. For example, `/assets/screenshot-1.png` would win over `/tags/4.3/screenshot-1.png`
-(or jpg, jpeg, gif).
-2. This is the second screen shot
+1. The BTCPay Server invoice. Your customers will see this at the checkout. They can pay from their wallet by scanning a QR or copy/pasting it manually into the wallet.
+2. Customizable plugin interface allows store owners to adjust store statuses according to their needs.
+3. Customer will see the pay with Bitcoin button at the checkout.Text can be customized.
+4. Example of successfully paid invoice.
+5. Example of an easy-embeddable HTML donation payment button.
+6. Example of the PoS app you can launch.
 
 == Changelog ==
-
-= 1.0 =
-* A change since the previous version.
-* Another change.
-
-= 0.5 =
-* List versions from most recent at top to oldest at bottom.
-
-== Upgrade Notice ==
-
-= 1.0 =
-Upgrade notices describe the reason a user should upgrade.  No more than 300 characters.
-
-= 0.5 =
-This version fixes a security related bug.  Upgrade immediately.
-
-== Arbitrary section ==
-
-You may provide arbitrary sections, in the same format as the ones above.  This may be of use for extremely complicated
-plugins where more information needs to be conveyed that doesn't fit into the categories of "description" or
-"installation."  Arbitrary sections will be shown below the built-in sections outlined above.
-
-== A brief Markdown Example ==
-
-Ordered list:
-
-1. Some feature
-1. Another feature
-1. Something else about the plugin
-
-Unordered list:
-
-* something
-* something else
-* third thing
-
-Here's a link to [WordPress](https://wordpress.org/ "Your favorite software") and one to [Markdown's Syntax Documentation][markdown syntax].
-Titles are optional, naturally.
-
-[markdown syntax]: https://daringfireball.net/projects/markdown/syntax
-            "Markdown is what the parser uses to process much of the readme file"
-
-Markdown uses email style notation for blockquotes and I've been told:
-> Asterisks for *emphasis*. Double it up  for **strong**.
-
-`<?php code(); // goes in backticks ?>`
+= 0.1.0 :: 2021-12-99 =
+* First public release.

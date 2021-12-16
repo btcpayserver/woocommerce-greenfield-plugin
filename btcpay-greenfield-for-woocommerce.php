@@ -1,10 +1,10 @@
 <?php
 /**
  * Plugin Name:     BTCPay Greenfield For Woocommerce
- * Plugin URI:      PLUGIN SITE HERE
- * Description:     PLUGIN DESCRIPTION HERE
- * Author:          YOUR NAME HERE
- * Author URI:      YOUR SITE HERE
+ * Plugin URI:      https://wordpress.org/plugins/btcpay-greenfield-for-woocommerce/
+ * Description:     BTCPay Server is a free and open-source bitcoin payment processor which allows you to receive payments in Bitcoin and altcoins directly, with no fees, transaction cost or a middleman.
+ * Author:          BTCPay Server, ndeet
+ * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
  * Version:         0.1.0
@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit();
 
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
-define( 'BTCPAYSERVER_VERSION', '0.0.1' );
+define( 'BTCPAYSERVER_VERSION', '0.1.0' );
 define( 'BTCPAYSERVER_PLUGIN_ID', 'btcpay-greenfield-for-woocommerce' );
 
 class BTCPayServerWCPlugin {
