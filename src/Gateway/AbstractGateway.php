@@ -264,45 +264,45 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				if ($webhookData->afterExpiration) {
 					if ($order->get_status() === $configuredOrderStates[OrderStates::EXPIRED]) {
 						$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
-						$order->add_order_note(__('Invoice payment received after invoice was already expired.'));
+						$order->add_order_note(__('Invoice payment received after invoice was already expired.', 'btcpay-greenfield-for-woocommerce'));
 					}
 				} else {
 					// No need to change order status here, only leave a note.
-					$order->add_order_note(__('Invoice (partial) payment received. Waiting for full payment.'));
+					$order->add_order_note(__('Invoice (partial) payment received. Waiting for full payment.', 'btcpay-greenfield-for-woocommerce'));
 				}
 				break;
 			case 'InvoiceProcessing': // The invoice is paid in full.
 				$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::PROCESSING]);
 				if ($webhookData->overPaid) {
-					$order->add_order_note(__('Invoice payment received fully with overpayment, waiting for settlement.'));
+					$order->add_order_note(__('Invoice payment received fully with overpayment, waiting for settlement.', 'btcpay-greenfield-for-woocommerce'));
 				} else {
-					$order->add_order_note(__('Invoice payment received fully, waiting for settlement.'));
+					$order->add_order_note(__('Invoice payment received fully, waiting for settlement.', 'btcpay-greenfield-for-woocommerce'));
 				}
 				break;
 			case 'InvoiceInvalid':
 				$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::INVALID]);
 				if ($webhookData->manuallyMarked) {
-					$order->add_order_note(__('Invoice manually marked invalid.'));
+					$order->add_order_note(__('Invoice manually marked invalid.', 'btcpay-greenfield-for-woocommerce'));
 				} else {
-					$order->add_order_note(__('Invoice became invalid.'));
+					$order->add_order_note(__('Invoice became invalid.', 'btcpay-greenfield-for-woocommerce'));
 				}
 				break;
 			case 'InvoiceExpired':
 				if ($webhookData->partiallyPaid) {
 					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
-					$order->add_order_note(__('Invoice expired but was paid partially, please check.'));
+					$order->add_order_note(__('Invoice expired but was paid partially, please check.', 'btcpay-greenfield-for-woocommerce'));
 				} else {
 					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED]);
-					$order->add_order_note(__('Invoice expired.'));
+					$order->add_order_note(__('Invoice expired.', 'btcpay-greenfield-for-woocommerce'));
 				}
 				break;
 			case 'InvoiceSettled':
 				$order->payment_complete();
 				if ($webhookData->overPaid) {
-					$order->add_order_note(__('Invoice payment settled but was overpaid.'));
+					$order->add_order_note(__('Invoice payment settled but was overpaid.', 'btcpay-greenfield-for-woocommerce'));
 					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::SETTLED_PAID_OVER]);
 				} else {
-					$order->add_order_note(__('Invoice payment settled.'));
+					$order->add_order_note(__('Invoice payment settled.', 'btcpay-greenfield-for-woocommerce'));
 					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::SETTLED]);
 				}
 				break;
