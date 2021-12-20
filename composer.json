@@ -15,11 +15,5 @@
   ],
   "require": {
     "btcpayserver/btcpayserver-greenfield-php": "dev-master"
-  },
-  "repositories": [
-    {
-      "type": "git",
-      "url": "https://github.com/btcpayserver/btcpayserver-greenfield-php.git"
-    }
-  ]
+  }
 }
