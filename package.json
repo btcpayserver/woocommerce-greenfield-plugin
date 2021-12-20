@@ -3,10 +3,9 @@
   "name": "btcpay-greenfield-for-woocommerce",
   "version": "0.1.0",
   "main": "Gruntfile.js",
-  "author": "YOUR NAME HERE",
+  "author": "BTCPay Server",
   "scripts" : {
     "start" : "grunt default" ,
-    "readme" : "grunt readme",
     "i18n" : "grunt i18n"
   },
   "devDependencies": {
