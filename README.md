@@ -30,6 +30,8 @@ From admin UI perspective (different from the legacy plugin) the global settings
 ## Todo new features
 - [ ] separate payment gateway: allow combinations with other gw, e.g. allow invoice to be paid by L-USDT and HAT token (use case of token used as coupon codes for discounts)
 - [ ] refunds
+- [ ] detailed payments overview per order
+- [ ] install wp + woocommerce on docker-compose for development
 - [ ] tbd
 
 ## Todo before release
