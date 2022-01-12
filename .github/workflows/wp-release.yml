@@ -34,5 +34,5 @@ jobs:
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: ${{github.workspace}}/${{ github.event.repository.name }}.zip
-          asset_name: ${{ github.event.repository.name }}.zip
+          asset_name: btcpay-greenfield-for-woocommerce.v${{ github.event.release.tag_name }}.zip
           asset_content_type: application/zip
