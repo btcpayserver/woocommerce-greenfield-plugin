@@ -5,7 +5,7 @@
   "main": "Gruntfile.js",
   "author": "BTCPay Server",
   "scripts" : {
-    "start" : "grunt default" ,
+    "build" : "grunt default" ,
     "i18n" : "grunt i18n"
   },
   "devDependencies": {
