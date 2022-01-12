@@ -29,10 +29,25 @@ From admin UI perspective (different from the legacy plugin) the global settings
 
 ## Todo new features
 - [ ] separate payment gateway: allow combinations with other gw, e.g. allow invoice to be paid by L-USDT and HAT token (use case of token used as coupon codes for discounts)
+- [ ] check if BTCPay Server store has wallet/payment methods configured (display notice)
+- [ ] Allow modal for checkout
 - [ ] refunds
 - [ ] detailed payments overview per order
-- [ ] install wp + woocommerce on docker-compose for development
+- [ ] docker: install wp + woocommerce on docker-compose for development
+- [ ] make something like localtunnel work (problematic due to wp storing all the urls hardcoded...)
 - [ ] tbd
 
 ## Todo before release
 - [ ] create a new plugin entry and reference that in the old plugin
+
+
+## Development
+```
+git clone git@github.com:btcpayserver/woocommerce-greenfield-plugin.git
+```
+
+### Local development with Docker
+```
+docker-compose up -d
+```
+go to [http://localhost:8821]() and install WordPress, WooCommerce and BTCPay Greenfield for WooCommerce Plugin
