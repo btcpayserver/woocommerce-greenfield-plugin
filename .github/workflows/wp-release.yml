@@ -14,6 +14,7 @@ jobs:
         with:
           dev: no
           php_version: 7.4
+          php_extensions: bc-math
       - name: Build assets and translation files
         run: |
           npm install
