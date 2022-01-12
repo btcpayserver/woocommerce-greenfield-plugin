@@ -1,4 +1,4 @@
-name: Deploy to WordPress.org
+name: Build and deploy to WordPress.org
 on:
   release:
     types: [published]
@@ -9,18 +9,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Build
+      - name: Install Composer dependencies
+        uses: php-actions/composer@v6
+        with:
+          dev: no
+          php_version: 7.4
+      - name: Build assets and translation files
         run: |
           npm install
           npm run build
-      - name: WordPress Plugin Deploy
-        id: deploy
-        uses: 10up/action-wordpress-plugin-deploy@stable
-        with:
-          generate-zip: true
-        env:
-          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+      #- name: WordPress Plugin Deploy
+      #  id: deploy
+      #  uses: 10up/action-wordpress-plugin-deploy@stable
+      #  with:
+      #    generate-zip: true
+      #  env:
+      #    SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+      #    SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         env:
