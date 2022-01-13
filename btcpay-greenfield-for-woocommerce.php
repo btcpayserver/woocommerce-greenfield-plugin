@@ -7,7 +7,7 @@
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
- * Version:         0.1.0
+ * Version:         0.1.1
  * Requires PHP:    7.4
  * Tested up to:    5.8
  * Requires at least: 5.2
