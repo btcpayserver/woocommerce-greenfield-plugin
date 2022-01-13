@@ -3,7 +3,7 @@
  * Plugin Name:     BTCPay Greenfield For Woocommerce
  * Plugin URI:      https://wordpress.org/plugins/btcpay-greenfield-for-woocommerce/
  * Description:     BTCPay Server is a free and open-source bitcoin payment processor which allows you to receive payments in Bitcoin and altcoins directly, with no fees, transaction cost or a middleman.
- * Author:          BTCPay Server, ndeet
+ * Author:          BTCPay Server
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
@@ -39,6 +39,8 @@ class BTCPayServerWCPlugin {
 			);
 			add_action( 'wp_ajax_handle_ajax_api_url', [$this, 'processAjaxApiUrl'] );
 
+			$this->dependenciesNotification();
+			$this->legacyPluginNotification();
 			$this->notConfiguredNotification();
 		}
 	}
@@ -74,6 +76,9 @@ class BTCPayServerWCPlugin {
 		return $gateways;
 	}
 
+	/**
+	 * Displays notice (and link to config page) on admin dashboard if the plugin is not configured yet.
+	 */
 	public function notConfiguredNotification(): void {
 		if (!\BTCPayServer\WC\Helper\GreenfieldApiHelper::getConfig()) {
 			$message = sprintf(
@@ -89,11 +94,14 @@ class BTCPayServerWCPlugin {
 		}
 	}
 
+	/**
+	 * Checks and displays notice on admin dashboard if PHP version is too low or WooCommerce not installed.
+	 */
 	public function dependenciesNotification() {
 		// Check PHP version.
 		if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
 			$versionMessage = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 7.4+.', 'btcpay-greenfield-for-woocommerce' ), PHP_VERSION );
-			\BTcpayServer\WC\Admin\Notice::addNotice('error', $versionMessage);
+			\BTCPayServer\WC\Admin\Notice::addNotice('error', $versionMessage);
 		}
 
 		// Check if WooCommerce is installed (taken from WC docs).
@@ -106,9 +114,25 @@ class BTCPayServerWCPlugin {
 			// All good.
 		} else {
 			$wcMessage = __('WooCommerce seems to be not installed. Make sure you do before you activate BTCPayServer Payment Gateway.', 'btcpay-greenfield-for-woocommerce');
-			\BTcpayServer\WC\Admin\Notice::addNotice('error', $wcMessage);
+			\BTCPayServer\WC\Admin\Notice::addNotice('error', $wcMessage);
 		}
 
+	}
+
+	/**
+	 * Checks and displays notice on admin dashboard if the legacy BTCPay plugin is installed.
+	 */
+	public function legacyPluginNotification() {
+		// Check if WooCommerce is installed (taken from WC docs).
+		$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . 'btcpay-for-woocommerce/class-wc-gateway-btcpay.php';
+
+		if (
+			in_array( $plugin_path, wp_get_active_and_valid_plugins() )
+			|| in_array( $plugin_path, wp_get_active_network_plugins() )
+		) {
+			$legacyMessage = __('Seems you have the old BTCPay for WooCommerce plugin installed. While it should work it is strongly recommended to not run both versions but rely on the maintained version (BTCPay Greenfield for WooCommerce).', 'btcpay-greenfield-for-woocommerce');
+			\BTCPayServer\WC\Admin\Notice::addNotice('warning', $legacyMessage, true);
+		}
 	}
 
 	/**
