@@ -59,9 +59,9 @@ class OrderStates {
 					foreach ($btcpayStates as $btcpayState => $btcpayName) {
 						?>
 						<tr>
-							<th><?php echo $btcpayName; ?></th>
+							<th><?php echo esc_html($btcpayName); ?></th>
 							<td>
-								<select name="<?php echo esc_attr($value['id']) ?>[<?php echo $btcpayState; ?>]">
+								<select name="<?php echo esc_attr($value['id']) ?>[<?php echo esc_html($btcpayState); ?>]">
 									<?php
 
 									foreach ($wcStates as $wcState => $wcName) {
@@ -72,9 +72,9 @@ class OrderStates {
 										}
 
 										if ($selectedOption === $wcState) {
-											echo "<option value=\"$wcState\" selected>$wcName</option>" . PHP_EOL;
+											echo '<option value="' . esc_attr($wcState) . '" selected>' . esc_html($wcName) . '</option>' . PHP_EOL;
 										} else {
-											echo "<option value=\"$wcState\">$wcName</option>" . PHP_EOL;
+											echo '<option value="' . esc_attr($wcState) . '">' . esc_html($wcName) . '</option>' . PHP_EOL;
 										}
 									}
 									?>

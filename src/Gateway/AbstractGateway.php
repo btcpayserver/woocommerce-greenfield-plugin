@@ -45,6 +45,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	 * Initialise Gateway Settings Form Fields
 	 */
 	public function init_form_fields() {
+		wp_enqueue_media();
 		wp_register_script(
 			'btcpay_gf_abstract_gateway',
 			BTCPAYSERVER_PLUGIN_URL . 'assets/js/gatewayIconMedia.js',

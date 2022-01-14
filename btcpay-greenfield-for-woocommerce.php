@@ -7,7 +7,7 @@
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
- * Version:         0.1.1
+ * Version:         0.1.2
  * Requires PHP:    7.4
  * Tested up to:    5.8
  * Requires at least: 5.2
@@ -146,9 +146,9 @@ class BTCPayServerWCPlugin {
 		}
 
 		if ( current_user_can( 'manage_options' ) ) {
-			$host = $_POST['host'];
+			$host = filter_var($_POST['host'], FILTER_VALIDATE_URL);
 
-			if (!filter_var($host, FILTER_VALIDATE_URL) || (substr( $host, 0, 7 ) !== "http://" && substr( $host, 0, 8 ) !== "https://")) {
+			if ($host === false || (substr( $host, 0, 7 ) !== "http://" && substr( $host, 0, 8 ) !== "https://")) {
 				wp_send_json_error("Error validating BTCPayServer URL.");
 			}
 
@@ -214,11 +214,16 @@ add_action( 'template_redirect', function() {
 	$btcPaySettingsUrl = admin_url('admin.php?page=wc-settings&tab=btcpay_settings');
 
 	$rawData = file_get_contents('php://input');
-	$data = json_decode( $rawData, TRUE );
+	$data = json_decode( $rawData, true );
 
 	// Seems data does get submitted with url-encoded payload.
 	if (!empty($_POST)) {
-		$data = $_POST;
+		$data['apiKey'] = esc_attr($_POST['apiKey'] ?? null);
+		if (is_array($_POST['permissions'])) {
+			foreach ($_POST['permissions'] as $key => $value) {
+				$data['permissions'][$key] = esc_attr($_POST['permissions'][$key] ?? null);
+			}
+		}
 	}
 
 	if (isset($data['apiKey']) && isset($data['permissions'])) {

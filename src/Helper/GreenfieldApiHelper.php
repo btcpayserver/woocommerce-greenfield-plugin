@@ -70,17 +70,21 @@ class GreenfieldApiHelper {
 		if ($config = self::getConfig()) {
 			$client = new StorePaymentMethod($config['url'], $config['api_key']);
 			if ($storeId = get_option('btcpay_gf_store_id')) {
-				$pmResult = $client->getPaymentMethods($storeId);
-				/** @var AbstractStorePaymentMethodResult $pm */
-				foreach ($pmResult as $pm) {
-					if ($pm->isEnabled() && $pmName = $pm->getData()['paymentMethod'] )  {
-						// Convert - to _ for later use in gateway class generator.
-						$symbol = str_replace('-', '_', $pmName);
-						$paymentMethods[] = [
-							'symbol' => $symbol,
-							'className' => "BTCPay_GF_{$symbol}"
-						];
+				try {
+					$pmResult = $client->getPaymentMethods($storeId);
+					/** @var AbstractStorePaymentMethodResult $pm */
+					foreach ($pmResult as $pm) {
+						if ($pm->isEnabled() && $pmName = $pm->getData()['paymentMethod'] )  {
+							// Convert - to _ for later use in gateway class generator.
+							$symbol = str_replace('-', '_', $pmName);
+							$paymentMethods[] = [
+								'symbol' => esc_attr($symbol),
+								'className' => "BTCPay_GF_{$symbol}"
+							];
+						}
 					}
+				} catch (\Throwable $e) {
+					Logger::debug('Exception loading payment methods: ' . $e->getMessage(), true);
 				}
 			}
 		}
