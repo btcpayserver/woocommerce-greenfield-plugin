@@ -24,6 +24,7 @@ class GreenfieldApiWebhook {
 			try {
 				$whClient = new Webhook( $apiUrl, $apiKey );
 				$existingWebhook = $whClient->getWebhook( $storeId, $storedWebhook['id'] );
+				// Check for the url here as it could have been changed on BTCPay Server making the webhook not work for WooCommerce anymore.
 				if ( strpos( $existingWebhook->getData()['url'], $storedWebhook['url'] ) !== false ) {
 					return true;
 				}
@@ -53,7 +54,8 @@ class GreenfieldApiWebhook {
 				'btcpay_gf_webhook',
 				[
 					'id' => $webhook->getData()['id'],
-					'secret' => $webhook->getData()['secret']
+					'secret' => $webhook->getData()['secret'],
+					'url' => $webhook->getData()['url']
 				]
 			);
 
