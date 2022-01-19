@@ -76,7 +76,7 @@ class GreenfieldApiHelper {
 					foreach ($pmResult as $pm) {
 						if ($pm->isEnabled() && $pmName = $pm->getData()['paymentMethod'] )  {
 							// Convert - to _ and escape value for later use in gateway class generator.
-							$symbol = sanitize_text_field(str_replace('-', '_', $pmName));
+							$symbol = sanitize_html_class(str_replace('-', '_', $pmName));
 							$paymentMethods[] = [
 								'symbol' => $symbol,
 								'className' => "BTCPay_GF_{$symbol}"
