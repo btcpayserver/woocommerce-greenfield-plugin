@@ -178,6 +178,7 @@ class GlobalSettings extends \WC_Settings_Page {
 			$apiKey  = sanitize_text_field( $_POST['btcpay_gf_api_key'] );
 			$storeId = sanitize_text_field( $_POST['btcpay_gf_store_id'] );
 
+			// todo: fix change of url + key + storeid not leading to recreation of webhook.
 			if ( GreenfieldApiHelper::apiCredentialsExist($apiUrl, $apiKey, $storeId) ) {
 				// Check if the provided API key has the right scope and permissions.
 				try {
@@ -244,6 +245,10 @@ class GlobalSettings extends \WC_Settings_Page {
 				}
 
 			}
+		} else {
+			$messageNotConnecting = 'Did not try to connect to BTCPay Server API because one of the required information was missing: URL, key or storeID';
+			Notice::addNotice('warning', $messageNotConnecting);
+			Logger::debug($messageNotConnecting);
 		}
 
 		parent::save();

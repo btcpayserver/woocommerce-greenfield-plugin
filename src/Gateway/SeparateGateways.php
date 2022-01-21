@@ -41,6 +41,10 @@ class SeparateGateways {
 										return ['{$symbol}']; // todo: add feature to add other pm
 			                    	}
 
+			                    	public function getTitle(): string {
+										return \$this->get_option('title', '{$symbol}');
+									}
+
 									public function init_form_fields() {
 										parent::init_form_fields();
 										\$this->form_fields += [

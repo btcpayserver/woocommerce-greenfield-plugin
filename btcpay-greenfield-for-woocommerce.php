@@ -27,6 +27,8 @@ class BTCPayServerWCPlugin {
 	public function __construct() {
 		$this->includes();
 
+		add_action('woocommerce_thankyou_btcpaygf_default', [$this, 'orderStatusThankYouPage'], 10, 1);
+
 		if (is_admin()) {
 			// Register our custom global settings page.
 			add_filter(
@@ -69,6 +71,8 @@ class BTCPayServerWCPlugin {
 
 				foreach ($separateGateways as $gw) {
 					$gateways[] = $gw['className'];
+					// Thank you page overrides.
+					add_action('woocommerce_thankyou_btcpaygf_' . strtolower($gw['symbol']), ['BTCPayServerWCPlugin', 'orderStatusThankYouPage'], 10, 1);
 				}
 			}
 		}
@@ -175,6 +179,44 @@ class BTCPayServerWCPlugin {
 		}
 
 		wp_send_json_error("Error processing Ajax request.");
+	}
+
+	public function orderStatusThankYouPage($order_id)
+	{
+		if (!$order = wc_get_order($order_id)) {
+			return;
+		}
+
+		$title = _x('Payment Status', 'btcpay-greenfield-for-woocommerce');
+
+		$orderData = $order->get_data();
+		$status = $orderData['status'];
+
+		switch ($status)
+		{
+			case 'on-hold':
+				$statusDesc = _x('Waiting for payment settlement', 'btcpay-greenfield-for-woocommerce');
+				break;
+			case 'processing':
+				$statusDesc = _x('Payment processing', 'btcpay-greenfield-for-woocommerce');
+				break;
+			case 'completed':
+				$statusDesc = _x('Payment settled', 'btcpay-greenfield-for-woocommerce');
+				break;
+			case 'failed':
+				$statusDesc = _x('Payment failed', 'btcpay-greenfield-for-woocommerce');
+				break;
+			default:
+				$statusDesc = _x(ucfirst($status), 'btcpay-greenfield-for-woocommerce');
+				break;
+		}
+
+		echo "
+		<section class='woocommerce-order-payment-status'>
+		    <h2 class='woocommerce-order-payment-status-title'>{$title}</h2>
+		    <p><strong>{$statusDesc}</strong></p>
+		</section>
+		";
 	}
 
 }

@@ -235,7 +235,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				// TODO: Handle multiple matching orders.
 				if (count($orders) > 1) {
 					Logger::debug('Found multiple orders for invoiceId: ' . $postData->invoiceId);
-					Logger::debug($orders);
+					Logger::debug(print_r($orders, true));
 					wp_die('Multiple orders found for this invoiceId, aborting.');
 				}
 
