@@ -9,4 +9,5 @@ node_modules/
 *.zip
 /vendor/
 composer.lock
+/generated/
 

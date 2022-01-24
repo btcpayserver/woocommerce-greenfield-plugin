@@ -11,6 +11,7 @@ use BTCPayServer\Result\AbstractStorePaymentMethodResult;
 
 class GreenfieldApiHelper {
 	const PM_CACHE_KEY = 'btcpay_payment_methods';
+	const PM_CLASS_NAME_PREFIX = 'BTCPay_GF_';
 	public $configured = false;
 	public $url;
 	public $apiKey;
@@ -79,7 +80,7 @@ class GreenfieldApiHelper {
 							$symbol = sanitize_html_class(str_replace('-', '_', $pmName));
 							$paymentMethods[] = [
 								'symbol' => $symbol,
-								'className' => "BTCPay_GF_{$symbol}"
+								'className' => self::PM_CLASS_NAME_PREFIX . $symbol
 							];
 						}
 					}

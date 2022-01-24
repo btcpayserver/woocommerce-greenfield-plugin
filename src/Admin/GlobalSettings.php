@@ -6,6 +6,7 @@ namespace BTCPayServer\WC\Admin;
 
 use BTCPayServer\Client\ApiKey;
 use BTCPayServer\Client\StorePaymentMethod;
+use BTCPayServer\WC\Gateway\SeparateGateways;
 use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
@@ -253,7 +254,8 @@ class GlobalSettings extends \WC_Settings_Page {
 
 		parent::save();
 
-		// Purge separate payment methods cache if enabled.
+		// Purge separate payment methods cache.
+		SeparateGateways::cleanUpGeneratedFilesAndCache();
 		GreenfieldApiHelper::clearSupportedPaymentMethodsCache();
 	}
 

@@ -15,6 +15,8 @@
  */
 
 use BTCPayServer\WC\Gateway\DefaultGateway;
+use BTCPayServer\WC\Gateway\SeparateGateways;
+use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 
 defined( 'ABSPATH' ) || exit();
 
@@ -52,9 +54,13 @@ class BTCPayServerWCPlugin {
 		if (file_exists($autoloader)) {
 			/** @noinspection PhpIncludeInspection */
 			require_once $autoloader;
+		}
 
-			// Include functions if needed.
-			//require_once __DIR__ . '/includes/functions.php';
+		if (get_option('btcpay_gf_separate_gateways') === 'yes' && is_dir(SeparateGateways::GENERATED_PATH)) {
+			$generatedFiles = glob(SeparateGateways::GENERATED_PATH . DIRECTORY_SEPARATOR . GreenfieldApiHelper::PM_CLASS_NAME_PREFIX . '*.php');
+			foreach($generatedFiles as $file) {
+				require_once $file;
+			}
 		}
 	}
 
