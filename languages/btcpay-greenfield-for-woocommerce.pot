@@ -2,14 +2,14 @@
 # This file is distributed under the same license as the BTCPay Greenfield For Woocommerce plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: BTCPay Greenfield For Woocommerce 0.1.2\n"
+"Project-Id-Version: BTCPay Greenfield For Woocommerce 0.1.4\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/btcpay-greenfield-for-woocommerce\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2022-01-17T13:35:11+00:00\n"
+"POT-Creation-Date: 2022-01-26T12:13:06+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.5.0\n"
 "X-Domain: btcpay-greenfield-for-woocommerce\n"
@@ -34,170 +34,180 @@ msgstr ""
 msgid "https://btcpayserver.org"
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:85
+#: btcpay-greenfield-for-woocommerce.php:95
 msgid "Plugin not configured yet, please %1$sconfigure the plugin here%2$s"
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:103
+#: btcpay-greenfield-for-woocommerce.php:113
 msgid "Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 7.4+."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:116
+#: btcpay-greenfield-for-woocommerce.php:126
 msgid "WooCommerce seems to be not installed. Make sure you do before you activate BTCPayServer Payment Gateway."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:133
+#: btcpay-greenfield-for-woocommerce.php:143
 msgid "Seems you have the old BTCPay for WooCommerce plugin installed. While it should work it is strongly recommended to not run both versions but rely on the maintained version (BTCPay Greenfield for WooCommerce)."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:234
+#: btcpay-greenfield-for-woocommerce.php:282
 msgid "Successfully received api key and store id from BTCPay Server API."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:237
+#: btcpay-greenfield-for-woocommerce.php:285
 msgid "Please make sure you only select one store on the BTCPay API authorization page."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:242
+#: btcpay-greenfield-for-woocommerce.php:290
 msgid "Error processing the data from BTCPay. Please try again."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:23
+#: generated/BTCPay_GF_BTC.php:25
+#: generated/BTCPay_GF_BTC_LightningNetwork.php:26
+msgid "Token type"
+msgstr ""
+
+#: generated/BTCPay_GF_BTC.php:32
+#: generated/BTCPay_GF_BTC_LightningNetwork.php:33
+msgid "Tokens of type promotion will not have a FIAT (USD, EUR, ..) exchange rate but counted as 1 per item quantity. See <a target=\"_blank\" href=\"https://docs.btcpayserver.org/FAQ/Integrations/#token-types\">here</a> for more details."
+msgstr ""
+
+#: src/Admin/GlobalSettings.php:24
 msgid "BTCPay Settings"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:57
+#: src/Admin/GlobalSettings.php:58
 msgctxt "global_settings"
 msgid "BTCPay Server Payments Settings"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:63
+#: src/Admin/GlobalSettings.php:64
 msgctxt "global_settings"
 msgid "This plugin version is %s and your PHP version is %s. If you need assistance, please come on our chat <a href=\"https://chat.btcpayserver.org\" target=\"_blank\">https://chat.btcpayserver.org</a>. Thank you for using BTCPay!"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:67
+#: src/Admin/GlobalSettings.php:68
 msgctxt "global_settings"
 msgid "BTCPay Server URL"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:73
+#: src/Admin/GlobalSettings.php:74
 msgctxt "global_settings"
 msgid "Url to your BTCPay Server instance."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:74
+#: src/Admin/GlobalSettings.php:75
 msgctxt "global_settings"
 msgid "e.g. https://btcpayserver.example.com"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:79
+#: src/Admin/GlobalSettings.php:80
 msgctxt "global_settings"
 msgid "BTCPay API Key"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:81
+#: src/Admin/GlobalSettings.php:82
 msgctxt "global_settings"
 msgid "Your BTCPay API Key. If you do not have any yet <a href=\"#\" class=\"btcpay-api-key-link\" target=\"_blank\">click here to generate API keys.</a>"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:86
+#: src/Admin/GlobalSettings.php:87
 msgctxt "global_settings"
 msgid "Store ID"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:88
+#: src/Admin/GlobalSettings.php:89
 msgctxt "global_settings"
 msgid "Your BTCPay Store ID. You can find it on the store settings page on your BTCPay Server."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:96
+#: src/Admin/GlobalSettings.php:97
 msgctxt "global_settings"
 msgid "You will be redirected to BTCPay to complete your purchase."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:103
+#: src/Admin/GlobalSettings.php:104
 msgctxt "global_settings"
 msgid "An invoice becomes confirmed after the payment has..."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:105
+#: src/Admin/GlobalSettings.php:106
 msgctxt "global_settings"
 msgid "Keep BTCPay Server store level configuration"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:106
+#: src/Admin/GlobalSettings.php:107
 msgctxt "global_settings"
 msgid "0 confirmation on-chain"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:107
+#: src/Admin/GlobalSettings.php:108
 msgctxt "global_settings"
 msgid "1 confirmation on-chain"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:108
+#: src/Admin/GlobalSettings.php:109
 msgctxt "global_settings"
 msgid "2 confirmations on-chain"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:109
+#: src/Admin/GlobalSettings.php:110
 msgctxt "global_settings"
 msgid "6 confirmations on-chain"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:120
+#: src/Admin/GlobalSettings.php:121
 msgid "Separate Payment Gateways"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:123
+#: src/Admin/GlobalSettings.php:124
 msgctxt "global_settings"
 msgid "Make all supported and enabled payment methods available as their own payment gateway. This opens new possibilities like discounts for specific payment methods. See our <a href=\"todo-input-link-here\" target=\"_blank\">full guide here</a>"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:127
+#: src/Admin/GlobalSettings.php:128
 msgid "Send customer data to BTCPayServer"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:130
+#: src/Admin/GlobalSettings.php:131
 msgctxt "global_settings"
 msgid "If you want customer email, address, etc. sent to BTCPay Server enable this option. By default for privacy and GDPR reasons this is disabled."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:134
+#: src/Admin/GlobalSettings.php:135
 msgid "Debug Log"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:137
+#: src/Admin/GlobalSettings.php:138
 msgctxt "global_settings"
 msgid "Enable logging <a href=\"%s\" class=\"button\">View Logs</a>"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:190
+#: src/Admin/GlobalSettings.php:192
 msgid "The provided API key scope is valid for multiple stores, please make sure to create one for a single store."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:198
+#: src/Admin/GlobalSettings.php:200
 msgid "The provided API key does not match the required permissions. Please make sure the following permissions are are given: %s"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:209
+#: src/Admin/GlobalSettings.php:211
 msgid "Reusing existing webhook."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:215
+#: src/Admin/GlobalSettings.php:217
 msgid "Successfully registered a new webhook on BTCPay Server."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:219
+#: src/Admin/GlobalSettings.php:221
 msgid "Could not register a new webhook on the store."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:229
+#: src/Admin/GlobalSettings.php:231
 msgid "No wallet configured on your BTCPay Server store settings. Make sure to add at least one otherwise this plugin will not work."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:239
+#: src/Admin/GlobalSettings.php:241
 msgid "Error fetching data for this API key from server. Please check if the key is valid. Error: %s"
 msgstr ""
 
