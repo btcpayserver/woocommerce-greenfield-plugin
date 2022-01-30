@@ -264,12 +264,12 @@ add_action( 'template_redirect', function() {
 	$rawData = file_get_contents('php://input');
 	$data = json_decode( $rawData, true );
 
-	// Seems data does get submitted with url-encoded payload.
+	// Seems data does get submitted with url-encoded payload, so parse $_POST here.
 	if (!empty($_POST)) {
-		$data['apiKey'] = esc_attr($_POST['apiKey'] ?? null);
+		$data['apiKey'] = sanitize_html_class($_POST['apiKey'] ?? null);
 		if (is_array($_POST['permissions'])) {
 			foreach ($_POST['permissions'] as $key => $value) {
-				$data['permissions'][$key] = esc_attr($_POST['permissions'][$key] ?? null);
+				$data['permissions'][$key] = sanitize_text_field($_POST['permissions'][$key] ?? null);
 			}
 		}
 	}

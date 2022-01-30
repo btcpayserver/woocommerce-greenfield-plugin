@@ -67,7 +67,6 @@ class DefaultGateway extends AbstractGateway {
 			/** @var  $gateway AbstractGateway */
 			foreach ($gateways as $id => $gateway) {
 				if (
-					$gateway->enabled === 'yes' &&
 					strpos($id, 'btcpaygf') !== FALSE
 					&& (isset($gateway->tokenType) && $gateway->tokenType === 'payment')
 				) {

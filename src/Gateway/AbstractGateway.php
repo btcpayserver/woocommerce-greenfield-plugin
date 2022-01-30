@@ -165,16 +165,16 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 						   value="<?php echo __('Upload or select icon', 'btcpay-greenfield-for-woocommerce'); ?>"
 						   style="<?php echo $mediaId ? 'display:none;' : ''; ?>"
 					/>
-					<img class="btcpay-gf-icon-image" src="<?php echo $mediaSrc; ?>" style="<?php echo $mediaId ? '' : 'display:none;'; ?>" />
+					<img class="btcpay-gf-icon-image" src="<?php echo esc_url($mediaSrc); ?>" style="<?php echo esc_attr($mediaId) ? '' : 'display:none;'; ?>" />
 					<input class="btcpay-gf-icon-remove" type="button"
 						   name="woocommerce_btcpaygf_icon_button_remove"
 						   value="<?php echo __('Remove image', 'btcpay-greenfield-for-woocommerce'); ?>"
 						   style="<?php echo $mediaId ? '' : 'display:none;'; ?>"
 					/>
 					<input class="input-text regular-input btcpay-gf-icon-value" type="hidden"
-						   name="<?php echo $iconFieldName; ?>"
-						   id="<?php echo $iconFieldName; ?>"
-						   value="<?php echo $mediaId; ?>"
+						   name="<?php echo esc_attr($iconFieldName); ?>"
+						   id="<?php echo esc_attr($iconFieldName); ?>"
+						   value="<?php echo esc_attr($mediaId); ?>"
 					/>
 				</div>
 			</td>
@@ -271,6 +271,11 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					// No need to change order status here, only leave a note.
 					$order->add_order_note(__('Invoice (partial) payment received. Waiting for full payment.', 'btcpay-greenfield-for-woocommerce'));
 				}
+
+				// Store payment data (exchange rate, address).
+				if (isset($webhookData->payment)) {
+					$this->updateWCOrderPayment($order->get_id(), $webhookData->payment);
+				}
 				break;
 			case 'InvoiceProcessing': // The invoice is paid in full.
 				$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::PROCESSING]);
@@ -346,6 +351,20 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	public function updateWCOrderStatus(\WC_Order $order, string $status): void {
 		if ($status !== OrderStates::IGNORE) {
 			$order->update_status($status);
+		}
+	}
+
+	public function updateWCOrderPayment(int $orderId, \stdClass $paymentData): void {
+		$paymentMethod = $paymentData->paymentMethod;
+
+		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_destination", $paymentData->destination ?? '' );
+		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_amount", $paymentData->amount ?? '' );
+		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_paid", $paymentData->totalPaid ?? '' );
+		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_networkFee", $paymentData->networkFee ?? '' );
+		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_rate", $paymentData->rate ?? '' );
+		if (isset($paymentData->rate)) {
+			$formattedRate = number_format($paymentData->rate, wc_get_price_decimals(), wc_get_price_decimal_separator(), wc_get_price_thousand_separator());
+			update_post_meta( $orderId, "BTCPay_{$paymentMethod}_rateFormatted", $formattedRate );
 		}
 	}
 
