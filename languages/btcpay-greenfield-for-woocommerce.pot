@@ -1,21 +1,21 @@
 # Copyright (C) 2022 BTCPay Server
-# This file is distributed under the same license as the BTCPay Greenfield For Woocommerce plugin.
+# This file is distributed under the same license as the BTCPay For Woocommerce V2 plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: BTCPay Greenfield For Woocommerce 0.1.4\n"
+"Project-Id-Version: BTCPay For Woocommerce V2 0.1.7\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/btcpay-greenfield-for-woocommerce\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2022-01-26T12:13:06+00:00\n"
+"POT-Creation-Date: 2022-02-07T13:59:30+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"X-Generator: WP-CLI 2.5.0\n"
+"X-Generator: WP-CLI 2.6.0\n"
 "X-Domain: btcpay-greenfield-for-woocommerce\n"
 
 #. Plugin Name of the plugin
-msgid "BTCPay Greenfield For Woocommerce"
+msgid "BTCPay For Woocommerce V2"
 msgstr ""
 
 #. Plugin URI of the plugin
@@ -268,35 +268,35 @@ msgstr ""
 msgid "Invoice (partial) payment received. Waiting for full payment."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:278
+#: src/Gateway/AbstractGateway.php:282
 msgid "Invoice payment received fully with overpayment, waiting for settlement."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:280
+#: src/Gateway/AbstractGateway.php:284
 msgid "Invoice payment received fully, waiting for settlement."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:286
+#: src/Gateway/AbstractGateway.php:290
 msgid "Invoice manually marked invalid."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:288
+#: src/Gateway/AbstractGateway.php:292
 msgid "Invoice became invalid."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:294
+#: src/Gateway/AbstractGateway.php:298
 msgid "Invoice expired but was paid partially, please check."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:297
+#: src/Gateway/AbstractGateway.php:301
 msgid "Invoice expired."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:303
+#: src/Gateway/AbstractGateway.php:307
 msgid "Invoice payment settled but was overpaid."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:306
+#: src/Gateway/AbstractGateway.php:310
 msgid "Invoice payment settled."
 msgstr ""
 
