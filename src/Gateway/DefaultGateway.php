@@ -62,7 +62,7 @@ class DefaultGateway extends AbstractGateway {
 	 */
 	public function getPaymentMethods(): array {
 		if ($this->get_option('enforce_payment_tokens') === 'yes') {
-			$gateways = WC()->payment_gateways->get_available_payment_gateways();
+			$gateways = WC()->payment_gateways->payment_gateways();
 			$btcPayPaymentGW = [];
 			/** @var  $gateway AbstractGateway */
 			foreach ($gateways as $id => $gateway) {

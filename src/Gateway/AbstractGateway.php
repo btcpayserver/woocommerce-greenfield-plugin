@@ -273,9 +273,8 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				}
 
 				// Store payment data (exchange rate, address).
-				if (isset($webhookData->payment)) {
-					$this->updateWCOrderPayment($order->get_id(), $webhookData->payment);
-				}
+				$this->updateWCOrderPayments($order);
+
 				break;
 			case 'InvoiceProcessing': // The invoice is paid in full.
 				$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::PROCESSING]);
@@ -311,6 +310,10 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					$order->add_order_note(__('Invoice payment settled.', 'btcpay-greenfield-for-woocommerce'));
 					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::SETTLED]);
 				}
+
+				// Store payment data (exchange rate, address).
+				$this->updateWCOrderPayments($order);
+
 				break;
 		}
 	}
@@ -354,17 +357,31 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 	}
 
-	public function updateWCOrderPayment(int $orderId, \stdClass $paymentData): void {
-		$paymentMethod = $paymentData->paymentMethod;
+	public function updateWCOrderPayments(\WC_Order $order): void {
+		// Load payment data from API.
+		try {
+			$client = new Invoice( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$allPaymentData = $client->getPaymentMethods($this->apiHelper->storeId, $order->get_meta('BTCPay_id'));
 
-		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_destination", $paymentData->destination ?? '' );
-		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_amount", $paymentData->amount ?? '' );
-		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_paid", $paymentData->totalPaid ?? '' );
-		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_networkFee", $paymentData->networkFee ?? '' );
-		update_post_meta( $orderId, "BTCPay_{$paymentMethod}_rate", $paymentData->rate ?? '' );
-		if (isset($paymentData->rate)) {
-			$formattedRate = number_format($paymentData->rate, wc_get_price_decimals(), wc_get_price_decimal_separator(), wc_get_price_thousand_separator());
-			update_post_meta( $orderId, "BTCPay_{$paymentMethod}_rateFormatted", $formattedRate );
+			foreach ($allPaymentData as $payment) {
+				// Only continue if the payment method has payments made.
+				if ((float) $payment->getTotalPaid() > 0.0) {
+					$paymentMethod = $payment->getPaymentMethod();
+					// Update order meta data.
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_destination", $payment->getDestination() ?? '' );
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_amount", $payment->getAmount() ?? '' );
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_paid", $payment->getTotalPaid() ?? '' );
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_networkFee", $payment->getNetworkFee() ?? '' );
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_rate", $payment->getRate() ?? '' );
+					if ((float) $payment->getRate() > 0.0) {
+						$formattedRate = number_format((float) $payment->getRate(), wc_get_price_decimals(), wc_get_price_decimal_separator(), wc_get_price_thousand_separator());
+						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_rateFormatted", $formattedRate );
+					}
+				}
+			}
+		} catch (\Throwable $e) {
+			Logger::debug( 'Error processing payment data for invoice: ' . $order->get_meta('BTCPay_id') . ' and order ID: ' . $order->get_id() );
+			Logger::debug($e->getMessage());
 		}
 	}
 
@@ -488,18 +505,6 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Store relevant BTCPay invoice data.
 		update_post_meta( $orderId, 'BTCPay_redirect', $invoice->getData()['checkoutLink'] );
 		update_post_meta( $orderId, 'BTCPay_id', $invoice->getData()['id'] );
-
-		// todo: discuss: below data taken from old plugin, not sure if this is needed; payment data needs to get fetched separately
-		// by "Get invoice payment methods endpoint".
-		// should be per payment method, USDBTC_price, USDBTC_paid, ... etc
-		/*
-		update_post_meta($orderId, 'BTCPay_rate', $invoice->getRate());
-		$formattedRate = number_format($invoice->getRate(), wc_get_price_decimals(), wc_get_price_decimal_separator(), wc_get_price_thousand_separator());
-		update_post_meta($orderId, 'BTCPay_formatted_rate', $formattedRate);
-		update_post_meta($orderId, 'BTCPay_btcPrice', $responseData->data->btcPrice);
-		update_post_meta($orderId, 'BTCPay_btcPaid', $responseData->data->btcPaid);
-		update_post_meta($orderId, 'BTCPay_BTCaddress', $responseData->data->bitcoinAddress);
-		*/
 	}
 
 	/**
