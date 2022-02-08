@@ -227,6 +227,11 @@ add_action('init', function() {
 	load_plugin_textdomain('btcpay-greenfield-for-woocommerce', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/');
 	// Setting up and handling custom endpoint for api key redirect from BTCPay Server.
 	add_rewrite_endpoint('btcpay-settings-callback', EP_ROOT);
+	// Flush rewrite rules only once after activation.
+	if( ! get_option('btcpaygf_permalinks_flushed') ) {
+		flush_rewrite_rules(false);
+		update_option('btcpaygf_permalinks_flushed', 1);
+	}
 });
 
 // To be able to use the endpoint without appended url segments we need to do this.
@@ -266,16 +271,21 @@ add_action( 'template_redirect', function() {
 		if ($apiData->hasSingleStore() && $apiData->hasRequiredPermissions()) {
 			update_option('btcpay_gf_api_key', $apiData->getApiKey());
 			update_option('btcpay_gf_store_id', $apiData->getStoreID());
-			\WC_Admin_Settings::add_message(__('Successfully received api key and store id from BTCPay Server API.', 'btcpay-greenfield-for-woocommerce'));
+			\BTCPayServer\WC\Admin\Notice::addNotice('success', __('Successfully received api key and store id from BTCPay Server API.', 'btcpay-greenfield-for-woocommerce'));
 			wp_redirect($btcPaySettingsUrl);
 		} else {
-			\WC_Admin_Settings::add_error(__('Please make sure you only select one store on the BTCPay API authorization page.', 'btcpay-greenfield-for-woocommerce'));
+			\BTCPayServer\WC\Admin\Notice::addNotice('error', __('Please make sure you only select one store on the BTCPay API authorization page.', 'btcpay-greenfield-for-woocommerce'));
 			wp_redirect($btcPaySettingsUrl);
 		}
 	}
 
-	\WC_Admin_Settings::add_error(__('Error processing the data from BTCPay. Please try again.', 'btcpay-greenfield-for-woocommerce'));
+	\BTCPayServer\WC\Admin\Notice::addNotice('error', __('Error processing the data from BTCPay. Please try again.', 'btcpay-greenfield-for-woocommerce'));
 	wp_redirect($btcPaySettingsUrl);
+});
+
+// Installation routine.
+register_activation_hook( __FILE__, function() {
+	update_option('btcpaygf_permalinks_flushed', 0);
 });
 
 // Initialize payment gateways and plugin.
