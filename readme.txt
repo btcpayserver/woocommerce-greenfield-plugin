@@ -2,10 +2,10 @@
 Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway, accept bitcoin, bitcoin plugin, bitcoin payment processor, bitcoin e-commerce, Lightning Network, Litecoin, cryptocurrency
-Requires at least: 4.5
+Requires at least: 5.2
 Tested up to: 5.9
 Requires PHP: 7.4
-Stable tag: 0.1.9
+Stable tag: 0.1.10
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -110,6 +110,11 @@ You'll find extensive documentation and answers to many of your questions on [do
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 0.1.10 :: 2022-02-15 =
+* Make sure custom endpoint works without nice url enabled.
+* Better description for setting.
+* Update translation strings.
+
 = 0.1.9 :: 2022-02-08 =
 * Make sure custom endpoint works by flushing rewrite rules on plugin activation.
 * Replacing usage of WC_Admin_Settings::addMessage() with our own.
