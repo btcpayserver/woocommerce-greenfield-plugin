@@ -99,9 +99,9 @@ class GlobalSettings extends \WC_Settings_Page {
 				'id' => 'btcpay_gf_default_description'
 			],
 			'transaction_speed'               => [
-				'title'       => esc_html_x( 'Invoice pass to "confirmed" state after', 'btcpay-greenfield-for-woocommerce' ),
+				'title'       => esc_html_x( 'Invoice pass to "settled" state after', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'select',
-				'desc' => esc_html_x('An invoice becomes confirmed after the payment has...', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+				'desc' => esc_html_x('An invoice becomes settled after the payment has this many confirmations...', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
 				'options'     => [
 					'default'    => _x('Keep BTCPay Server store level configuration', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
 					'high'       => _x('0 confirmation on-chain', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
