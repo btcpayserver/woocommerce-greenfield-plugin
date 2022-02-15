@@ -1,4 +1,4 @@
-=== BTCPay For Woocommerce V2 ===
+=== BTCPay for WooCommerce V2 ===
 Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway, accept bitcoin, bitcoin plugin, bitcoin payment processor, bitcoin e-commerce, Lightning Network, Litecoin, cryptocurrency
