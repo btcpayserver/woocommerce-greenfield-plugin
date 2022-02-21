@@ -110,6 +110,9 @@ You'll find extensive documentation and answers to many of your questions on [do
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 0.2.1 :: 2022-02-21 =
+* Replace SVG by PNG logo to avoid scaling it on themes without proper CSS rules for payment gateway icons.
+
 = 0.2.0 :: 2022-02-18 =
 * Fix Cash on delivery, Bank transfer gateways missing after plugin activation.
 
