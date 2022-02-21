@@ -194,7 +194,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		if ($mediaId = $this->get_option(self::ICON_MEDIA_OPTION)) {
 			return wp_get_attachment_image_src($mediaId)[0];
 		} else {
-			return BTCPAYSERVER_PLUGIN_URL . 'assets/images/btcpay-logo.svg';
+			return BTCPAYSERVER_PLUGIN_URL . 'assets/images/btcpay-logo.png';
 		}
 	}
 
