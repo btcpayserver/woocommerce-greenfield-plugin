@@ -110,6 +110,9 @@ You'll find extensive documentation and answers to many of your questions on [do
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 0.2.2 :: 2022-02-28 =
+* Fix fatal error, make sure is_plugin_active() is available.
+
 = 0.2.1 :: 2022-02-21 =
 * Replace SVG by PNG logo to avoid scaling it on themes without proper CSS rules for payment gateway icons.
 
