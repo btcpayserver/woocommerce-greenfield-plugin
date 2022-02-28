@@ -19,9 +19,12 @@ bin
 composer.json
 composer.lock
 dependencies.yml
+DOCKER_ENV
+docker_tag
 Dockerfile
 docker-compose.yml
 Gruntfile.js
+output.log
 package.json
 package-lock.json
 phpunit.xml
