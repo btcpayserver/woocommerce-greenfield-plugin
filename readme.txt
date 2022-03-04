@@ -5,7 +5,7 @@ Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway
 Requires at least: 5.2
 Tested up to: 5.9
 Requires PHP: 7.4
-Stable tag: 0.2.3
+Stable tag: 0.2.4
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -103,6 +103,10 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 0.2.4 :: 2022-03-04 =
+* Fix possible problem with CamelCased headers on PHP-FPM and/or Nginx.
+* Do not log hitting the cache on debug log to avoid clutter.
+
 = 0.2.3 :: 2022-02-28 =
 * Adding irrelevant GitHub workflow files to .distignore.
 * Updating installation instructions with new material.
