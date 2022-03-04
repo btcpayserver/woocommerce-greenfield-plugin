@@ -25,7 +25,10 @@ class SeparateGateways {
 					Logger::debug('Generating and writing separate gateway classes to filesystem.');
 					self::initSeparatePaymentGateways( $separateGateways );
 				} else {
-					Logger::debug('Using cache, skipping to generate separate gateway classes.');
+					// Enable line below if you need to ensure payment classes are not generated on each request.
+					// This was commented because it cluttered the debug log quite a lot as it fires multiple times per
+					// request.
+					// Logger::debug('Using cache, skipping to generate separate gateway classes.');
 				}
 			}
 		}
