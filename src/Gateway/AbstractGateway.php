@@ -204,8 +204,13 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	public function processWebhook() {
 		if ($rawPostData = file_get_contents("php://input")) {
 			// Validate webhook request.
+			// Note: getallheaders() CamelCases all headers for PHP-FPM/Nginx but for others maybe not, so "BTCPay-Sig" may becomes "Btcpay-Sig".
 			$headers = getallheaders();
-			$signature = $headers['Btcpay-Sig'] ?? null;
+			foreach ($headers as $key => $value) {
+				if (strtolower($key) === 'btcpay-sig') {
+					$signature = $value;
+				}
+			}
 
 			if (!isset($signature) || !$this->apiHelper->validWebhookRequest($signature, $rawPostData)) {
 				Logger::debug('Failed to validate signature of webhook request.');
