@@ -5,7 +5,7 @@ Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway
 Requires at least: 5.2
 Tested up to: 5.9
 Requires PHP: 7.4
-Stable tag: 0.2.4
+Stable tag: 0.2.5
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -61,7 +61,7 @@ For the self-hosted solutions, you will have to wait for your node to sync fully
 
 Those who want to test BTCPay out, or are okay with the limitations of a third-party hosting (dependency and privacy, as well as lack of some features) can use a one of many [third-party hosts](ThirdPartyHosting.md).
 
-The video below shows you how to connect your store to such host.
+The video below shows you how to connect your store to such a host.
 
 https://www.youtube.com/watch?v=IT2K8It3S3o
 
@@ -71,9 +71,9 @@ BTCPay WooCommerce plugin is a bridge between your BTCPay Server (payment proces
 
 You can find detailed installation instructions on our [WooCommerce documentation](https://docs.btcpayserver.org/WooCommerce/).
 
-Here is a quick walkthrough if you prefer a video:
+Here is a quick walk through if you prefer a video:
 
-https://www.youtube.com/watch?v=a-MQHgnjNXI&t=2s
+https://www.youtube.com/watch?v=ULcocDKZ1Mw
 
 ###  3. Connecting your wallet ###
 
@@ -103,6 +103,9 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 0.2.5 :: 2022-03-13 =
+*  Load media library and JS only on payment gateway settings page.
+
 = 0.2.4 :: 2022-03-04 =
 * Fix possible problem with CamelCased headers on PHP-FPM and/or Nginx.
 * Do not log hitting the cache on debug log to avoid clutter.
