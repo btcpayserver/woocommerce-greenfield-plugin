@@ -38,6 +38,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$this->debug_plugin_version = BTCPAYSERVER_VERSION;
 
 		// Actions.
+		add_action('admin_enqueue_scripts', [$this, 'addScripts']);
 		add_action('woocommerce_update_options_payment_gateways_' . $this->getId(), [$this, 'process_admin_options']);
 	}
 
@@ -45,23 +46,6 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	 * Initialise Gateway Settings Form Fields
 	 */
 	public function init_form_fields() {
-		wp_enqueue_media();
-		wp_register_script(
-			'btcpay_gf_abstract_gateway',
-			BTCPAYSERVER_PLUGIN_URL . 'assets/js/gatewayIconMedia.js',
-			['jquery'],
-			BTCPAYSERVER_VERSION
-		);
-		wp_enqueue_script('btcpay_gf_abstract_gateway');
-		wp_localize_script(
-			'btcpay_gf_abstract_gateway',
-			'btcpaygfGatewayData',
-			[
-				'buttonText' => __('Use this image', 'btcpay-greenfield-for-woocommerce'),
-				'titleText' => __('Insert image', 'btcpay-greenfield-for-woocommerce'),
-			]
-		);
-
 		$this->form_fields = [
 			'title'       => [
 				'title'       => __( 'Title', 'btcpay-greenfield-for-woocommerce' ),
@@ -195,6 +179,30 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			return wp_get_attachment_image_src($mediaId)[0];
 		} else {
 			return BTCPAYSERVER_PLUGIN_URL . 'assets/images/btcpay-logo.png';
+		}
+	}
+
+	/**
+	 * Add scripts.
+	 */
+	public function addScripts($hook_suffix) {
+		if ($hook_suffix === 'woocommerce_page_wc-settings') {
+			wp_enqueue_media();
+			wp_register_script(
+				'btcpay_gf_abstract_gateway',
+				BTCPAYSERVER_PLUGIN_URL . 'assets/js/gatewayIconMedia.js',
+				['jquery'],
+				BTCPAYSERVER_VERSION
+			);
+			wp_enqueue_script('btcpay_gf_abstract_gateway');
+			wp_localize_script(
+				'btcpay_gf_abstract_gateway',
+				'btcpaygfGatewayData',
+				[
+					'buttonText' => __('Use this image', 'btcpay-greenfield-for-woocommerce'),
+					'titleText' => __('Insert image', 'btcpay-greenfield-for-woocommerce'),
+				]
+			);
 		}
 	}
 
