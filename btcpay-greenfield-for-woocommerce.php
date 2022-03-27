@@ -26,6 +26,9 @@ define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_ID', 'btcpay-greenfield-for-woocommerce' );
 
 class BTCPayServerWCPlugin {
+
+	private static $instance;
+
 	public function __construct() {
 		$this->includes();
 
@@ -217,11 +220,24 @@ class BTCPayServerWCPlugin {
 		";
 	}
 
+	/**
+	 * Gets the main plugin loader instance.
+	 *
+	 * Ensures only one instance can be loaded.
+	 */
+	public static function instance(): \BTCPayServerWCPlugin {
+
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+	}
 }
 
 // Start everything up.
 function init_btcpay_greenfield() {
-	new BTCPayServerWCPlugin();
+	\BTCPayServerWCPlugin::instance();
 }
 
 /**
