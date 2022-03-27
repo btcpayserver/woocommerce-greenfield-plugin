@@ -121,7 +121,7 @@ class GlobalSettings extends \WC_Settings_Page {
 				'title'       => __( 'Separate Payment Gateways', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'checkbox',
 				'default'     => 'no',
-				'desc' => _x( 'Make all supported and enabled payment methods available as their own payment gateway. This opens new possibilities like discounts for specific payment methods. See our <a href="todo-input-link-here" target="_blank">full guide here</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'desc' => _x( 'Make all supported and enabled payment methods available as their own payment gateway. This opens new possibilities like discounts for specific payment methods. See our <a href="https://docs.btcpayserver.org/FAQ/Integrations/#how-to-configure-additional-token-support-separate-payment-gateways" target="_blank">full guide here</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'id' => 'btcpay_gf_separate_gateways'
 			],
 			'customer_data'                           => [
