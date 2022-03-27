@@ -242,10 +242,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				// Abort if no orders found.
 				if (count($orders) === 0) {
 					Logger::debug('Could not load order by BTCPay invoiceId: ' . $postData->invoiceId);
-					wp_die('No order found for this invoiceId.', '', ['response' => 404]);
+					// Note: we return status 200 here for wp_die() which seems counter intuative but needs to be done
+					// to not clog up the BTCPay servers webhook processing queue until it is fixed there.
+					wp_die('No order found for this invoiceId.', '', ['response' => 200]);
 				}
 
-				// TODO: Handle multiple matching orders.
+				// Abort on multiple orders found.
 				if (count($orders) > 1) {
 					Logger::debug('Found multiple orders for invoiceId: ' . $postData->invoiceId);
 					Logger::debug(print_r($orders, true));
@@ -351,7 +353,20 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				if ( in_array( $invoice->getData()['status'], $invalidStates ) ) {
 					return false;
 				} else {
-					return true;
+					// Check also if the payment methods match.
+					$pmInvoice = $invoice->getData()['checkout']['paymentMethods'];
+					$pmInvoice = str_replace('-', '_', $pmInvoice);
+					sort($pmInvoice);
+					$pm = $this->getPaymentMethods();
+					sort($pm);
+					if ($pm === $pmInvoice) {
+						return true;
+					}
+					// Mark existing invoice as invalid.
+					$order = wc_get_order($orderId);
+					$order->add_order_note(__('BTCPay invoice manually set to invalid because customer went back to checkout and changed payment gateway.', 'btcpay-greenfield-for-woocommerce'));
+					$this->markInvoiceInvalid($invoiceId);
+					return false;
 				}
 			} catch ( \Throwable $e ) {
 				Logger::debug( $e->getMessage() );
@@ -359,6 +374,16 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 
 		return false;
+	}
+
+	public function markInvoiceInvalid($invoiceId): void {
+		Logger::debug( 'Marking invoice as invalid: ' . $invoiceId);
+		try {
+			$client = new Invoice( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$client->markInvoiceStatus($this->apiHelper->storeId, $invoiceId, 'Invalid');
+		} catch (\Throwable $e) {
+			Logger::debug('Error marking invoice invalid: ' . $e->getMessage());
+		}
 	}
 
 	/**
@@ -436,7 +461,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		if ( $transactionSpeed !== 'default' && in_array($transactionSpeed, $allowedSpeedValues)) {
 			$checkoutOptions->setSpeedPolicy( $transactionSpeed );
 		} else {
-			Logger::debug('Could not set transaction speed setting, wrong value given.');
+			Logger::debug('Did not set transaction speed setting, using BTCPay Server store config instead. Invalid value given: ' . $transactionSpeed);
 		}
 
 		// Payment methods.

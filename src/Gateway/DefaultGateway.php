@@ -61,9 +61,11 @@ class DefaultGateway extends AbstractGateway {
 	 * @inheritDoc
 	 */
 	public function getPaymentMethods(): array {
+
+		$btcPayPaymentGW = [];
+
 		if ($this->get_option('enforce_payment_tokens') === 'yes') {
 			$gateways = WC()->payment_gateways->payment_gateways();
-			$btcPayPaymentGW = [];
 			/** @var  $gateway AbstractGateway */
 			foreach ($gateways as $id => $gateway) {
 				if (
@@ -76,7 +78,13 @@ class DefaultGateway extends AbstractGateway {
 			return $btcPayPaymentGW;
 		}
 
-		return [];
+		// If payment tokens are not enforced set all.
+		$separateGateways = \BTCPayServer\WC\Helper\GreenfieldApiHelper::supportedPaymentMethods();
+		foreach ($separateGateways as $sgw) {
+			$btcPayPaymentGW[] = $sgw['symbol'];
+		}
+
+		return $btcPayPaymentGW;
 	}
 
 }
