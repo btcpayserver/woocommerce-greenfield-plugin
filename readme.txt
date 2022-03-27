@@ -5,7 +5,7 @@ Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway
 Requires at least: 5.2
 Tested up to: 5.9
 Requires PHP: 7.4
-Stable tag: 0.2.5
+Stable tag: 1.0.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -103,6 +103,14 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 1.0.0 :: 2022-03-27 =
+* Reflect stability with release 1.0.0.
+* Create a new invoice (and mark the old invalid) if the user uses browser back button and changes the payment method (relevant for separate payment gateway feature).
+* Added plugin loader singleton.
+* Added missing docs link to separate payment gateways feature.
+* Added checkbox to enable/disable gateway from within gateway settings.
+* Updated README.md
+
 = 0.2.5 :: 2022-03-13 =
 *  Load media library and JS only on payment gateway settings page.
 
