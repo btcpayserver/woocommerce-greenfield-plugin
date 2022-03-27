@@ -47,6 +47,14 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	 */
 	public function init_form_fields() {
 		$this->form_fields = [
+			'enabled' => [
+				'title'       => __( 'Enabled/Disabled', 'btcpay-greenfield-for-woocommerce' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable this payment gateway.', 'btcpay-greenfield-for-woocommerce' ),
+				'default'     => 'no',
+				'value'       => 'yes',
+				'desc_tip'    => false,
+			],
 			'title'       => [
 				'title'       => __( 'Title', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'text',
