@@ -7,7 +7,7 @@
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
- * Version:         1.0.0
+ * Version:         1.0.2
  * Requires PHP:    7.4
  * Tested up to:    5.9
  * Requires at least: 5.2
@@ -19,7 +19,7 @@ use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 
 defined( 'ABSPATH' ) || exit();
 
-define( 'BTCPAYSERVER_VERSION', '1.0.1' );
+define( 'BTCPAYSERVER_VERSION', '1.0.2' );
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_ID', 'btcpay-greenfield-for-woocommerce' );
