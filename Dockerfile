@@ -1,6 +1,6 @@
-FROM wordpress:5.8
+FROM wordpress:6.0
 
-ENV WOOCOMMERCE_VERSION 6.0.0
+ENV WOOCOMMERCE_VERSION 6.6.1
 
 # Fetch WooCommerce.
 RUN apt-get update \
