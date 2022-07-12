@@ -138,28 +138,6 @@ class GlobalSettings extends \WC_Settings_Page {
 				'desc'        => sprintf( _x( 'Enable logging <a href="%s" class="button">View Logs</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), Logger::getLogFileUrl()),
 				'id' => 'btcpay_gf_debug'
 			],
-			// todo: not sure if callback and redirect url should be overridable; can be done via woocommerce hooks if
-			// needed but no common use case for 99%
-			/*
-			'notification_url'                => [
-				'title'       => esc_html_x( 'Notification URL', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
-				'type'        => 'url',
-				'desc' => __( 'BTCPay will send IPNs for orders to this URL with the BTCPay invoice data', 'btcpay-greenfield-for-woocommerce' ),
-				'default'     => '',
-				'placeholder' => WC()->api_request_url( 'BTCPayServer_WC_Gateway_Default' ),
-				'desc_tip'    => true,
-				'id' => 'btcpay_gf_notification_url'
-			],
-			'redirect_url'                    => [
-				'title'       => __( 'Redirect URL', 'btcpay-greenfield-for-woocommerce' ),
-				'type'        => 'url',
-				'desc' => __( 'After paying the BTCPay invoice, users will be redirected back to this URL', 'btcpay-greenfield-for-woocommerce' ),
-				'default'     => '',
-				'placeholder' => '', $this->get_return_url(),
-				'desc_tip'    => true,
-				'id' => 'btcpay_gf_redirect_url'
-			],
-			*/
 			'sectionend' => [
 				'type' => 'sectionend',
 				'id' => 'btcpay_gf',
@@ -180,72 +158,88 @@ class GlobalSettings extends \WC_Settings_Page {
 			$storeId = sanitize_text_field( $_POST['btcpay_gf_store_id'] );
 
 			// todo: fix change of url + key + storeid not leading to recreation of webhook.
-			if ( GreenfieldApiHelper::apiCredentialsExist($apiUrl, $apiKey, $storeId) ) {
-				// Check if the provided API key has the right scope and permissions.
-				try {
-					$apiClient  = new ApiKey( $apiUrl, $apiKey );
-					$apiKeyData = $apiClient->getCurrent();
-					$apiAuth    = new GreenfieldApiAuthorization( $apiKeyData->getData() );
-					$hasError   = false;
+			// Check if the provided API key has the right scope and permissions.
+			try {
+				$apiClient  = new ApiKey( $apiUrl, $apiKey );
+				$apiKeyData = $apiClient->getCurrent();
+				$apiAuth    = new GreenfieldApiAuthorization( $apiKeyData->getData() );
+				$hasError   = false;
 
-					if ( ! $apiAuth->hasSingleStore() ) {
-						$messageSingleStore = __( 'The provided API key scope is valid for multiple stores, please make sure to create one for a single store.', 'btcpay-greenfield-for-woocommerce' );
-						Notice::addNotice('error', $messageSingleStore );
-						Logger::debug($messageSingleStore, true);
-						$hasError = true;
-					}
-
-					if ( ! $apiAuth->hasRequiredPermissions() ) {
-						$messagePermissionsError = sprintf(
-							__( 'The provided API key does not match the required permissions. Please make sure the following permissions are are given: %s', 'btcpay-greenfield-for-woocommerce' ),
-							implode( ', ', GreenfieldApiAuthorization::REQUIRED_PERMISSIONS )
-						);
-						Notice::addNotice('error', $messagePermissionsError );
-						Logger::debug( $messagePermissionsError, true );
-					}
-
-					// Check if a webhook for our callback url exists.
-					if ( false === $hasError ) {
-						// Check if we already have a webhook registered for that store.
-						if ( GreenfieldApiWebhook::webhookExists( $apiUrl, $apiKey, $storeId ) ) {
-							$messageReuseWebhook = __( 'Reusing existing webhook.', 'btcpay-greenfield-for-woocommerce' );
-							Notice::addNotice('info', $messageReuseWebhook, true);
-							Logger::debug($messageReuseWebhook);
-						} else {
-							// Register a new webhook.
-							if ( GreenfieldApiWebhook::registerWebhook( $apiUrl, $apiKey, $storeId ) ) {
-								$messageWebhookSuccess = __( 'Successfully registered a new webhook on BTCPay Server.', 'btcpay-greenfield-for-woocommerce' );
-								Notice::addNotice('success', $messageWebhookSuccess, true );
-								Logger::debug( $messageWebhookSuccess );
-							} else {
-								$messageWebhookError = __( 'Could not register a new webhook on the store.', 'btcpay-greenfield-for-woocommerce' );
-								Notice::addNotice('error', $messageWebhookError );
-								Logger::debug($messageWebhookError, true);
-							}
-						}
-
-						// Make sure there is at least one payment method configured.
-						try {
-							$pmClient = new StorePaymentMethod( $apiUrl, $apiKey );
-							if (($pmClient->getPaymentMethods($storeId)) === []) {
-								$messagePaymentMethodsError = __( 'No wallet configured on your BTCPay Server store settings. Make sure to add at least one otherwise this plugin will not work.', 'btcpay-greenfield-for-woocommerce' );
-								Notice::addNotice('error', $messagePaymentMethodsError );
-								Logger::debug($messagePaymentMethodsError, true);
-							}
-						} catch (\Throwable $e) {
-							Logger::debug('Error loading wallet information (payment methods) from BTCPay Server.');
-						}
-					}
-				} catch ( \Throwable $e ) {
-					$messageException = sprintf(
-						__( 'Error fetching data for this API key from server. Please check if the key is valid. Error: %s', 'btcpay-greenfield-for-woocommerce' ),
-						$e->getMessage()
-					);
-					Notice::addNotice('error', $messageException );
-					Logger::debug($messageException, true);
+				if ( ! $apiAuth->hasSingleStore() ) {
+					$messageSingleStore = __( 'The provided API key scope is valid for multiple stores, please make sure to create one for a single store.', 'btcpay-greenfield-for-woocommerce' );
+					Notice::addNotice('error', $messageSingleStore );
+					Logger::debug($messageSingleStore, true);
+					$hasError = true;
 				}
 
+				if ( ! $apiAuth->hasRequiredPermissions() ) {
+					$messagePermissionsError = sprintf(
+						__( 'The provided API key does not match the required permissions. Please make sure the following permissions are are given: %s', 'btcpay-greenfield-for-woocommerce' ),
+						implode( ', ', GreenfieldApiAuthorization::REQUIRED_PERMISSIONS )
+					);
+					Notice::addNotice('error', $messagePermissionsError );
+					Logger::debug( $messagePermissionsError, true );
+					$hasError = true;
+				}
+
+				// Check server version.
+				if ($serverInfo = GreenfieldApiHelper::getServerInfo()) {
+					Logger::debug( 'Serverinfo: ' . print_r( $serverInfo, true ), true );
+
+					// Show/log notice if the node is not fully synced yet and no invoice creation is possible.
+					if ((int) $serverInfo->getData()['fullySynched'] !== 1 ) {
+						$messageNotSynched = __( 'Your BTCPay Server is not fully synched yet. Until fully synched the checkout will not work.', 'btcpay-greenfield-for-woocommerce' );
+						Notice::addNotice('error', $messageNotSynched, false);
+						Logger::debug($messageNotSynched);
+					}
+				}
+
+				// Continue creating the webhook if the API key permissions are OK.
+				if ( false === $hasError ) {
+					// Check if we already have a webhook registered for that store.
+					if ( GreenfieldApiWebhook::webhookExists( $apiUrl, $apiKey, $storeId ) ) {
+						$messageReuseWebhook = __( 'Webhook already exists, skipping webhook creation.', 'btcpay-greenfield-for-woocommerce' );
+						Notice::addNotice('info', $messageReuseWebhook, true);
+						Logger::debug($messageReuseWebhook);
+					} else {
+						// Register a new webhook.
+						if ( GreenfieldApiWebhook::registerWebhook( $apiUrl, $apiKey, $storeId ) ) {
+							$messageWebhookSuccess = __( 'Successfully registered a new webhook on BTCPay Server.', 'btcpay-greenfield-for-woocommerce' );
+							Notice::addNotice('success', $messageWebhookSuccess, true );
+							Logger::debug( $messageWebhookSuccess );
+						} else {
+							$messageWebhookError = __( 'Could not register a new webhook on the store.', 'btcpay-greenfield-for-woocommerce' );
+							Notice::addNotice('error', $messageWebhookError );
+							Logger::debug($messageWebhookError, true);
+						}
+					}
+
+					// Make sure there is at least one payment method configured.
+					try {
+						$pmClient = new StorePaymentMethod( $apiUrl, $apiKey );
+						if (($pmClient->getPaymentMethods($storeId)) === []) {
+							$messagePaymentMethodsError = __( 'No wallet configured on your BTCPay Server store settings. Make sure to add at least one otherwise this plugin will not work.', 'btcpay-greenfield-for-woocommerce' );
+							Notice::addNotice('error', $messagePaymentMethodsError );
+							Logger::debug($messagePaymentMethodsError, true);
+						}
+					} catch (\Throwable $e) {
+						$messagePaymentMethodsCallError = sprintf(
+							__('Exception loading wallet information (payment methods) from BTCPay Server: %s.', 'btcpay-greenfield-for-woocommerce'),
+							$e->getMessage()
+						);
+						Logger::debug($messagePaymentMethodsCallError);
+						Notice::addNotice('error', $messagePaymentMethodsCallError );
+					}
+				}
+			} catch ( \Throwable $e ) {
+				$messageException = sprintf(
+					__( 'Error fetching data for this API key from server. Please check if the key is valid. Error: %s', 'btcpay-greenfield-for-woocommerce' ),
+					$e->getMessage()
+				);
+				Notice::addNotice('error', $messageException );
+				Logger::debug($messageException, true);
 			}
+
 		} else {
 			$messageNotConnecting = 'Did not try to connect to BTCPay Server API because one of the required information was missing: URL, key or storeID';
 			Notice::addNotice('warning', $messageNotConnecting);

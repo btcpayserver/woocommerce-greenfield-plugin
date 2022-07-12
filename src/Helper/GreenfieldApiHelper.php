@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace BTCPayServer\WC\Helper;
 
+use BTCPayServer\Client\Server;
 use BTCPayServer\Client\Store;
 use BTCPayServer\Client\StorePaymentMethod;
 use BTCPayServer\Client\Webhook;
 use BTCPayServer\Result\AbstractStorePaymentMethodResult;
+use BTCPayServer\Result\ServerInfo;
+use BTCPayServer\WC\Admin\Notice;
 
 class GreenfieldApiHelper {
 	const PM_CACHE_KEY = 'btcpay_payment_methods';
@@ -57,6 +60,20 @@ class GreenfieldApiHelper {
 		return false;
 	}
 
+	public static function getServerInfo(): ?ServerInfo {
+		if ($config = self::getConfig()) {
+			try {
+				$client = new Server( $config['url'], $config['api_key'] );
+				return $client->getInfo();
+			} catch (\Throwable $e) {
+				Logger::debug('Error fetching server info: ' . $e->getMessage(), true);
+				return null;
+			}
+		}
+
+		return null;
+	}
+
 	/**
 	 * List supported payment methods by BTCPay Server.
 	 */
@@ -85,7 +102,9 @@ class GreenfieldApiHelper {
 						}
 					}
 				} catch (\Throwable $e) {
-					Logger::debug('Exception loading payment methods: ' . $e->getMessage(), true);
+					$exceptionPM = 'Exception loading payment methods: ' . $e->getMessage();
+					Logger::debug( $exceptionPM, true);
+					Notice::addNotice('error', $exceptionPM);
 				}
 			}
 		}
