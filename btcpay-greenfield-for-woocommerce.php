@@ -13,9 +13,11 @@
  * Requires at least: 5.2
  */
 
+use BTCPayServer\WC\Admin\Notice;
 use BTCPayServer\WC\Gateway\DefaultGateway;
 use BTCPayServer\WC\Gateway\SeparateGateways;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
+use BTCPayServer\WC\Helper\Logger;
 
 defined( 'ABSPATH' ) || exit();
 
@@ -107,7 +109,7 @@ class BTCPayServerWCPlugin {
 				'</a>'
 			);
 
-			\BTCPayServer\WC\Admin\Notice::addNotice('error', $message);
+			Notice::addNotice('error', $message);
 		}
 	}
 
@@ -118,13 +120,13 @@ class BTCPayServerWCPlugin {
 		// Check PHP version.
 		if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
 			$versionMessage = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 7.4+.', 'btcpay-greenfield-for-woocommerce' ), PHP_VERSION );
-			\BTCPayServer\WC\Admin\Notice::addNotice('error', $versionMessage);
+			Notice::addNotice('error', $versionMessage);
 		}
 
 		// Check if WooCommerce is installed.
 		if ( ! is_plugin_active('woocommerce/woocommerce.php') ) {
 			$wcMessage = __('WooCommerce seems to be not installed. Make sure you do before you activate BTCPayServer Payment Gateway.', 'btcpay-greenfield-for-woocommerce');
-			\BTCPayServer\WC\Admin\Notice::addNotice('error', $wcMessage);
+			Notice::addNotice('error', $wcMessage);
 		}
 
 	}
@@ -135,7 +137,7 @@ class BTCPayServerWCPlugin {
 	public function legacyPluginNotification() {
 		if ( is_plugin_active('btcpay-for-woocommerce/class-wc-gateway-btcpay.php') ) {
 			$legacyMessage = __('Seems you have the old BTCPay for WooCommerce plugin installed. While it should work it is strongly recommended to not run both versions but rely on the maintained version (BTCPay Greenfield for WooCommerce).', 'btcpay-greenfield-for-woocommerce');
-			\BTCPayServer\WC\Admin\Notice::addNotice('warning', $legacyMessage, true);
+			Notice::addNotice('warning', $legacyMessage, true);
 		}
 	}
 
@@ -174,7 +176,7 @@ class BTCPayServerWCPlugin {
 				// Return the redirect url.
 				wp_send_json_success(['url' => $url]);
 			} catch (\Throwable $e) {
-				\BTCPayServer\WC\Helper\Logger::debug('Error fetching redirect url from BTCPay Server.');
+				Logger::debug('Error fetching redirect url from BTCPay Server.');
 			}
 		}
 
@@ -248,11 +250,42 @@ add_action('init', function() {
 	// Setting up and handling custom endpoint for api key redirect from BTCPay Server.
 	add_rewrite_endpoint('btcpay-settings-callback', EP_ROOT);
 	// Flush rewrite rules only once after activation.
-	if( ! get_option('btcpaygf_permalinks_flushed') ) {
+	if ( ! get_option('btcpaygf_permalinks_flushed') ) {
 		flush_rewrite_rules(false);
 		update_option('btcpaygf_permalinks_flushed', 1);
 	}
 });
+
+// Action links on plugin overview.
+add_filter( 'plugin_action_links_btcpay-greenfield-for-woocommerce/btcpay-greenfield-for-woocommerce.php', function ( $links ) {
+
+	// Settings link.
+	$settings_url = esc_url( add_query_arg(
+		[
+		'page' => 'wc-settings',
+		'tab' => 'btcpay_settings'
+		],
+		get_admin_url() . 'admin.php'
+	) );
+
+	$settings_link = "<a href='$settings_url'>" . __( 'Settings', 'btcpay-greenfield-for-woocommerce' ) . '</a>';
+
+	$logs_link = "<a target='_blank' href='" . Logger::getLogFileUrl() . "'>" . __('Debug log', 'btcpay-greenfield-for-woocommerce') . "</a>";
+
+	$docs_link = "<a target='_blank' href='". esc_url('https://docs.btcpayserver.org/WooCommerce/') . "'>" . __('Docs', 'btcpay-greenfield-for-woocommerce') . "</a>";
+
+	$support_link = "<a target='_blank' href='". esc_url('https://chat.btcpayserver.org/') . "'>" . __('Support Chat', 'btcpay-greenfield-for-woocommerce') . "</a>";
+
+	array_unshift(
+		$links,
+		$settings_link,
+		$logs_link,
+		$docs_link,
+		$support_link
+	);
+
+	return $links;
+} );
 
 // To be able to use the endpoint without appended url segments we need to do this.
 add_filter('request', function($vars) {
@@ -291,15 +324,15 @@ add_action( 'template_redirect', function() {
 		if ($apiData->hasSingleStore() && $apiData->hasRequiredPermissions()) {
 			update_option('btcpay_gf_api_key', $apiData->getApiKey());
 			update_option('btcpay_gf_store_id', $apiData->getStoreID());
-			\BTCPayServer\WC\Admin\Notice::addNotice('success', __('Successfully received api key and store id from BTCPay Server API.', 'btcpay-greenfield-for-woocommerce'));
+			Notice::addNotice('success', __('Successfully received api key and store id from BTCPay Server API. Please finish setup by saving this settings form.', 'btcpay-greenfield-for-woocommerce'));
 			wp_redirect($btcPaySettingsUrl);
 		} else {
-			\BTCPayServer\WC\Admin\Notice::addNotice('error', __('Please make sure you only select one store on the BTCPay API authorization page.', 'btcpay-greenfield-for-woocommerce'));
+			Notice::addNotice('error', __('Please make sure you only select one store on the BTCPay API authorization page.', 'btcpay-greenfield-for-woocommerce'));
 			wp_redirect($btcPaySettingsUrl);
 		}
 	}
 
-	\BTCPayServer\WC\Admin\Notice::addNotice('error', __('Error processing the data from BTCPay. Please try again.', 'btcpay-greenfield-for-woocommerce'));
+	Notice::addNotice('error', __('Error processing the data from BTCPay. Please try again.', 'btcpay-greenfield-for-woocommerce'));
 	wp_redirect($btcPaySettingsUrl);
 });
 
