@@ -10,6 +10,7 @@ use BTCPayServer\Result\Webhook as WebhookResult;
 class GreenfieldApiWebhook {
 	public const WEBHOOK_EVENTS = [
 		'InvoiceReceivedPayment',
+		'InvoicePaymentSettled',
 		'InvoiceProcessing',
 		'InvoiceExpired',
 		'InvoiceSettled',
@@ -64,7 +65,66 @@ class GreenfieldApiWebhook {
 
 			return $webhook;
 		} catch (\Throwable $e) {
-			Logger::debug('Error fetching existing Webhook from BTCPay Server.');
+			Logger::debug('Error creating a new webhook on BTCPay Server instance: ' . $e->getMessage());
+		}
+
+		return null;
+	}
+
+	/**
+	 * Update an existing webhook on BTCPay Server.
+	 */
+	public static function updateWebhook(
+		string $webhookId,
+		string $webhookUrl,
+		string $secret,
+		bool $enabled,
+		bool $automaticRedelivery,
+		?array $events
+	): ?WebhookResult {
+
+		if ($config = GreenfieldApiHelper::getConfig()) {
+			try {
+				$whClient = new Webhook( $config['url'], $config['api_key'] );
+				$webhook = $whClient->updateWebhook(
+					$config['store_id'],
+					$webhookUrl,
+					$webhookId,
+					$events ?? self::WEBHOOK_EVENTS,
+					$enabled,
+					$automaticRedelivery,
+					$secret
+				);
+
+				return $webhook;
+			} catch (\Throwable $e) {
+				Logger::debug('Error updating existing Webhook from BTCPay Server: ' . $e->getMessage());
+				return null;
+			}
+		} else {
+			Logger::debug('Plugin not configured, aborting updating webhook.');
+		}
+
+		return null;
+	}
+
+	/**
+	 * Load existing webhook data from BTCPay Server, defaults to locally stored webhook.
+	 */
+	public static function getWebhook(?string $webhookId): ?WebhookResult {
+		$existingWebhook = get_option('btcpay_gf_webhook');
+		$config = GreenfieldApiHelper::getConfig();
+
+		try {
+			$whClient = new Webhook( $config['url'], $config['api_key'] );
+			$webhook = $whClient->getWebhook(
+				$config['store_id'],
+				$webhookId ?? $existingWebhook['id'],
+				);
+
+			return $webhook;
+		} catch (\Throwable $e) {
+			Logger::debug('Error fetching existing Webhook from BTCPay Server: ' . $e->getMessage());
 		}
 
 		return null;

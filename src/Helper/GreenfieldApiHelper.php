@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BTCPayServer\WC\Helper;
 
+use BTCPayServer\Client\Invoice;
 use BTCPayServer\Client\Server;
 use BTCPayServer\Client\Store;
 use BTCPayServer\Client\StorePaymentMethod;
@@ -38,7 +39,7 @@ class GreenfieldApiHelper {
 		$key = get_option('btcpay_gf_api_key');
 		if ($url && $key) {
 			return [
-				'url' => $url,
+				'url' => rtrim($url, '/'),
 				'api_key' => $key,
 				'store_id' => get_option('btcpay_gf_store_id', null),
 				'webhook' => get_option('btcpay_gf_webhook', null)
@@ -154,6 +155,23 @@ class GreenfieldApiHelper {
 			) {
 				return true;
 			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Checks if a given invoice id has status of fully paid (settled) or paid late.
+	 */
+	public static function invoiceIsFullyPaid(string $invoiceId): bool {
+		if ($config = self::getConfig()) {
+			$client = new Invoice($config['url'], $config['api_key']);
+				try {
+					$invoice = $client->getInvoice($config['store_id'], $invoiceId);
+					return $invoice->isFullyPaid() || $invoice->isPaidLate();
+				} catch (\Throwable $e) {
+					Logger::debug('Exception while checking if invoice settled '. $invoiceId . ': ' . $e->getMessage());
+				}
 		}
 
 		return false;

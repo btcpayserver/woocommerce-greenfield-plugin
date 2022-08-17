@@ -112,9 +112,15 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 			Logger::debug( 'Invoice creation successful, redirecting user.' );
 
+			$url = $invoice->getData()['checkoutLink'];
+			// Todo: needs testing, support for .onion URLs, see https://github.com/btcpayserver/woocommerce-greenfield-plugin/issues/4
+			/* if ( preg_match( "/^([a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.)?[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.onion$/", $_SERVER['SERVER_NAME'] ) ){
+				$url = str_replace($this->apiHelper->url, $_SERVER['SERVER_NAME'], $url);
+			} */
+
 			return [
 				'result'   => 'success',
-				'redirect' => $invoice->getData()['checkoutLink'],
+				'redirect' => $url,
 			];
 		}
 	}
@@ -289,13 +295,39 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		switch ($webhookData->type) {
 			case 'InvoiceReceivedPayment':
 				if ($webhookData->afterExpiration) {
-					if ($order->get_status() === $configuredOrderStates[OrderStates::EXPIRED]) {
+					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
+					$order->add_order_note(__('Invoice (partial) payment incoming (unconfirmed) after invoice was already expired.', 'btcpay-greenfield-for-woocommerce'));
+				} else {
+					// No need to change order status here, only leave a note.
+					$order->add_order_note(__('Invoice (partial) payment incoming (unconfirmed). Waiting for settlement.', 'btcpay-greenfield-for-woocommerce'));
+				}
+
+				// Store payment data (exchange rate, address).
+				$this->updateWCOrderPayments($order);
+
+				break;
+			case 'InvoicePaymentSettled':
+				// We can't use $webhookData->afterExpiration here as there is a bug affecting all version prior to
+				// BTCPay Server v1.7.0.0, see https://github.com/btcpayserver/btcpayserver/issues/
+				// Therefore we check if the invoice is in expired or expired paid partial status, instead.
+				$orderStatus = $order->get_status();
+				if ($orderStatus === str_replace('wc-', '', $configuredOrderStates[OrderStates::EXPIRED]) ||
+					$orderStatus === str_replace('wc-', '', $configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL])
+				) {
+					// Check if also the invoice is now fully paid.
+					if (GreenfieldApiHelper::invoiceIsFullyPaid($webhookData->invoiceId)) {
+						Logger::debug('Invoice fully paid.');
+						$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED_PAID_LATE]);
+						$order->add_order_note(__('Invoice fully settled after invoice was already expired. Needs manual checking.', 'btcpay-greenfield-for-woocommerce'));
+						//$order->payment_complete();
+					} else {
+						Logger::debug('Invoice NOT fully paid.');
 						$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::EXPIRED_PAID_PARTIAL]);
-						$order->add_order_note(__('Invoice payment received after invoice was already expired.', 'btcpay-greenfield-for-woocommerce'));
+						$order->add_order_note(__('(Partial) payment settled but invoice not settled yet (could be more transactions incoming). Needs manual checking.', 'btcpay-greenfield-for-woocommerce'));
 					}
 				} else {
 					// No need to change order status here, only leave a note.
-					$order->add_order_note(__('Invoice (partial) payment received. Waiting for full payment.', 'btcpay-greenfield-for-woocommerce'));
+					$order->add_order_note(__('Invoice (partial) payment settled.', 'btcpay-greenfield-for-woocommerce'));
 				}
 
 				// Store payment data (exchange rate, address).
@@ -402,6 +434,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	 */
 	public function updateWCOrderStatus(\WC_Order $order, string $status): void {
 		if ($status !== OrderStates::IGNORE) {
+			Logger::debug('Updating order status from ' . $order->get_status() . ' to ' . $status);
 			$order->update_status($status);
 		}
 	}
@@ -414,17 +447,27 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 			foreach ($allPaymentData as $payment) {
 				// Only continue if the payment method has payments made.
-				if ((float) $payment->getTotalPaid() > 0.0) {
-					$paymentMethod = $payment->getPaymentMethod();
-					// Update order meta data.
-					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_destination", $payment->getDestination() ?? '' );
-					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_amount", $payment->getAmount() ?? '' );
-					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_paid", $payment->getTotalPaid() ?? '' );
-					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_networkFee", $payment->getNetworkFee() ?? '' );
-					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_rate", $payment->getRate() ?? '' );
+				if ((float) $payment->getPaymentMethodPaid() > 0.0) {
+					$paymentMethodName = $payment->getPaymentMethod();
+					// Update order meta data with payment methods and transactions.
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_total_paid", $payment->getTotalPaid() ?? '' );
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_total_amount", $payment->getAmount() ?? '' );
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_total_due", $payment->getDue() ?? '' );
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_total_fee", $payment->getNetworkFee() ?? '' );
+					update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_rate", $payment->getRate() ?? '' );
 					if ((float) $payment->getRate() > 0.0) {
 						$formattedRate = number_format((float) $payment->getRate(), wc_get_price_decimals(), wc_get_price_decimal_separator(), wc_get_price_thousand_separator());
-						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethod}_rateFormatted", $formattedRate );
+						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_rateFormatted", $formattedRate );
+					}
+
+					// For each actual payment make a separate entry to make sense of it.
+					foreach ($payment->getPayments() as $index => $trx) {
+						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_{$index}_id", $trx->getTransactionId() ?? '' );
+						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_{$index}_timestamp", $trx->getReceivedTimestamp() ?? '' );
+						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_{$index}_destination", $trx->getDestination() ?? '' );
+						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_{$index}_amount", $trx->getValue() ?? '' );
+						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_{$index}_status", $trx->getStatus() ?? '' );
+						update_post_meta( $order->get_id(), "BTCPay_{$paymentMethodName}_{$index}_networkFee", $trx->getFee() ?? '' );
 					}
 				}
 			}

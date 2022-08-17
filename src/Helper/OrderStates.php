@@ -15,29 +15,32 @@ class OrderStates {
 	const INVALID = 'Invalid';
 	const EXPIRED = 'Expired';
 	const EXPIRED_PAID_PARTIAL = 'ExpiredPaidPartial';
+	const EXPIRED_PAID_LATE = 'ExpiredPaidLate';
 	const IGNORE = 'BTCPAY_IGNORE';
 
 	public function getDefaultOrderStateMappings(): array {
 		return [
-			self::NEW => 'wc-pending',
-			self::PROCESSING => 'wc-on-hold',
-			self::SETTLED => self::IGNORE,
-			self::SETTLED_PAID_OVER => 'wc-processing',
-			self::INVALID => 'wc-failed',
-			self::EXPIRED => 'wc-cancelled',
-			self::EXPIRED_PAID_PARTIAL => 'wc-failed'
+			self::NEW                  => 'wc-pending',
+			self::PROCESSING           => 'wc-on-hold',
+			self::SETTLED              => self::IGNORE,
+			self::SETTLED_PAID_OVER    => 'wc-processing',
+			self::INVALID              => 'wc-failed',
+			self::EXPIRED              => 'wc-cancelled',
+			self::EXPIRED_PAID_PARTIAL => 'wc-failed',
+			self::EXPIRED_PAID_LATE    => 'wc-processing'
 		];
 	}
 
 	public function getOrderStateLabels(): array {
 		return [
-			self::NEW => _x('New', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
-			self::PROCESSING => _x('Paid', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
-			self::SETTLED => _x('Settled', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
-			self::SETTLED_PAID_OVER => _x('Settled (paid over)', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
-			self::INVALID => _x('Invalid', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
-			self::EXPIRED => _x('Expired', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
-			self::EXPIRED_PAID_PARTIAL => _x('Expired with partial payment', 'global_settings', 'btcpay-greenfield-for-woocommerce')
+			self::NEW                  => _x('New', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::PROCESSING           => _x('Paid', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::SETTLED              => _x('Settled', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::SETTLED_PAID_OVER    => _x('Settled (paid over)', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::INVALID              => _x('Invalid', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::EXPIRED              => _x('Expired', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::EXPIRED_PAID_PARTIAL => _x('Expired with partial payment', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
+			self::EXPIRED_PAID_LATE    => _x('Expired (paid late)', 'global_settings', 'btcpay-greenfield-for-woocommerce')
 		];
 	}
 
