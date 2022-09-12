@@ -533,6 +533,14 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$amount = PreciseNumber::parseString( $order->get_total() ); // unlike method signature suggests, it returns string.
 		}
 
+		// Handle Sats-mode.
+		// Because BTCPay does not understand SAT as a currency we need to change to BTC and adjust the amount.
+		if ($currency === 'SAT') {
+			$currency = 'BTC';
+			$amountBTC = bcdiv($amount->__toString(), '100000000', 8);
+			$amount = PreciseNumber::parseString($amountBTC);
+		}
+
 		// Create the invoice on BTCPay Server.
 		$client = new Invoice( $this->apiHelper->url, $this->apiHelper->apiKey );
 		try {

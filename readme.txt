@@ -5,7 +5,7 @@ Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway
 Requires at least: 5.2
 Tested up to: 6.0
 Requires PHP: 7.4
-Stable tag: 1.0.3
+Stable tag: 1.1.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -103,6 +103,10 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 1.1.0 :: 2022-00-00 =
+* Feature: Sats-Mode, currency SAT for Satoshis/Sats now available.
+* Settings, adding more links to docs.
+
 = 1.0.3 :: 2022-08-17 =
 * New order state: Payment received after invoice has been expired.
 * Order metadata restructure, also list multiple payments separated.

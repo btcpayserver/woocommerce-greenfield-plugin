@@ -61,7 +61,7 @@ class GlobalSettings extends \WC_Settings_Page {
 					'btcpay-greenfield-for-woocommerce'
 				),
 				'type'        => 'title',
-				'desc' => sprintf( _x( 'This plugin version is %s and your PHP version is %s. If you need assistance, please come on our chat <a href="https://chat.btcpayserver.org" target="_blank">https://chat.btcpayserver.org</a>. Thank you for using BTCPay!', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), BTCPAYSERVER_VERSION, PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ),
+				'desc' => sprintf( _x( 'This plugin version is %s and your PHP version is %s. Check out our <a href="https://docs.btcpayserver.org/WooCommerce/" target="_blank">installation instructions</a>. If you need assistance, please come on our <a href="https://chat.btcpayserver.org" target="_blank">chat</a>. Thank you for using BTCPay!', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), BTCPAYSERVER_VERSION, PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ),
 				'id' => 'btcpay_gf'
 			],
 			'url'                      => [
@@ -71,7 +71,7 @@ class GlobalSettings extends \WC_Settings_Page {
 					'btcpay-greenfield-for-woocommerce'
 				),
 				'type'        => 'text',
-				'desc' => esc_html_x( 'URL/host to your BTCPay Server instance. Note: if you use a self hosted node like Umbrel, RaspiBlitz, myNode, etc. you will have to make sure your node is reachable from the internet. One option is through Tor, see <a href="https://docs.btcpayserver.org/Deployment/ReverseProxyToTor/" target="_blank">here</a>.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'desc' => esc_html_x( 'URL/host to your BTCPay Server instance. Note: if you use a self hosted node like Umbrel, RaspiBlitz, myNode, etc. you will have to make sure your node is reachable from the internet. You can do that through <a href="https://docs.btcpayserver.org/Deployment/ReverseProxyToTor/" target="_blank">Tor</a>, <a href="https://docs.btcpayserver.org/Docker/cloudflare-tunnel/" target="_blank">Cloudflare</a> or <a href="https://docs.btcpayserver.org/Deployment/ReverseSSHtunnel/" target="_blank">SSH (advanced)</a>.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'placeholder' => esc_attr_x( 'e.g. https://btcpayserver.example.com', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'desc_tip'    => true,
 				'id' => 'btcpay_gf_url'
@@ -118,24 +118,31 @@ class GlobalSettings extends \WC_Settings_Page {
 				'id' => 'btcpay_gf_order_states'
 			],
 			'separate_gateways'                           => [
-				'title'       => __( 'Separate Payment Gateways', 'btcpay-greenfield-for-woocommerce' ),
-				'type'        => 'checkbox',
-				'default'     => 'no',
+				'title' => __( 'Separate Payment Gateways', 'btcpay-greenfield-for-woocommerce' ),
+				'type' => 'checkbox',
+				'default' => 'no',
 				'desc' => _x( 'Make all supported and enabled payment methods available as their own payment gateway. This opens new possibilities like discounts for specific payment methods. See our <a href="https://docs.btcpayserver.org/FAQ/Integrations/#how-to-configure-additional-token-support-separate-payment-gateways" target="_blank">full guide here</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'id' => 'btcpay_gf_separate_gateways'
 			],
 			'customer_data'                           => [
-				'title'       => __( 'Send customer data to BTCPayServer', 'btcpay-greenfield-for-woocommerce' ),
-				'type'        => 'checkbox',
-				'default'     => 'no',
-				'desc' =>  _x( 'If you want customer email, address, etc. sent to BTCPay Server enable this option. By default for privacy and GDPR reasons this is disabled.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'title' => __( 'Send customer data to BTCPayServer', 'btcpay-greenfield-for-woocommerce' ),
+				'type' => 'checkbox',
+				'default' => 'no',
+				'desc' => _x( 'If you want customer email, address, etc. sent to BTCPay Server enable this option. By default for privacy and GDPR reasons this is disabled.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'id' => 'btcpay_gf_send_customer_data'
 			],
+			'sats_mode'                           => [
+				'title' => __( 'Sats-Mode', 'btcpay-greenfield-for-woocommerce' ),
+				'type' => 'checkbox',
+				'default' => 'no',
+				'desc' => _x( 'Makes Satoshis/Sats available as currency "SAT" (can be found in WooCommerce->Settings->General) and handles conversion to BTC before creating the invoice on BTCPay.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'id' => 'btcpay_gf_sats_mode'
+			],
 			'debug'                           => [
-				'title'       => __( 'Debug Log', 'btcpay-greenfield-for-woocommerce' ),
-				'type'        => 'checkbox',
-				'default'     => 'no',
-				'desc'        => sprintf( _x( 'Enable logging <a href="%s" class="button">View Logs</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), Logger::getLogFileUrl()),
+				'title' => __( 'Debug Log', 'btcpay-greenfield-for-woocommerce' ),
+				'type' => 'checkbox',
+				'default' => 'no',
+				'desc' => sprintf( _x( 'Enable logging <a href="%s" class="button">View Logs</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), Logger::getLogFileUrl()),
 				'id' => 'btcpay_gf_debug'
 			],
 			'sectionend' => [

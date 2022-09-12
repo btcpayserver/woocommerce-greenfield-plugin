@@ -18,12 +18,13 @@
 use BTCPayServer\WC\Admin\Notice;
 use BTCPayServer\WC\Gateway\DefaultGateway;
 use BTCPayServer\WC\Gateway\SeparateGateways;
+use BTCPayServer\WC\Helper\SatsMode;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\Logger;
 
 defined( 'ABSPATH' ) || exit();
 
-define( 'BTCPAYSERVER_VERSION', '1.0.3' );
+define( 'BTCPAYSERVER_VERSION', '1.1.0' );
 define( 'BTCPAYSERVER_VERSION_KEY', 'btcpay_gf_version' );
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
@@ -76,6 +77,12 @@ class BTCPayServerWCPlugin {
 		// Make sure WP internal functions are available.
 		if ( ! function_exists('is_plugin_active') ) {
 			include_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		// Setup other dependencies.
+		// Make SAT / Sats as currency available.
+		if (get_option('btcpay_gf_sats_mode') === 'yes') {
+			SatsMode::instance();
 		}
 	}
 
