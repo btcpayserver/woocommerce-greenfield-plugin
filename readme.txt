@@ -103,7 +103,7 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
-= 1.1.0 :: 2022-00-00 =
+= 1.1.0 :: 2022-09-12 =
 * Feature: Sats-Mode, currency SAT for Satoshis/Sats now available.
 * Settings, adding more links to docs.
 
