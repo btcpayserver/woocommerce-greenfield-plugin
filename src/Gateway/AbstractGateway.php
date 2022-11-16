@@ -470,20 +470,23 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				if ( in_array( $invoice->getData()['status'], $invalidStates ) ) {
 					return false;
 				} else {
-					// Check also if the payment methods match.
-					$pmInvoice = $invoice->getData()['checkout']['paymentMethods'];
-					$pmInvoice = str_replace('-', '_', $pmInvoice);
-					sort($pmInvoice);
-					$pm = $this->getPaymentMethods();
-					sort($pm);
-					if ($pm === $pmInvoice) {
-						return true;
+					// Check also if the payment methods match, only needed if separate payment methods enabled.
+					if (get_option('btcpay_gf_separate_gateways') === 'yes') {
+						$pmInvoice = $invoice->getData()['checkout']['paymentMethods'];
+						$pmInvoice = str_replace('-', '_', $pmInvoice);
+						sort($pmInvoice);
+						$pm = $this->getPaymentMethods();
+						sort($pm);
+						if ($pm === $pmInvoice) {
+							return true;
+						}
+						// Mark existing invoice as invalid.
+						$order = wc_get_order($orderId);
+						$order->add_order_note(__('BTCPay invoice manually set to invalid because customer went back to checkout and changed payment gateway.', 'btcpay-greenfield-for-woocommerce'));
+						$this->markInvoiceInvalid($invoiceId);
+						return false;
 					}
-					// Mark existing invoice as invalid.
-					$order = wc_get_order($orderId);
-					$order->add_order_note(__('BTCPay invoice manually set to invalid because customer went back to checkout and changed payment gateway.', 'btcpay-greenfield-for-woocommerce'));
-					$this->markInvoiceInvalid($invoiceId);
-					return false;
+					return true;
 				}
 			} catch ( \Throwable $e ) {
 				Logger::debug( $e->getMessage() );
