@@ -143,17 +143,30 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		$order = wc_get_order($order_id);
 		$refundAmount = PreciseNumber::parseString($amount);
-
-		// Check if order has invoice id.
-
-		// Check if order has not already got refunded.
-
-		// Make sure the refund amount is not greater than the invoice amount.
-		$orderAmount = $order->get_total();
-
-		//// Create the payout on BTCPay Server.
 		$currency = $order->get_currency();
 
+		// Check if order has invoice id.
+		if (!$invoiceId = $order->get_meta('BTCPay_id')) {
+			$errNoBtcpayId = __METHOD__ . ': no BTCPay invoice id found, aborting.';
+			Logger::debug($errNoBtcpayId);
+			new \WP_Error('1', $errNoBtcpayId);
+		}
+
+		// Check if order has not already got refunded.
+		if ($existingRefund = $order->get_meta('BTCPay_refund_id')) {
+			$errRefundExists = __METHOD__ . ': refund already exists, aborting.';
+			Logger::debug($errRefundExists);
+			new \WP_Error('1', $errRefundExists);
+		}
+
+		// Make sure the refund amount is not greater than the invoice amount.
+		if ($amount > $order->get_total()) {
+			$errAmount = __METHOD__ . ': the refund amount can not exceed the order amount, aborting.';
+			Logger::debug($errAmount);
+			new \WP_Error('1', $errAmount);
+		}
+
+		// Create the payout on BTCPay Server.
 		// Handle Sats-mode.
 		if ($currency === 'SAT') {
 			$currency = 'BTC';
@@ -176,6 +189,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				null,
 				$this->getPaymentMethods()
 			);
+
 			if (!empty($pullPayment)) {
 				$successMsg = 'Successfully created pull payment with id: ' . $pullPayment->getId() . ' link: ' . $pullPayment->getViewLink();
 				Logger::debug($successMsg);
