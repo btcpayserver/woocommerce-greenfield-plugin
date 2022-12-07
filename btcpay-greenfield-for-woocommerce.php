@@ -142,6 +142,11 @@ class BTCPayServerWCPlugin {
 			Notice::addNotice('error', $wcMessage);
 		}
 
+		// Check if PHP cURL is available.
+		if ( ! function_exists('curl_init') ) {
+			$curlMessage = __('The PHP cURL extension is not installed. Make sure it is available otherwise this plugin will not work.', 'btcpay-greenfield-for-woocommerce');
+			Notice::addNotice('error', $curlMessage);
+		}
 	}
 
 	/**
