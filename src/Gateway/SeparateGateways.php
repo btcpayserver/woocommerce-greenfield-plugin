@@ -21,7 +21,7 @@ class SeparateGateways {
 			if ( $separateGateways = \BTCPayServer\WC\Helper\GreenfieldApiHelper::supportedPaymentMethods() ) {
 				// Check if generated classes match cache.
 				$generatedGateways = get_transient(self::PM_GENERATED_CACHE_KEY);
-				if ($generatedGateways !== $separateGateways) {
+				if ($generatedGateways !== $separateGateways || self::generatedFilesExist() === false) {
 					Logger::debug('Generating and writing separate gateway classes to filesystem.');
 					self::initSeparatePaymentGateways( $separateGateways );
 				} else {
@@ -92,7 +92,7 @@ class SeparateGateways {
 		// Set cache for written files to avoid doing it every request, no expiration (will be cleared elsewhere)
 		if ($writtenFiles > 0) {
 			set_transient( self::PM_GENERATED_CACHE_KEY, $gateways,0 );
-			Logger::debug("Successfully wrote ${$writtenFiles} to filesystem.");
+			Logger::debug("Successfully wrote ${writtenFiles} to filesystem.");
 		}
 	}
 
@@ -149,5 +149,18 @@ class SeparateGateways {
 
 		return false;
 	}
-}
 
+	public static function generatedFilesExist(): bool {
+		// Abort if dir does not exist.
+		if (!is_dir(self::GENERATED_PATH)) {
+			return false;
+		}
+
+		// Check if any generated files are present.
+		if (count(scandir(self::GENERATED_PATH)) > 0) {
+			return true;
+		}
+
+		return false;
+	}
+}
