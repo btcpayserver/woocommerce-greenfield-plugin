@@ -103,6 +103,10 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 1.1.3 :: 2023-01-20 =
+* Fix: fixed error on thank you page for separate payment methods.
+* Dev: updating Docker to latest WP and WC versions.
+* Dev: switch Github action for checkout to v3.
 
 = 1.1.2 :: 2022-12-09 =
 * Fix existing invoice check, wrongly marking invoice invalid on some use cases.

@@ -1,6 +1,6 @@
-FROM wordpress:6.0
+FROM wordpress:6.1-php8.2
 
-ENV WOOCOMMERCE_VERSION 6.6.1
+ENV WOOCOMMERCE_VERSION 7.3.0
 
 # Fetch WooCommerce.
 RUN apt-get update \
@@ -24,7 +24,9 @@ RUN curl -L "https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cl
     chmod +x /usr/bin/wp
 
 RUN { \
-		echo 'file_uploads = On'; \
-		echo 'post_max_size=100M'; \
-		echo 'upload_max_filesize=100M'; \
+      echo 'file_uploads = On'; \
+      echo 'post_max_size=100M'; \
+      echo 'upload_max_filesize=100M'; \
+      echo 'display_errors=on'; \
+      echo 'display_errors=E_ALL'; \
 	} > /usr/local/etc/php/conf.d/custom.ini
