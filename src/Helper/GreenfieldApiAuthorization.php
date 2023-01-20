@@ -13,7 +13,8 @@ class GreenfieldApiAuthorization {
 		'btcpay.store.canmodifyinvoices'
 	];
 	public const OPTIONAL_PERMISSIONS = [
-		'btcpay.store.canmanagepullpayments'
+		'btcpay.store.cancreatenonapprovedpullpayments',
+		'btcpay.store.cancreatepullpayments'
 	];
 
 	private $apiKey;
