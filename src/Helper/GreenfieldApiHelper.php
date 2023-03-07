@@ -166,12 +166,12 @@ class GreenfieldApiHelper {
 	public static function invoiceIsFullyPaid(string $invoiceId): bool {
 		if ($config = self::getConfig()) {
 			$client = new Invoice($config['url'], $config['api_key']);
-				try {
-					$invoice = $client->getInvoice($config['store_id'], $invoiceId);
-					return $invoice->isFullyPaid() || $invoice->isPaidLate();
-				} catch (\Throwable $e) {
-					Logger::debug('Exception while checking if invoice settled '. $invoiceId . ': ' . $e->getMessage());
-				}
+			try {
+				$invoice = $client->getInvoice($config['store_id'], $invoiceId);
+				return $invoice->isFullyPaid() || $invoice->isPaidLate();
+			} catch (\Throwable $e) {
+				Logger::debug('Exception while checking if invoice settled '. $invoiceId . ': ' . $e->getMessage());
+			}
 		}
 
 		return false;

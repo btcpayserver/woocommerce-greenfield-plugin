@@ -13,8 +13,7 @@ class GreenfieldApiAuthorization {
 		'btcpay.store.canmodifyinvoices'
 	];
 	public const OPTIONAL_PERMISSIONS = [
-		'btcpay.store.cancreatenonapprovedpullpayments',
-		'btcpay.store.cancreatepullpayments'
+		'btcpay.store.cancreatenonapprovedpullpayments'
 	];
 
 	private $apiKey;
@@ -77,4 +76,11 @@ class GreenfieldApiAuthorization {
 		return true;
 	}
 
+	public function hasRefundsPermission(): bool {
+		$permissions = array_reduce($this->permissions, static function (array $carry, string $permission) {
+			return array_merge($carry, [explode(':', $permission)[0]]);
+		}, []);
+
+		return in_array('btcpay.store.cancreatenonapprovedpullpayments', $permissions, true);
+	}
 }
