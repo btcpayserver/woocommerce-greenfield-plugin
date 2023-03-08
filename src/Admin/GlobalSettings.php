@@ -210,7 +210,7 @@ class GlobalSettings extends \WC_Settings_Page {
 					} else {
 						// Check if the configured api key has refunds permission; show notice if not.
 						if (!$apiAuth->hasRefundsPermission()) {
-							$messageRefundsPermissionMissing = __( 'Your api key does not support refunds, if you want to use that feature you need to create a new API key with permission. See our guide <a href="https://docs.btcpayserver.org/XXX" target="_blank" rel="noreferrer">here</a>.', 'btcpay-greenfield-for-woocommerce' );
+							$messageRefundsPermissionMissing = __( 'Your api key does not support refunds, if you want to use that feature you need to create a new API key with permission. See our guide <a href="https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key" target="_blank" rel="noreferrer">here</a>.', 'btcpay-greenfield-for-woocommerce' );
 							Notice::addNotice('info', $messageRefundsPermissionMissing, true);
 							Logger::debug($messageRefundsPermissionMissing);
 						}

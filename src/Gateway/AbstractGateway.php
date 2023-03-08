@@ -9,6 +9,7 @@ use BTCPayServer\Client\InvoiceCheckoutOptions;
 use BTCPayServer\Client\PullPayment;
 use BTCPayServer\Util\PreciseNumber;
 use BTCPayServer\WC\Admin\Notice;
+use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
 use BTCPayServer\WC\Helper\Logger;
@@ -134,6 +135,19 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	public function process_refund( $order_id, $amount = null, $reason = '' ) {
+		// Check if the BTCPay Server version used supports refunds.
+		if (!$this->apiHelper->serverSupportsRefunds()) {
+			$errServer = 'Your BTCPay Server does not support refunds. Make sure to run a BTCPay Server v1.7.6 or newer.';
+			Logger::debug($errServer);
+			return new \WP_Error('1', $errServer);
+		}
+
+		// Check if the api key has support for refunds, abort if not.
+		if (!$this->apiHelper->apiKeySupportHasRefundPermission()) {
+			$errKeyInfo = 'Your current API key does not support refunds. You will need to create a new one with the required permission. See our upgrade guide https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key';
+			Logger::debug(__METHOD__ . ' : The current api key does not support refunds.' );
+			return new \WP_Error('1', $errKeyInfo);
+		}
 
 		// Abort if no amount.
 		if (is_null($amount)) {
