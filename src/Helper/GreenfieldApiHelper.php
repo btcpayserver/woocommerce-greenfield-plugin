@@ -119,8 +119,8 @@ class GreenfieldApiHelper {
 	/**
 	 * Deletes local cache of supported payment methods.
 	 */
-	public static function clearSupportedPaymentMethodsCache(): bool {
-		return delete_transient( self::PM_CACHE_KEY );
+	public static function clearSupportedPaymentMethodsCache(): void {
+		delete_transient( self::PM_CACHE_KEY );
 	}
 
 	/**
