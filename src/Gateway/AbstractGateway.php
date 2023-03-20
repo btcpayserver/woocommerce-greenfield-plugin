@@ -143,7 +143,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 
 		// Check if the api key has support for refunds, abort if not.
-		if (!$this->apiHelper->apiKeySupportHasRefundPermission()) {
+		if (!$this->apiHelper->apiKeyHasRefundPermission()) {
 			$errKeyInfo = 'Your current API key does not support refunds. You will need to create a new one with the required permission. See our upgrade guide https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key';
 			Logger::debug(__METHOD__ . ' : The current api key does not support refunds.' );
 			return new \WP_Error('1', $errKeyInfo);

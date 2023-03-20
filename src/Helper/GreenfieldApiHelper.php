@@ -178,7 +178,7 @@ class GreenfieldApiHelper {
 		return false;
 	}
 
-	public function apiKeySupportHasRefundPermission(): bool {
+	public function apiKeyHasRefundPermission(): bool {
 		if ($this->configured) {
 			$client = new ApiKey($this->url, $this->apiKey);
 			try {
