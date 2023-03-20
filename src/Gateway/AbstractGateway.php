@@ -6,7 +6,10 @@ namespace BTCPayServer\WC\Gateway;
 
 use BTCPayServer\Client\Invoice;
 use BTCPayServer\Client\InvoiceCheckoutOptions;
+use BTCPayServer\Client\PullPayment;
 use BTCPayServer\Util\PreciseNumber;
+use BTCPayServer\WC\Admin\Notice;
+use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
 use BTCPayServer\WC\Helper\Logger;
@@ -40,6 +43,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Actions.
 		add_action('admin_enqueue_scripts', [$this, 'addScripts']);
 		add_action('woocommerce_update_options_payment_gateways_' . $this->getId(), [$this, 'process_admin_options']);
+
+		// Supported features.
+		$this->supports = [
+			'products',
+			'refunds'
+		];
 	}
 
 	/**
@@ -123,6 +132,106 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				'redirect' => $url,
 			];
 		}
+	}
+
+	public function process_refund( $order_id, $amount = null, $reason = '' ) {
+		// Check if the BTCPay Server version used supports refunds.
+		if (!$this->apiHelper->serverSupportsRefunds()) {
+			$errServer = 'Your BTCPay Server does not support refunds. Make sure to run a BTCPay Server v1.7.6 or newer.';
+			Logger::debug($errServer);
+			return new \WP_Error('1', $errServer);
+		}
+
+		// Check if the api key has support for refunds, abort if not.
+		if (!$this->apiHelper->apiKeyHasRefundPermission()) {
+			$errKeyInfo = 'Your current API key does not support refunds. You will need to create a new one with the required permission. See our upgrade guide https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key';
+			Logger::debug(__METHOD__ . ' : The current api key does not support refunds.' );
+			return new \WP_Error('1', $errKeyInfo);
+		}
+
+		// Abort if no amount.
+		if (is_null($amount)) {
+			$errAmount = __METHOD__ . ': refund amount is empty, aborting.';
+			Logger::debug($errAmount);
+			return new \WP_Error('1', $errAmount);
+		}
+
+		$order = wc_get_order($order_id);
+		$refundAmount = PreciseNumber::parseString($amount);
+		$currency = $order->get_currency();
+
+		// Check if order has invoice id.
+		if (!$invoiceId = $order->get_meta('BTCPay_id')) {
+			$errNoBtcpayId = __METHOD__ . ': no BTCPay invoice id found, aborting.';
+			Logger::debug($errNoBtcpayId);
+			return new \WP_Error('1', $errNoBtcpayId);
+		}
+
+		// Make sure the refund amount is not greater than the invoice amount.
+		if ($amount > $order->get_remaining_refund_amount()) {
+			$errAmount = __METHOD__ . ': the refund amount can not exceed the order amount, aborting.';
+			Logger::debug($errAmount);
+			return new \WP_Error('1', $errAmount);
+		}
+
+		// Create the payout on BTCPay Server.
+		// Handle Sats-mode.
+		if ($currency === 'SAT') {
+			$currency = 'BTC';
+			$amountBTC = bcdiv($refundAmount->__toString(), '100000000', 8);
+			$refundAmount = PreciseNumber::parseString($amountBTC);
+		}
+
+		// Get payment methods.
+		$paymentMethods = $this->getPaymentMethods();
+		// Remove LNURL
+		if (in_array('BTC_LNURLPAY', $paymentMethods)) {
+			$paymentMethods = array_diff($paymentMethods, ['BTC_LNURLPAY']);
+		}
+
+		// Create the payout.
+		try {
+			$client = new PullPayment( $this->apiHelper->url, $this->apiHelper->apiKey);
+			// todo: add reason to description with upcoming php lib v3
+			$pullPayment = $client->createPullPayment(
+				$this->apiHelper->storeId,
+				__('Refund for order no.: ', 'btcpay-greenfield-for-woocommerce') . $order->get_order_number() . ' reason: ' . $reason,
+				$refundAmount,
+				$currency,
+				null,
+				null,
+				false, // use setting
+				null,
+				null,
+				array_values($paymentMethods)
+			);
+
+			if (!empty($pullPayment)) {
+				$refundMsg = "PullPayment ID: " . $pullPayment->getId() . "\n";
+				$refundMsg .= "Link: " . $pullPayment->getViewLink() . "\n";
+				$refundMsg .= "Amount: " . $amount . " " . $currency . "\n";
+				$refundMsg .= "Reason: " . $reason;
+				$successMsg = 'Successfully created refund: ' . $refundMsg;
+
+				Logger::debug($successMsg);
+
+				$order->add_order_note($successMsg);
+				// Use add_meta_data to allow for partial refunds.
+				$order->add_meta_data('BTCPay_refund', $refundMsg, false);
+				$order->save();
+				return true;
+			} else {
+				$errEmptyPullPayment = 'Error creating pull payment. Make sure you have the correct api key permissions.';
+				Logger::debug($errEmptyPullPayment, true);
+				return new \WP_Error('1', $errEmptyPullPayment);
+			}
+		} catch (\Throwable $e) {
+			$errException = 'Exception creating pull payment: ' . $e->getMessage();
+			Logger::debug($errException,true);
+			return new \WP_Error('1', $errException);
+		}
+
+		return new \WP_Error('1', 'Error processing the refund, please check logs.');
 	}
 
 	public function process_admin_options() {

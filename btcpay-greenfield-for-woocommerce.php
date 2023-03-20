@@ -18,6 +18,7 @@
 use BTCPayServer\WC\Admin\Notice;
 use BTCPayServer\WC\Gateway\DefaultGateway;
 use BTCPayServer\WC\Gateway\SeparateGateways;
+use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\SatsMode;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\Logger;
@@ -176,11 +177,13 @@ class BTCPayServerWCPlugin {
 				wp_send_json_error("Error validating BTCPayServer URL.");
 			}
 
+			$permissions = array_merge(GreenfieldApiAuthorization::REQUIRED_PERMISSIONS, GreenfieldApiAuthorization::OPTIONAL_PERMISSIONS);
+
 			try {
 				// Create the redirect url to BTCPay instance.
 				$url = \BTCPayServer\Client\ApiKey::getAuthorizeUrl(
 					$host,
-					\BTCPayServer\WC\Helper\GreenfieldApiAuthorization::REQUIRED_PERMISSIONS,
+					$permissions,
 					'WooCommerce',
 					true,
 					true,

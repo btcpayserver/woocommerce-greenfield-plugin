@@ -189,7 +189,7 @@ class GlobalSettings extends \WC_Settings_Page {
 					$hasError = true;
 				}
 
-				// Check server version.
+				// Check server info and sync status.
 				if ($serverInfo = GreenfieldApiHelper::getServerInfo()) {
 					Logger::debug( 'Serverinfo: ' . print_r( $serverInfo, true ), true );
 
@@ -198,6 +198,22 @@ class GlobalSettings extends \WC_Settings_Page {
 						$messageNotSynched = __( 'Your BTCPay Server is not fully synched yet. Until fully synched the checkout will not work.', 'btcpay-greenfield-for-woocommerce' );
 						Notice::addNotice('error', $messageNotSynched, false);
 						Logger::debug($messageNotSynched);
+					}
+
+					// Show a notice if the BTCPay Server version does not work with refunds.
+					// This needs the btcpay.store.cancreatenonapprovedpullpayments permission which was introduced with
+					// BTCPay Server v1.7.6
+					if (version_compare($serverInfo->getVersion(), '1.7.6', '<')) {
+						$messageRefundsSupport = __( 'Your BTCPay Server version does not support refunds, please update to at least version 1.7.6 or newer.', 'btcpay-greenfield-for-woocommerce' );
+						Notice::addNotice('error', $messageRefundsSupport, false);
+						Logger::debug($messageRefundsSupport);
+					} else {
+						// Check if the configured api key has refunds permission; show notice if not.
+						if (!$apiAuth->hasRefundsPermission()) {
+							$messageRefundsPermissionMissing = __( 'Your api key does not support refunds, if you want to use that feature you need to create a new API key with permission. See our guide <a href="https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key" target="_blank" rel="noreferrer">here</a>.', 'btcpay-greenfield-for-woocommerce' );
+							Notice::addNotice('info', $messageRefundsPermissionMissing, true);
+							Logger::debug($messageRefundsPermissionMissing);
+						}
 					}
 				}
 

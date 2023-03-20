@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BTCPayServer\WC\Helper;
 
+use BTCPayServer\Client\ApiKey;
 use BTCPayServer\Client\Invoice;
 use BTCPayServer\Client\Server;
 use BTCPayServer\Client\Store;
@@ -166,12 +167,41 @@ class GreenfieldApiHelper {
 	public static function invoiceIsFullyPaid(string $invoiceId): bool {
 		if ($config = self::getConfig()) {
 			$client = new Invoice($config['url'], $config['api_key']);
-				try {
-					$invoice = $client->getInvoice($config['store_id'], $invoiceId);
-					return $invoice->isFullyPaid() || $invoice->isPaidLate();
-				} catch (\Throwable $e) {
-					Logger::debug('Exception while checking if invoice settled '. $invoiceId . ': ' . $e->getMessage());
-				}
+			try {
+				$invoice = $client->getInvoice($config['store_id'], $invoiceId);
+				return $invoice->isFullyPaid() || $invoice->isPaidLate();
+			} catch (\Throwable $e) {
+				Logger::debug('Exception while checking if invoice settled '. $invoiceId . ': ' . $e->getMessage());
+			}
+		}
+
+		return false;
+	}
+
+	public function apiKeyHasRefundPermission(): bool {
+		if ($this->configured) {
+			$client = new ApiKey($this->url, $this->apiKey);
+			try {
+				$apiKey = $client->getCurrent();
+				$apiAuth = new GreenfieldApiAuthorization( $apiKey->getData() );
+				return $apiAuth->hasRefundsPermission();
+			} catch (\Throwable $e) {
+				Logger::debug('Exception while checking current API key: ' . $e->getMessage());
+			}
+		}
+
+		return false;
+	}
+
+	public function serverSupportsRefunds(): bool {
+		if ($this->configured) {
+			$client = new Server($this->url, $this->apiKey);
+			try {
+				$serverInfo = $client->getInfo();
+				return !version_compare($serverInfo->getVersion(), '1.7.6', '<');
+			} catch (\Throwable $e) {
+				Logger::debug('Exception while checking current API key: ' . $e->getMessage());
+			}
 		}
 
 		return false;
