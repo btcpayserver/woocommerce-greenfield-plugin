@@ -5,7 +5,7 @@ Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway
 Requires at least: 5.2
 Tested up to: 6.1
 Requires PHP: 7.4
-Stable tag: 1.1.5
+Stable tag: 2.0.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -103,6 +103,14 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 2.0.0 :: 2023-03-20 =
+* New feature: Add support for refunds.
+
+Note: If you are upgrading from a version < 2.0 and you want to use refunds (via pull payments) you need to create a new API key with the "Create non-approved pull payments" which is available from BTCPay Server version 1.7.6.
+See this link for more information: https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key
+
+If you do NOT use refunds. You do NOT need to do anything, your existing API key and setup will continue to work as before.
+
 = 1.1.5 :: 2023-03-08 =
 * Fix: fix error when plugins override delete_transient function not returning boolean value
 
