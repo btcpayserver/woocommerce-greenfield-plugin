@@ -8,8 +8,6 @@ use BTCPayServer\Client\Invoice;
 use BTCPayServer\Client\InvoiceCheckoutOptions;
 use BTCPayServer\Client\PullPayment;
 use BTCPayServer\Util\PreciseNumber;
-use BTCPayServer\WC\Admin\Notice;
-use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
 use BTCPayServer\WC\Helper\Logger;
@@ -41,7 +39,8 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$this->debug_plugin_version = BTCPAYSERVER_VERSION;
 
 		// Actions.
-		add_action('admin_enqueue_scripts', [$this, 'addScripts']);
+		add_action('admin_enqueue_scripts', [$this, 'addAdminScripts']);
+		add_action('wp_enqueue_scripts', [$this, 'addPublicScripts']);
 		add_action('woocommerce_update_options_payment_gateways_' . $this->getId(), [$this, 'process_admin_options']);
 
 		// Supported features.
@@ -102,14 +101,24 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			throw new \Exception( $message );
 		}
 
+		// Check if the order is a modal payment.
+		if (isset($_POST['action'])) {
+			$action = wc_clean( wp_unslash( $_POST['action'] ) );
+			if ( $action === 'btcpaygf_modal_checkout' ) {
+				Logger::debug( 'process_payment called via modal checkout.' );
+			}
+		}
+
 		// Check for existing invoice and redirect instead.
 		if ( $this->validInvoiceExists( $orderId ) ) {
 			$existingInvoiceId = get_post_meta( $orderId, 'BTCPay_id', true );
 			Logger::debug( 'Found existing BTCPay Server invoice and redirecting to it. Invoice id: ' . $existingInvoiceId );
 
 			return [
-				'result'   => 'success',
+				'result' => 'success',
 				'redirect' => $this->apiHelper->getInvoiceRedirectUrl( $existingInvoiceId ),
+				'invoiceId' => $existingInvoiceId,
+				'orderCompleteLink' => $order->get_checkout_order_received_url(),
 			];
 		}
 
@@ -128,8 +137,10 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			} */
 
 			return [
-				'result'   => 'success',
+				'result' => 'success',
 				'redirect' => $url,
+				'invoiceId' => $invoice->getData()['id'],
+				'orderCompleteLink' => $order->get_checkout_order_received_url(),
 			];
 		}
 	}
@@ -311,7 +322,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	/**
 	 * Add scripts.
 	 */
-	public function addScripts($hook_suffix) {
+	public function addAdminScripts($hook_suffix) {
 		if ($hook_suffix === 'woocommerce_page_wc-settings') {
 			wp_enqueue_media();
 			wp_register_script(
@@ -330,6 +341,46 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				]
 			);
 		}
+	}
+
+	public function addPublicScripts() {
+		// We only load the modal checkout scripts when enabled.
+		if (get_option('btcpay_gf_modal_checkout') !== 'yes') {
+			return;
+		}
+
+		if ($this->apiHelper->configured === false) {
+			return;
+		}
+
+		// Load BTCPay modal JS.
+		wp_enqueue_script( 'btcpay_gf_modal_js', $this->apiHelper->url . '/modal/btcpay.js', [], BTCPAYSERVER_VERSION );
+
+		// Register modal script.
+		wp_register_script(
+			'btcpay_gf_modal_checkout',
+			BTCPAYSERVER_PLUGIN_URL . 'assets/js/modalCheckout.js',
+			[ 'jquery' ],
+			BTCPAYSERVER_VERSION,
+			true
+		);
+
+		// Pass object BTCPayWP to be available on the frontend.
+		wp_localize_script( 'btcpay_gf_modal_checkout', 'BTCPayWP', [
+			'modalEnabled' => get_option('btcpay_gf_modal_checkout') === 'yes',
+			'debugEnabled' => get_option('btcpay_gf_debug') === 'yes',
+			'url' => admin_url( 'admin-ajax.php' ),
+			'apiUrl' => $this->apiHelper->url,
+			'apiNonce' => wp_create_nonce( 'btcpay-nonce' ),
+			'isChangePaymentPage' => isset( $_GET['change_payment_method'] ) ? 'yes' : 'no',
+			'isPayForOrderPage' => is_wc_endpoint_url( 'order-pay' ) ? 'yes' : 'no',
+			'isAddPaymentMethodPage' => is_add_payment_method_page() ? 'yes' : 'no',
+			'textInvoiceExpired' =>  _x('The invoice expired. Please try again, choose a different payment method or contact us if you paid but the payment did not confirm in time.', 'js', 'btcpay-greenfield-for-woocommerce'),
+			'textModalClosed' =>  _x('Payment aborted by you. Please try again or choose a different payment method.', 'js', 'btcpay-greenfield-for-woocommerce'),
+		] );
+
+		// Add the registered modal script to frontend.
+		wp_enqueue_script( 'btcpay_gf_modal_checkout' );
 	}
 
 	/**
