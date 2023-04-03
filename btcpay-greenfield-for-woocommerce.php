@@ -39,6 +39,8 @@ class BTCPayServerWCPlugin {
 		$this->includes();
 
 		add_action('woocommerce_thankyou_btcpaygf_default', ['BTCPayServerWCPlugin', 'orderStatusThankYouPage'], 10, 1);
+		add_action( 'wp_ajax_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
+		add_action( 'wp_ajax_nopriv_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
 
 		// Run the updates.
 		\BTCPayServer\WC\Helper\UpdateManager::processUpdates();
@@ -202,6 +204,31 @@ class BTCPayServerWCPlugin {
 		}
 
 		wp_send_json_error("Error processing Ajax request.");
+	}
+
+	/**
+	 * Handles the AJAX callback from the Payment Request on the checkout page.
+	 */
+	public function processAjaxModalCheckout() {
+
+		Logger::debug('Entering ' . __METHOD__);
+
+		$nonce = $_POST['apiNonce'];
+		if ( ! wp_verify_nonce( $nonce, 'btcpay-nonce' ) ) {
+			wp_die('Unauthorized!', '', ['response' => 401]);
+		}
+
+		if ( get_option('btcpay_gf_modal_checkout') !== 'yes' ) {
+			wp_die('Modal checkout mode not enabled.', '', ['response' => 400]);
+		}
+
+		wc_maybe_define_constant( 'WOOCOMMERCE_CHECKOUT', true );
+
+		try {
+			WC()->checkout()->process_checkout();
+		} catch (\Throwable $e) {
+			Logger::debug('Error processing modal checkout ajax callback: ' . $e->getMessage());
+		}
 	}
 
 	public static function orderStatusThankYouPage($order_id)
