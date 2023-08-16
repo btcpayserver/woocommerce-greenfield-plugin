@@ -1,0 +1,6 @@
+.btcpay-connection-success {
+	color: green;
+}
+.btcpay-connection-error {
+	color: red;
+}

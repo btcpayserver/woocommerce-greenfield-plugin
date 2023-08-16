@@ -17,13 +17,15 @@ use BTCPayServer\WC\Helper\OrderStates;
  * todo: add validation of host/url
  */
 class GlobalSettings extends \WC_Settings_Page {
-
+	private GreenfieldApiHelper $apiHelper;
 	public function __construct()
 	{
 		$this->id = 'btcpay_settings';
 		$this->label = __( 'BTCPay Settings', 'btcpay-greenfield-for-woocommerce' );
+		$this->apiHelper = new GreenfieldApiHelper();
 		// Register custom field type order_states with OrderStatesField class.
 		add_action('woocommerce_admin_field_order_states', [(new OrderStates()), 'renderOrderStatesHtml']);
+		add_action('woocommerce_admin_field_custom_markup', [$this, 'output_custom_markup_field']);
 
 		if (is_admin()) {
 			// Register and include JS.
@@ -34,13 +36,20 @@ class GlobalSettings extends \WC_Settings_Page {
 				[
 					'url' => admin_url( 'admin-ajax.php' ),
 					'apiNonce' => wp_create_nonce( 'btcpaygf-api-url-nonce' ),
-				]);
+				]
+			);
+
+			// Register and include CSS.
+			wp_register_style( 'btcpay_gf_admin_styles', BTCPAYSERVER_PLUGIN_URL . 'assets/css/admin.css', array(), WC_VERSION );
+			wp_enqueue_style( 'btcpay_gf_admin_styles' );
+
 		}
 		parent::__construct();
 	}
 
 	public function output(): void
 	{
+		echo '<h1>' . _x('BTCPay Server Payments settings', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</h1>';
 		$settings = $this->get_settings_for_default_section();
 		\WC_Admin_Settings::output_fields($settings);
 	}
@@ -53,16 +62,44 @@ class GlobalSettings extends \WC_Settings_Page {
 	public function getGlobalSettings(): array
 	{
 		Logger::debug('Entering Global Settings form.');
+
+		// Check setup status and prepare output.
+		$setupStatus = '';
+		if ($this->apiHelper->configured) {
+			$setupStatus = '<p class="btcpay-connection-success">' . _x('BTCPay Server connected.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</p>';
+		} else {
+			$setupStatus = '<p class="btcpay-connection-error">' . _x('Not connected. Please use the setup wizard above or check advanced settings to manually enter connection settings.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</p>';
+		}
+
+		// Check webhook status and prepare output.
+		$whStatus = '';
+		$whId = '';
+		// Can't use apiHelper for caching reasons here.
+		if ($webhookConfig = get_option('btcpay_gf_webhook')) {
+			$whId = $webhookConfig['id'];
+		}
+
+		if ($this->apiHelper->webhookIsSetup()) {
+			$whStatus = '<p class="btcpay-connection-success">' . _x('Webhook setup automatically.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . ' ID: ' . $whId . '</p>';
+		} else {
+			$whStatus = '<p class="btcpay-connection-error">' . _x('No webhook setup, yet.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</p>';
+		}
+
+		if ($this->apiHelper->webhookIsSetupManual()) {
+			$whStatus = '<p class="btcpay-connection-success">' . _x('Webhook setup manually with webhook secret.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . ' ID: ' . $whId . '</p>';
+		}
+
 		return [
-			'title' => [
+			// Section connection.
+			'title_connection' => [
 				'title' => esc_html_x(
-					'BTCPay Server Payments Settings',
+					'Connection settings',
 					'global_settings',
 					'btcpay-greenfield-for-woocommerce'
 				),
 				'type' => 'title',
 				'desc' => sprintf( _x( 'This plugin version is %s and your PHP version is %s. Check out our <a href="https://docs.btcpayserver.org/WooCommerce/" target="_blank">installation instructions</a>. If you need assistance, please come on our <a href="https://chat.btcpayserver.org" target="_blank">chat</a>. Thank you for using BTCPay!', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), BTCPAYSERVER_VERSION, PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ),
-				'id' => 'btcpay_gf'
+				'id' => 'btcpay_gf_connection'
 			],
 			'url' => [
 				'title' => esc_html_x(
@@ -76,10 +113,29 @@ class GlobalSettings extends \WC_Settings_Page {
 				'desc_tip'    => true,
 				'id' => 'btcpay_gf_url'
 			],
+			'wizard' => [
+				'title'       => esc_html_x( 'Setup wizard', 'global_settings','btcpay-greenfield-for-woocommerce' ),
+				'type'  => 'custom_markup',
+				'markup'  => '<button class="button button-primary btcpay-api-key-link" target="_blank">Generate API key</button>',
+				'id'    => 'btcpay_gf_wizard_button' // a unique ID
+			],
+			'status' => [
+				'title'       => esc_html_x( 'Setup status', 'global_settings','btcpay-greenfield-for-woocommerce' ),
+				'type'  => 'custom_markup',
+				'markup'  => $setupStatus,
+				'id'    => 'btcpay_gf_status'
+			],
+			'connection_details' => [
+				'title' => __( 'Advanced settings', 'btcpay-greenfield-for-woocommerce' ),
+				'type' => 'checkbox',
+				'default' => 'no',
+				'desc' => _x( 'Show all connection settings / manual setup.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'id' => 'btcpay_gf_connection_details'
+			],
 			'api_key' => [
 				'title'       => esc_html_x( 'BTCPay API Key', 'global_settings','btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'text',
-				'desc' => _x( 'Your BTCPay API Key. If you do not have any yet <a href="#" class="btcpay-api-key-link" target="_blank">click here to generate API keys.</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'desc' => _x( 'Your BTCPay API Key. If you do not have any yet use the setup wizard above.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'default'     => '',
 				'id' => 'btcpay_gf_api_key'
 			],
@@ -89,6 +145,33 @@ class GlobalSettings extends \WC_Settings_Page {
 				'desc_tip' => _x( 'Your BTCPay Store ID. You can find it on the store settings page on your BTCPay Server.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'default'     => '',
 				'id' => 'btcpay_gf_store_id'
+			],
+			'whsecret' => [
+				'title' => esc_html_x( 'Webhook secret (optional)', 'global_settings','btcpay-greenfield-for-woocommerce' ),
+				'type' => 'text',
+				'desc' => _x( 'If left empty an webhook will created automatically on save. Only fill out if you know the webhook secret and the webhook was created manually on BTCPay Server.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'default' => '',
+				'id' => 'btcpay_gf_whsecret'
+			],
+			'whstatus' => [
+				'title'       => esc_html_x( 'Webhook status', 'global_settings','btcpay-greenfield-for-woocommerce' ),
+				'type'  => 'custom_markup',
+				'markup'  => $whStatus,
+				'id'    => 'btcpay_gf_whstatus'
+			],
+			'sectionend_connection' => [
+				'type' => 'sectionend',
+				'id' => 'btcpay_gf_connection',
+			],
+			// Section general.
+			'title' => [
+				'title' => esc_html_x(
+					'General settings',
+					'global_settings',
+					'btcpay-greenfield-for-woocommerce'
+				),
+				'type' => 'title',
+				'id' => 'btcpay_gf'
 			],
 			'default_description' => [
 				'title'       => esc_html_x( 'Default Customer Message', 'btcpay-greenfield-for-woocommerce' ),
@@ -170,6 +253,7 @@ class GlobalSettings extends \WC_Settings_Page {
 			$apiUrl  = esc_url_raw( $_POST['btcpay_gf_url'] );
 			$apiKey  = sanitize_text_field( $_POST['btcpay_gf_api_key'] );
 			$storeId = sanitize_text_field( $_POST['btcpay_gf_store_id'] );
+			$manualWhSecret = sanitize_text_field( $_POST['btcpay_gf_whsecret'] );
 
 			// todo: fix change of url + key + storeid not leading to recreation of webhook.
 			// Check if the provided API key has the right scope and permissions.
@@ -227,20 +311,58 @@ class GlobalSettings extends \WC_Settings_Page {
 				// Continue creating the webhook if the API key permissions are OK.
 				if ( false === $hasError ) {
 					// Check if we already have a webhook registered for that store.
-					if ( GreenfieldApiWebhook::webhookExists( $apiUrl, $apiKey, $storeId ) ) {
-						$messageReuseWebhook = __( 'Webhook already exists, skipping webhook creation.', 'btcpay-greenfield-for-woocommerce' );
-						Notice::addNotice('info', $messageReuseWebhook, true);
-						Logger::debug($messageReuseWebhook);
-					} else {
-						// Register a new webhook.
-						if ( GreenfieldApiWebhook::registerWebhook( $apiUrl, $apiKey, $storeId ) ) {
-							$messageWebhookSuccess = __( 'Successfully registered a new webhook on BTCPay Server.', 'btcpay-greenfield-for-woocommerce' );
-							Notice::addNotice('success', $messageWebhookSuccess, true );
-							Logger::debug( $messageWebhookSuccess );
+					if ( GreenfieldApiWebhook::webhookExists( $apiUrl, $apiKey, $storeId, $manualWhSecret ) ) {
+
+						if ( $manualWhSecret && $this->apiHelper->webhook['secret'] !== $manualWhSecret) {
+							// Store manual webhook in options table.
+							update_option(
+								'btcpay_gf_webhook',
+								[
+									'id' => 'manual',
+									'secret' => $manualWhSecret,
+									'url' => 'manual'
+								]
+							);
+
+							$messageWebhookManual = __( 'Successfully setup manual webhook.', 'btcpay-greenfield-for-woocommerce' );
+							Notice::addNotice('success', $messageWebhookManual, true );
+							Logger::debug( $messageWebhookManual );
 						} else {
-							$messageWebhookError = __( 'Could not register a new webhook on the store.', 'btcpay-greenfield-for-woocommerce' );
-							Notice::addNotice('error', $messageWebhookError );
-							Logger::debug($messageWebhookError, true);
+							$messageReuseWebhook = __( 'Webhook already exists, skipping webhook creation.', 'btcpay-greenfield-for-woocommerce' );
+							Notice::addNotice('info', $messageReuseWebhook, true);
+							Logger::debug($messageReuseWebhook);
+						}
+					} else {
+						// When the webhook secret was set manually we just store it and not try to create it.
+						if ( $manualWhSecret ) {
+							// Store manual webhook in options table.
+							update_option(
+								'btcpay_gf_webhook',
+								[
+									'id' => 'manual',
+									'secret' => $manualWhSecret,
+									'url' => 'manual'
+								]
+							);
+
+							$messageWebhookManual = __( 'Successfully setup manual webhook.', 'btcpay-greenfield-for-woocommerce' );
+							Notice::addNotice('success', $messageWebhookManual, true );
+							Logger::debug( $messageWebhookManual );
+						}
+
+						// Register a new webhook automatically.
+						if ( empty($manualWhSecret) ) {
+							if ( GreenfieldApiWebhook::registerWebhook( $apiUrl, $apiKey, $storeId ) ) {
+								$messageWebhookSuccess = __( 'Successfully registered a new webhook on BTCPay Server.', 'btcpay-greenfield-for-woocommerce' );
+								Notice::addNotice('success', $messageWebhookSuccess, true );
+								Logger::debug( $messageWebhookSuccess );
+							} else {
+								$messageWebhookError = __( 'Could not register a new webhook on the store.', 'btcpay-greenfield-for-woocommerce' );
+								Notice::addNotice('error', $messageWebhookError );
+								Logger::debug($messageWebhookError, true);
+								// Cleanup existing conf.
+								delete_option('btcpay_gf_webhook');
+							}
 						}
 					}
 
@@ -293,4 +415,19 @@ class GlobalSettings extends \WC_Settings_Page {
 		}
 		return false;
 	}
+
+	public function output_custom_markup_field($value) {
+		echo '<tr valign="top">';
+		if (!empty($value['title'])) {
+			echo '<th scope="row" class="titledesc">' . esc_html($value['title']) . '</th>';
+		} else {
+			echo '<th scope="row" class="titledesc">&nbsp;</th>';
+		}
+
+		echo '<td class="forminp" id="' . $value['id'] . '">';
+		echo $value['markup'];
+		echo '</td>';
+		echo '</tr>';
+	}
+
 }

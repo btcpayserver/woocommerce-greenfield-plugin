@@ -161,6 +161,24 @@ class GreenfieldApiHelper {
 		return false;
 	}
 
+	public static function webhookIsSetup(): bool {
+		if ($config = self::getConfig()) {
+			return !empty($config['webhook']['secret']);
+		}
+
+		return false;
+	}
+
+	public static function webhookIsSetupManual(): bool {
+		if ($config = self::getConfig()) {
+			return !empty($config['webhook']['secret']) && $config['webhook']['id'] === 'manual';
+		}
+
+		return false;
+	}
+
+
+
 	/**
 	 * Checks if a given invoice id has status of fully paid (settled) or paid late.
 	 */
