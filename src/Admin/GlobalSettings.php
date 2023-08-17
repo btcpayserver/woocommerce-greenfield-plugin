@@ -150,6 +150,7 @@ class GlobalSettings extends \WC_Settings_Page {
 				'title' => esc_html_x( 'Webhook secret (optional)', 'global_settings','btcpay-greenfield-for-woocommerce' ),
 				'type' => 'text',
 				'desc' => _x( 'If left empty an webhook will created automatically on save. Only fill out if you know the webhook secret and the webhook was created manually on BTCPay Server.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'desc_tip' => _x( 'The BTCPay webhook endpoint can be reached here: ' . site_url() . '/wc-api/btcpaygf_default/', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'default' => '',
 				'id' => 'btcpay_gf_whsecret'
 			],
