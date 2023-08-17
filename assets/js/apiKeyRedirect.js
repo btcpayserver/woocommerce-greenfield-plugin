@@ -34,8 +34,8 @@ jQuery(document).ready(function($) {
 	});
 
 	// Handle manual connection settings.
-	let showDetails = $('#btcpay_gf_connection_details');
-	let detailFields = $('#btcpay_gf_store_id, #btcpay_gf_whsecret, #btcpay_gf_api_key, #btcpay_gf_whstatus');
+	const showDetails = $('#btcpay_gf_connection_details');
+	const detailFields = $('#btcpay_gf_store_id, #btcpay_gf_whsecret, #btcpay_gf_api_key, #btcpay_gf_whstatus');
 
 	toggleFields(showDetails.is(':checked'));
 

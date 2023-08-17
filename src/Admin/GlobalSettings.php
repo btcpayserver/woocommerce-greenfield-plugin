@@ -40,7 +40,7 @@ class GlobalSettings extends \WC_Settings_Page {
 			);
 
 			// Register and include CSS.
-			wp_register_style( 'btcpay_gf_admin_styles', BTCPAYSERVER_PLUGIN_URL . 'assets/css/admin.css', array(), WC_VERSION );
+			wp_register_style( 'btcpay_gf_admin_styles', BTCPAYSERVER_PLUGIN_URL . 'assets/css/admin.css', array(), BTCPAYSERVER_VERSION );
 			wp_enqueue_style( 'btcpay_gf_admin_styles' );
 
 		}
@@ -74,7 +74,7 @@ class GlobalSettings extends \WC_Settings_Page {
 		// Check webhook status and prepare output.
 		$whStatus = '';
 		$whId = '';
-		// Can't use apiHelper for caching reasons here.
+		// Can't use apiHelper because of caching.
 		if ($webhookConfig = get_option('btcpay_gf_webhook')) {
 			$whId = $webhookConfig['id'];
 		}
