@@ -103,6 +103,9 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+= 2.2.0 :: 2023-08-17 =
+* Refactor settings UI and allow manual webhook secret entry
+
 = 2.1.0 :: 2023-04-03 =
 * New feature: Modal / Overlay checkout mode (no redirect to BTCPay Server)
 
