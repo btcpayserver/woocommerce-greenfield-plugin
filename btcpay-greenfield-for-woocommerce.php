@@ -373,6 +373,7 @@ add_action( 'template_redirect', function() {
 		if ($apiData->hasSingleStore() && $apiData->hasRequiredPermissions()) {
 			update_option('btcpay_gf_api_key', $apiData->getApiKey());
 			update_option('btcpay_gf_store_id', $apiData->getStoreID());
+			update_option('btcpay_gf_connection_details', 'yes');
 			Notice::addNotice('success', __('Successfully received api key and store id from BTCPay Server API. Please finish setup by saving this settings form.', 'btcpay-greenfield-for-woocommerce'));
 			wp_redirect($btcPaySettingsUrl);
 		} else {
