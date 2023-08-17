@@ -7,12 +7,12 @@
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
- * Version:         2.1.0
+ * Version:         2.2.0
  * Requires PHP:    7.4
- * Tested up to:    6.2
+ * Tested up to:    6.3
  * Requires at least: 5.2
  * WC requires at least: 6.0
- * WC tested up to: 7.5
+ * WC tested up to: 8.0
  */
 
 use BTCPayServer\WC\Admin\Notice;
@@ -25,7 +25,7 @@ use BTCPayServer\WC\Helper\Logger;
 
 defined( 'ABSPATH' ) || exit();
 
-define( 'BTCPAYSERVER_VERSION', '2.1.0' );
+define( 'BTCPAYSERVER_VERSION', '2.2.0' );
 define( 'BTCPAYSERVER_VERSION_KEY', 'btcpay_gf_version' );
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
@@ -373,6 +373,7 @@ add_action( 'template_redirect', function() {
 		if ($apiData->hasSingleStore() && $apiData->hasRequiredPermissions()) {
 			update_option('btcpay_gf_api_key', $apiData->getApiKey());
 			update_option('btcpay_gf_store_id', $apiData->getStoreID());
+			update_option('btcpay_gf_connection_details', 'yes');
 			Notice::addNotice('success', __('Successfully received api key and store id from BTCPay Server API. Please finish setup by saving this settings form.', 'btcpay-greenfield-for-woocommerce'));
 			wp_redirect($btcPaySettingsUrl);
 		} else {

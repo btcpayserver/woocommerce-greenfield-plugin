@@ -8,12 +8,12 @@ class GreenfieldApiAuthorization {
 	public const REQUIRED_PERMISSIONS = [
 		'btcpay.store.canviewinvoices',
 		'btcpay.store.cancreateinvoice',
-		'btcpay.store.webhooks.canmodifywebhooks',
 		'btcpay.store.canviewstoresettings',
 		'btcpay.store.canmodifyinvoices'
 	];
 	public const OPTIONAL_PERMISSIONS = [
-		'btcpay.store.cancreatenonapprovedpullpayments'
+		'btcpay.store.cancreatenonapprovedpullpayments',
+		'btcpay.store.webhooks.canmodifywebhooks',
 	];
 
 	private $apiKey;
@@ -82,5 +82,13 @@ class GreenfieldApiAuthorization {
 		}, []);
 
 		return in_array('btcpay.store.cancreatenonapprovedpullpayments', $permissions, true);
+	}
+
+	public function hasWebhookPermission(): bool {
+		$permissions = array_reduce($this->permissions, static function (array $carry, string $permission) {
+			return array_merge($carry, [explode(':', $permission)[0]]);
+		}, []);
+
+		return in_array('btcpay.store.webhooks.canmodifywebhooks', $permissions, true);
 	}
 }

@@ -32,4 +32,23 @@ jQuery(document).ready(function($) {
 			alert('Please enter a valid url including https:// in the BTCPay Server URL input field.')
 		}
 	});
+
+	// Handle manual connection settings.
+	const showDetails = $('#btcpay_gf_connection_details');
+	const detailFields = $('#btcpay_gf_store_id, #btcpay_gf_whsecret, #btcpay_gf_api_key, #btcpay_gf_whstatus');
+
+	toggleFields(showDetails.is(':checked'));
+
+	showDetails.on('change', function() {
+		toggleFields($(this).is(':checked'));
+	});
+
+	function toggleFields(isChecked) {
+		if (isChecked) {
+			detailFields.closest('tr').show();
+		} else {
+			detailFields.closest('tr').hide();
+		}
+	}
+
 });

@@ -3,9 +3,9 @@ Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway, accept bitcoin, bitcoin plugin, bitcoin payment processor, bitcoin e-commerce, Lightning Network, Litecoin, cryptocurrency
 Requires at least: 5.2
-Tested up to: 6.2
+Tested up to: 6.3
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 2.2.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 

@@ -20,8 +20,16 @@ class GreenfieldApiWebhook {
 	/**
 	 * Get locally stored webhook data and check if it exists on the store.
 	 */
-	public static function webhookExists(string $apiUrl, string $apiKey, string $storeId): bool {
+	public static function webhookExists(string $apiUrl, string $apiKey, string $storeId, $manualWebhookSecret = null): bool {
+
 		if ( $storedWebhook = get_option( 'btcpay_gf_webhook' ) ) {
+			// Handle case of manually entered webhook (secret). We can't query webhooks endpoint at all without permission.
+			if ($storedWebhook['id'] === 'manual' && $storedWebhook['secret'] === $manualWebhookSecret) {
+				Logger::debug('Detected existing and manually set webhook.');
+				return true;
+			}
+
+			// Check automatically created webhook.
 			try {
 				$whClient = new Webhook( $apiUrl, $apiKey );
 				$existingWebhook = $whClient->getWebhook( $storeId, $storedWebhook['id'] );
@@ -30,6 +38,7 @@ class GreenfieldApiWebhook {
 					$existingWebhook->getData()['id'] === $storedWebhook['id'] &&
 					strpos( $existingWebhook->getData()['url'], $storedWebhook['url'] ) !== false
 				) {
+					Logger::debug('Detected existing automatically set webhook.');
 					return true;
 				}
 			} catch (\Throwable $e) {
