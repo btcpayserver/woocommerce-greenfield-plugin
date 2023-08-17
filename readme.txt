@@ -5,7 +5,7 @@ Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway
 Requires at least: 5.2
 Tested up to: 6.3
 Requires PHP: 7.4
-Stable tag: 2.2.0
+Stable tag: 2.2.1
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -103,6 +103,13 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+
+= 2.2.1 :: 2023-08-17 =
+* Add tooltip with webhook callback information
+
+= 2.2.0 :: 2023-08-17 =
+* Refactor settings UI and allow manual webhook secret entry. This allows 3rd party integrators limit their API keys scope and not include the webhook permission.
+
 = 2.1.0 :: 2023-04-03 =
 * New feature: Modal / Overlay checkout mode (no redirect to BTCPay Server)
 
