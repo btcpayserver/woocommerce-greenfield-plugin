@@ -51,14 +51,26 @@ class GreenfieldApiHelper {
 		}
 	}
 
-	public static function checkApiConnection(): bool {
-		if ($config = self::getConfig()) {
-			// todo: replace with server info endpoint.
+	public static function checkApiKeyWorks(string $url = null, string $apiKey = null): bool {
+		$config = [];
+
+		if ($url && $apiKey) {
+			$config['url'] = $url;
+			$config['api_key'] = $apiKey;
+		} else {
+			$config = self::getConfig();
+		}
+
+		if ($config) {
 			$client = new Store($config['url'], $config['api_key']);
 			if (!empty($stores = $client->getStores())) {
 				return true;
+			} else {
+				Logger::debug('Could not fetch stores from BTCPay Server with the given API key.');
+				return false;
 			}
 		}
+
 		return false;
 	}
 
