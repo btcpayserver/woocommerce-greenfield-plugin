@@ -176,6 +176,10 @@ jQuery(function ($) {
 		var selected_gateway = $('form[name="checkout"] input[name="payment_method"]:checked').val();
 		unblockElement('.woocommerce-checkout-payment');
 
+		if (!selected_gateway) {
+			return;
+		}
+
 		if (selected_gateway.startsWith('btcpaygf_')) {
 			// Bind our custom event handler to the checkout button.
 			checkout_form.on('checkout_place_order', submitOrder);
