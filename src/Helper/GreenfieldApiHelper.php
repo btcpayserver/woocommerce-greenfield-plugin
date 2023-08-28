@@ -22,7 +22,7 @@ class GreenfieldApiHelper {
 	public $apiKey;
 	public $storeId;
 
-	// todo: perf static instance
+	// todo: need to refactor as it loads cached options if form submitted by ajax
 	public function __construct() {
 		if ($config = self::getConfig()) {
 			$this->url = $config['url'];

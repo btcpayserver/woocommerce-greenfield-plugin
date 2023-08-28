@@ -64,8 +64,12 @@ class GlobalSettings extends \WC_Settings_Page {
 		Logger::debug('Entering Global Settings form.');
 
 		// Check setup status and prepare output.
+		$storedApiKey = get_option('btcpay_gf_api_key');
+		$storedStoreId = get_option('btcpay_gf_store_id');
+		$storedUrl = get_option('btcpay_gf_url');
+
 		$setupStatus = '';
-		if ($this->apiHelper->configured) {
+		if ($storedUrl && $storedStoreId && $storedApiKey) {
 			$setupStatus = '<p class="btcpay-connection-success">' . _x('BTCPay Server connected.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</p>';
 		} else {
 			$setupStatus = '<p class="btcpay-connection-error">' . _x('Not connected. Please use the setup wizard above or check advanced settings to manually enter connection settings.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</p>';
@@ -79,7 +83,8 @@ class GlobalSettings extends \WC_Settings_Page {
 			$whId = $webhookConfig['id'];
 		}
 
-		if ($this->apiHelper->webhookIsSetup()) {
+		// Todo: check why $this->apiHelper->webhookIsSetup() is cached, also others above.
+		if (!empty($webhookConfig['secret'])) {
 			$whStatus = '<p class="btcpay-connection-success">' . _x('Webhook setup automatically.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . ' ID: ' . $whId . '</p>';
 		} else {
 			$whStatus = '<p class="btcpay-connection-error">' . _x('No webhook setup, yet.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</p>';
