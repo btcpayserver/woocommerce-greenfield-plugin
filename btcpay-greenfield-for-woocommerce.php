@@ -421,3 +421,10 @@ register_activation_hook( __FILE__, function() {
 // Initialize payment gateways and plugin.
 add_filter( 'woocommerce_payment_gateways', [ 'BTCPayServerWCPlugin', 'initPaymentGateways' ] );
 add_action( 'plugins_loaded', 'init_btcpay_greenfield', 0 );
+
+// Mark support for HPOS / COT.
+add_action( 'before_woocommerce_init', function() {
+	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+	}
+} );
