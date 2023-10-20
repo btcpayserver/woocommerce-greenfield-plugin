@@ -180,7 +180,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		// Make sure the refund amount is not greater than the invoice amount.
 		if ($amount > $order->get_remaining_refund_amount()) {
-			$errAmount = __METHOD__ . ': the refund amount can not exceed the order amount, aborting.';
+			$errAmount = __METHOD__ . ': the refund amount can not exceed the order amount, aborting. Remaining amount ' . $order->get_remaining_refund_amount();
 			Logger::debug($errAmount);
 			return new \WP_Error('1', $errAmount);
 		}
@@ -200,13 +200,17 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$paymentMethods = array_diff($paymentMethods, ['BTC_LNURLPAY']);
 		}
 
+		// Refund name is limited for 50 chars, but we do not have description field available until php lib v3 is out.
+		$refundName = __('Refund of order ', 'btcpay-greenfield-for-woocommerce') . $order->get_order_number() . '; ' . $reason;
+		$refundName = substr($refundName, 0, 50);
+
 		// Create the payout.
 		try {
 			$client = new PullPayment( $this->apiHelper->url, $this->apiHelper->apiKey);
 			// todo: add reason to description with upcoming php lib v3
 			$pullPayment = $client->createPullPayment(
 				$this->apiHelper->storeId,
-				__('Refund for order no.: ', 'btcpay-greenfield-for-woocommerce') . $order->get_order_number() . ' reason: ' . $reason,
+				$refundName,
 				$refundAmount,
 				$currency,
 				null,
