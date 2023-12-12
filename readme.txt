@@ -3,9 +3,9 @@ Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway, accept bitcoin, bitcoin plugin, bitcoin payment processor, bitcoin e-commerce, Lightning Network, Litecoin, cryptocurrency
 Requires at least: 5.2
-Tested up to: 6.3
+Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 2.3.1
+Stable tag: 2.4.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -103,6 +103,10 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. Example of the PoS app you can launch.
 
 == Changelog ==
+
+= 2.4.0 :: 2023-12-12 =
+* New feature: Add basic support for WooCommerce cart and checkout blocks.
+* Fix: Avoid error InvoiceSettled event in case of paidOver property is missing.
 
 = 2.3.1 :: 2023-10-20 =
 * Fix: Ensure refunds text does not exceed API field limit.

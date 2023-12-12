@@ -9,16 +9,16 @@ class DefaultGateway extends AbstractGateway {
 
 	public function __construct() {
 		// Set the id first.
-		$this->id                 = 'btcpaygf_default';
+		$this->id = 'btcpaygf_default';
 
 		// Call parent constructor.
 		parent::__construct();
 
 		// todo: maybe make the button text configurable via settings.
 		// General gateway setup.
-		$this->order_button_text  = __('Proceed to BTCPay', 'btcpay-greenfield-for-woocommerce');
+		$this->order_button_text = __('Proceed to BTCPay', 'btcpay-greenfield-for-woocommerce');
 		// Admin facing title and description.
-		$this->method_title       = 'BTCPay (default)';
+		$this->method_title = 'BTCPay (default)';
 		$this->method_description = __('BTCPay default gateway supporting all available tokens on your BTCPay store.', 'btcpay-greenfield-for-woocommerce');
 
 		// Actions.

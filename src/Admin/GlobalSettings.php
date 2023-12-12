@@ -29,7 +29,7 @@ class GlobalSettings extends \WC_Settings_Page {
 
 		if (is_admin()) {
 			// Register and include JS.
-			wp_register_script('btcpay_gf_global_settings', BTCPAYSERVER_PLUGIN_URL . 'assets/js/apiKeyRedirect.js', ['jquery'], BTCPAYSERVER_VERSION);
+			wp_register_script('btcpay_gf_global_settings', BTCPAYSERVER_PLUGIN_URL . 'assets/js/backend/apiKeyRedirect.js', ['jquery'], BTCPAYSERVER_VERSION);
 			wp_enqueue_script('btcpay_gf_global_settings');
 			wp_localize_script( 'btcpay_gf_global_settings',
 				'BTCPayGlobalSettings',
