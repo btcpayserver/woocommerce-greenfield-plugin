@@ -16,7 +16,6 @@
  */
 
 use BTCPayServer\WC\Admin\Notice;
-use BTCPayServer\WC\Blocks\DefaultGatewayBlocks;
 use BTCPayServer\WC\Gateway\DefaultGateway;
 use BTCPayServer\WC\Gateway\SeparateGateways;
 use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
