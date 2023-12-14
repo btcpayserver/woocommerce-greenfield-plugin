@@ -117,8 +117,9 @@ You'll find extensive documentation and answers to many of your questions on [BT
 == Changelog ==
 
 = 2.4.0 :: 2023-12-12 =
+* Fix: Avoid error on InvoiceProcessing/InvoiceSettled event in case of paidOver property is missing.
 * New feature: Add basic support for WooCommerce cart and checkout blocks.
-* Fix: Avoid error InvoiceSettled event in case of paidOver property is missing.
+Note: Works for default configuration; future versions will make it work with modal checkout and separate payment gateways too.
 
 = 2.3.1 :: 2023-10-20 =
 * Fix: Ensure refunds text does not exceed API field limit.
