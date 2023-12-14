@@ -7,12 +7,12 @@
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
- * Version:         2.3.0
+ * Version:         2.4.0
  * Requires PHP:    7.4
- * Tested up to:    6.3
+ * Tested up to:    6.4
  * Requires at least: 5.2
  * WC requires at least: 6.0
- * WC tested up to: 8.0
+ * WC tested up to: 8.4
  */
 
 use BTCPayServer\WC\Admin\Notice;
@@ -26,7 +26,7 @@ use BTCPayServer\WC\Helper\Logger;
 
 defined( 'ABSPATH' ) || exit();
 
-define( 'BTCPAYSERVER_VERSION', '2.3.1' );
+define( 'BTCPAYSERVER_VERSION', '2.4.0' );
 define( 'BTCPAYSERVER_VERSION_KEY', 'btcpay_gf_version' );
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
@@ -271,6 +271,20 @@ class BTCPayServerWCPlugin {
 	}
 
 	/**
+	 * Register WooCommerce Blocks support.
+	 */
+	public static function blocksSupport() {
+		if ( class_exists( '\Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+			add_action(
+				'woocommerce_blocks_payment_method_type_registration',
+				function( \Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry ) {
+					$payment_method_registry->register(new \BTCPayServer\WC\Blocks\DefaultGatewayBlocks());
+				}
+			);
+		}
+	}
+
+	/**
 	 * Gets the main plugin loader instance.
 	 *
 	 * Ensures only one instance can be loaded.
@@ -303,7 +317,6 @@ add_action('init', function() {
 		flush_rewrite_rules(false);
 		update_option('btcpaygf_permalinks_flushed', 1);
 	}
-
 });
 
 // Action links on plugin overview.
@@ -426,5 +439,9 @@ add_action( 'plugins_loaded', 'init_btcpay_greenfield', 0 );
 add_action( 'before_woocommerce_init', function() {
 	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
 	}
 } );
+
+// Register WooCommerce Blocks integration.
+add_action( 'woocommerce_blocks_loaded', [ 'BTCPayServerWCPlugin', 'blocksSupport' ] );

@@ -331,7 +331,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			wp_enqueue_media();
 			wp_register_script(
 				'btcpay_gf_abstract_gateway',
-				BTCPAYSERVER_PLUGIN_URL . 'assets/js/gatewayIconMedia.js',
+				BTCPAYSERVER_PLUGIN_URL . 'assets/js/backend/gatewayIconMedia.js',
 				['jquery'],
 				BTCPAYSERVER_VERSION
 			);
@@ -363,7 +363,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Register modal script.
 		wp_register_script(
 			'btcpay_gf_modal_checkout',
-			BTCPAYSERVER_PLUGIN_URL . 'assets/js/modalCheckout.js',
+			BTCPAYSERVER_PLUGIN_URL . 'assets/js/frontend/modalCheckout.js',
 			[ 'jquery' ],
 			BTCPAYSERVER_VERSION,
 			true
@@ -500,7 +500,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				break;
 			case 'InvoiceProcessing': // The invoice is paid in full.
 				$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::PROCESSING]);
-				if ($webhookData->overPaid) {
+				if (isset($webhookData->overPaid) && $webhookData->overPaid) {
 					$order->add_order_note(__('Invoice payment received fully with overpayment, waiting for settlement.', 'btcpay-greenfield-for-woocommerce'));
 				} else {
 					$order->add_order_note(__('Invoice payment received fully, waiting for settlement.', 'btcpay-greenfield-for-woocommerce'));
@@ -525,7 +525,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				break;
 			case 'InvoiceSettled':
 				$order->payment_complete();
-				if ($webhookData->overPaid) {
+				if (isset($webhookData->overPaid) && $webhookData->overPaid) {
 					$order->add_order_note(__('Invoice payment settled but was overpaid.', 'btcpay-greenfield-for-woocommerce'));
 					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::SETTLED_PAID_OVER]);
 				} else {
@@ -535,7 +535,6 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 				// Store payment data (exchange rate, address).
 				$this->updateWCOrderPayments($order);
-
 				break;
 		}
 	}

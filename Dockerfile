@@ -1,6 +1,6 @@
-FROM wordpress:6.1-php8.2
+FROM wordpress:6.4-php8.2
 
-ENV WOOCOMMERCE_VERSION 7.3.0
+ENV WOOCOMMERCE_VERSION 8.4.0
 
 # Fetch WooCommerce.
 RUN apt-get update \
