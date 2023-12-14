@@ -16,7 +16,7 @@ final class DefaultGatewayBlocks extends AbstractPaymentMethodType {
 	/**
 	 * The gateway instance.
 	 */
-	private AbstractGateway $gateway;
+	private $gateway;
 
 	/**
 	 * Payment method name/id/slug.
@@ -28,7 +28,8 @@ final class DefaultGatewayBlocks extends AbstractPaymentMethodType {
 	 */
 	public function initialize(): void {
 		$this->settings = get_option( 'woocommerce_btcpaygf_default_settings', [] );
-		$this->gateway = new DefaultGateway();
+		$gateways = \WC()->payment_gateways->payment_gateways();
+		$this->gateway  = $gateways[$this->name];
 	}
 
 	/**

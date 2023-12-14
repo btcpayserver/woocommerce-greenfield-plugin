@@ -13,29 +13,37 @@ BTCPay Server is a free and open-source bitcoin payment processor which allows y
 
 == Description ==
 
-BTCPay Server is a free and open-source cryptocurrency payment processor which allows you to receive payments in Bitcoin and altcoins directly, with no fees, transaction cost or a middleman.
+= Accept Bitcoin payments in your WooCommerce powered WordPress site with BTCPay Server =
 
-BTCPay Server is a non-custodial invoicing system which eliminates the involvement of a third-party. Payments with BTCPay WooCommerce Plugin go directly to your wallet, which increases the privacy and security. Your private keys are never uploaded to the server. There is no address re-use since each invoice generates a new address deriving from your xPub key.
+BTCPay Server for WooCommerce is a revolutionary, self-hosted, open-source payment gateway to accept Bitcoin payments. Our** seamless integration** with WooCommerce allows you to connect your self-hosted [BTCPay Server](https://btcpayserver.org) and start accepting Bitcoin payments in **just a few simple steps**.
 
-You can run BTCPay as a self-hosted solution on your own server, or use a third-party host.
+= Features: =
 
-The self-hosted solution allows you not only to attach an unlimited number of stores and use the Lightning Network but also become the payment processor for others.
+* **Zero fees**: Enjoy a payment gateway with no fees. Yes, really!
+* **Fully automated system**: BTCPay takes care of payments, invoice management and refunds automatically.
+* **Display Bitcoin QR code at checkout**: Enhance customer experience with an easy and secure payment option.
+* **No middlemen or KYC**:
+    * Direct, P2P payments (going directly to your wallet)
+    * Say goodbye to intermediaries and tedious paperwork
+    * Transaction information is only shared between you and your customer
+* **Self-hosted infrastructure**: Maintain full control over your payment gateway.
+* **Direct wallet payments**: Be your own bank with a self-custodial service.
+* **Lightning Network** integrated out of the box - instant, fast and low cost payments and payouts
+* **Reporting and accounting** - CSV exports
+* **Advanced invoice managemen**t and refunding integrated in the WooCommerce UI
+* **Real-time exchange price tracking **for correct payment amounts
+* **Versatile plugin system**:
+    * Extend functionality according to your needs
+    * Accept payments in altcoins through various plugins
+* **Elegant checkout design**: Compatible with all Bitcoin wallets and enhanced with your store's logo and branding for a unique UX.
+* **Point-of-sale** integration - Accept payments in your physical shops
+* **Multilingual ready**: Serve a global audience right out of the box.
+* **Top-notch privacy and security**: Protect your and your customers' data.
+* **Community-driven support**: Get responsive assistance from our dedicated community ([Mattermost](http://chat.btcpayserver.org) or [Telegram](https://t.me/btcpayserver)).
+* Extensive [documentation](https://docs.btcpayserver.org/WooCommerce) and [video](https://www.youtube.com/c/btcpayserver) tutorials
 
-* Direct, peer-to-peer Bitcoin and altcoin payments
-* No transaction fees (other than mining fees by cryptocurrency network itself)
-* No processing fees
-* No middleman
-* No KYC
-* User has complete control over private keys
-* Enhanced privacy (no address re-use, no IP leaks to third parties)
-* Enhanced security
-* Self-hosted
-* SegWit, Taproot support
-* Lightning Network support (LND, c-lightning and Eclair)
-* Altcoin support
-* Attach unlimited stores, process payments for friends
-* Easy-embeddable Payment buttons
-* Point of Sale app
+The non-profit [BTCPay Server Foundation ](https://foundation.btcpayserver.org)is committed to keeping this powerful payment gateway free forever. Our mission is to enable anyone to accept bitcoin regardless of financial, technical, social or political barriers.
+
 
 == Installation ==
 
@@ -101,6 +109,10 @@ You'll find extensive documentation and answers to many of your questions on [BT
 4. Example of successfully paid invoice.
 5. Example of an easy-embeddable HTML donation payment button.
 6. Example of the PoS app you can launch.
+
+== Upgrade Notice ==
+= 2.4.0 =
+* New feature: Add basic support for [WooCommerce cart and checkout blocks](https://woo.com/document/cart-checkout-blocks-status/).
 
 == Changelog ==
 

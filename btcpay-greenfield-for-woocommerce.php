@@ -12,7 +12,7 @@
  * Tested up to:    6.4
  * Requires at least: 5.2
  * WC requires at least: 6.0
- * WC tested up to: 8.0
+ * WC tested up to: 8.4
  */
 
 use BTCPayServer\WC\Admin\Notice;
@@ -317,7 +317,6 @@ add_action('init', function() {
 		flush_rewrite_rules(false);
 		update_option('btcpaygf_permalinks_flushed', 1);
 	}
-
 });
 
 // Action links on plugin overview.

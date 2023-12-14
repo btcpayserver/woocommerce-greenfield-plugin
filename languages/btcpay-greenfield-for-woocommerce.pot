@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2023-12-11T17:18:14+01:00\n"
+"POT-Creation-Date: 2023-12-12T15:39:41+01:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.7.1\n"
 "language-team: LANGUAGE <EMAIL@ADDRESS>\n"
@@ -476,7 +476,7 @@ msgstr ""
 msgid "Invoice payment settled."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:576
+#: src/Gateway/AbstractGateway.php:575
 msgid "BTCPay invoice manually set to invalid because customer went back to checkout and changed payment gateway."
 msgstr ""
 

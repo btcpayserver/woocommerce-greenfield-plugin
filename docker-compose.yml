@@ -5,7 +5,7 @@ services:
     image: mysql:5.7
     volumes:
       - db_data:/var/lib/mysql
-    restart: always
+    restart: no
     environment:
       MYSQL_ROOT_PASSWORD: rootpress
       MYSQL_DATABASE: wordpress
@@ -21,7 +21,7 @@ services:
       - ./:/var/www/html/wp-content/plugins/btcpay-greenfield-for-woocommerce
     ports:
       - "8821:80"
-    restart: always
+    restart: no
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: wordpress
