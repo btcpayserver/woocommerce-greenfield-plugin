@@ -9,22 +9,33 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
       - name: Install Composer dependencies
         uses: php-actions/composer@v6
         with:
           dev: no
           php_version: 7.4
           php_extensions: bcmath
+
+      - name: Install WP-CLI
+        run: |
+          curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-      - name: Install Node.js dependencies
-        run: |
-          npm install
+
+      - name: Set Execute Permissions for build_i18n.sh
+        run: chmod +x bin/build_i18n.sh
+
       - name: Build assets and translation files
         run: |
+          npm install
           npm run build
+
       - name: WordPress Plugin Deploy
         id: deploy
         uses: 10up/action-wordpress-plugin-deploy@stable
@@ -34,6 +45,7 @@ jobs:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: btcpay-greenfield-for-woocommerce
+
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         env:
