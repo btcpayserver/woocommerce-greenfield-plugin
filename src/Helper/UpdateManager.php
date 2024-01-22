@@ -7,7 +7,8 @@ use BTCPayServer\WC\Admin\Notice;
 class UpdateManager {
 
 	private static $updates = [
-		'1.0.3' => 'update-1.0.3.php'
+		'1.0.3' => 'update-1.0.3.php',
+		'2.4.1' => 'update-2.4.1.php'
 	];
 
 	/**

@@ -456,6 +456,21 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$configuredOrderStates = (new OrderStates())->getDefaultOrderStateMappings();
 		}
 
+		// Check if the order is already in a final state, if so do not update it if the orders are protected.
+		$protectedOrders = get_option('btcpay_gf_protect_order_status', 'no');
+
+		if ($protectedOrders === 'yes') {
+			// Check if the order status is either 'processing' or 'completed'
+			if ($order->has_status(array('processing', 'completed'))) {
+				$note = sprintf(
+					__('Webhook (%s) received from BTCPay, but the order is already processing or completed, skipping to update order status. Please manually check if everything is alright.', 'btcpay-greenfield-for-woocommerce'),
+					$webhookData->type
+				);
+				$order->add_order_note($note);
+				return;
+			}
+		}
+
 		switch ($webhookData->type) {
 			case 'InvoiceReceivedPayment':
 				if ($webhookData->afterExpiration) {
