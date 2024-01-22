@@ -103,12 +103,12 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Screenshots ==
 
-1. The BTCPay Server invoice. Your customers will see this at the checkout. They can pay from their wallet by scanning a QR or copy/pasting it manually into the wallet.
-2. Customizable plugin interface allows store owners to adjust store statuses according to their needs.
-3. Customer will see the pay with Bitcoin button at the checkout.Text can be customized.
-4. Example of successfully paid invoice.
-5. Example of an easy-embeddable HTML donation payment button.
-6. Example of the PoS app you can launch.
+1. Provides a Bitcoin / Lightning Network (and other) payment gateway on checkout.
+2. Your customers can pay by scanning the QR-Code with their wallet or copy and paste the receiving address.
+3. After successful payment the customers will get redirected to the order page. The order will be marked as paid automatically.
+4. On the settings form you can connect to your BTCPay Server instance by just entering the URL and clicking on "Generate API Key" button.
+5. You will get redirected to your BTCPay Server instance and just need to confirm the permissions of the API key. You will get redirected back to the settings form and the webhook will get set up automatically. You are ready to go.
+6. On BTCPay Server you have extensive reporting and accounting features.
 
 == Upgrade Notice ==
 = 2.4.0 =
@@ -116,7 +116,10 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Changelog ==
 
-= 2.4.1 :: 2023-12-XX =
+= 2.4.1 :: 2024-01-22 =
+* Fix: Ensure order status is not cancelled if paid by other payment gateway.
+* Updating readme.txt (fixing text, updating banner and screenshots)
+
 
 
 = 2.4.0 :: 2023-12-15 =
