@@ -41,7 +41,9 @@ class BTCPayServerWCPlugin {
 
 		add_action('woocommerce_thankyou_btcpaygf_default', ['BTCPayServerWCPlugin', 'orderStatusThankYouPage'], 10, 1);
 		add_action( 'wp_ajax_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
+		add_action( 'wp_ajax_btcpaygf_notifications', [$this, 'processAjaxNotification'] );
 		add_action( 'wp_ajax_nopriv_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
+		add_action( 'admin_enqueue_scripts', [$this, 'enqueueAdminScripts'] );
 
 		// Run the updates.
 		\BTCPayServer\WC\Helper\UpdateManager::processUpdates();
@@ -61,6 +63,7 @@ class BTCPayServerWCPlugin {
 			$this->dependenciesNotification();
 			$this->legacyPluginNotification();
 			$this->notConfiguredNotification();
+			$this->submitReviewNotification();
 		}
 	}
 
@@ -88,6 +91,17 @@ class BTCPayServerWCPlugin {
 		if (get_option('btcpay_gf_sats_mode') === 'yes') {
 			SatsMode::instance();
 		}
+	}
+
+	/**
+	 * Add scripts to admin pages.
+	 */
+	public function enqueueAdminScripts(): void {
+		wp_enqueue_script('btcpaygf-notifications', plugin_dir_url(__FILE__) . 'assets/js/backend/notifications.js', ['jquery'], null, true);
+		wp_localize_script('btcpaygf-notifications', 'BTCPayNotifications', [
+			'ajax_url' => admin_url('admin-ajax.php'),
+			'nonce' => wp_create_nonce('btcpaygf-notifications-nonce')
+		]);
 	}
 
 	public static function initPaymentGateways($gateways): array {
@@ -164,6 +178,21 @@ class BTCPayServerWCPlugin {
 	}
 
 	/**
+	 * Shows a notice on the admin dashboard to periodically ask for a review.
+	 */
+	public function submitReviewNotification() {
+		if (!get_transient('btcpaygf_review_dismissed')) {
+			$reviewMessage = sprintf(
+				__( 'Thank you for using BTCPay for WooCommerce! If you like the plugin, we would love if you %1$sleave us a review%2$s.', 'btcpay-greenfield-for-woocommerce' ),
+				'<a href="https://wordpress.org/support/plugin/btcpay-greenfield-for-woocommerce/reviews/?filter=5#new-post" target="_blank">',
+				'</a>'
+			);
+
+			Notice::addNotice('info', $reviewMessage, true, 'btcpay-review-notice');
+		}
+	}
+
+	/**
 	 * Handles the AJAX callback from the GlobalSettings form. Unfortunately with namespaces it seems to not work
 	 * to have this method on the GlobalSettings class. So keeping it here for the time being.
 	 */
@@ -230,6 +259,13 @@ class BTCPayServerWCPlugin {
 		} catch (\Throwable $e) {
 			Logger::debug('Error processing modal checkout ajax callback: ' . $e->getMessage());
 		}
+	}
+
+	public function processAjaxNotification() {
+		check_ajax_referer('btcpaygf-notifications-nonce', 'nonce');
+		// Dismiss review notice for 30 days.
+		set_transient('btcpaygf_review_dismissed', true, DAY_IN_SECONDS * 30);
+		wp_send_json_success();
 	}
 
 	public static function orderStatusThankYouPage($order_id)
