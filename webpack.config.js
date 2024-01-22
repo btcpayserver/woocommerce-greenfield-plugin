@@ -48,7 +48,8 @@ module.exports = {
 			patterns: [
 				{ from: 'resources/js/frontend/modalCheckout.js', to: 'frontend/', info: { minimized: true } },
 				{ from: 'resources/js/backend/gatewayIconMedia.js', to: 'backend/', info: { minimized: true } },
-				{ from: 'resources/js/backend/apiKeyRedirect.js', to: 'backend/', info: { minimized: true } }
+				{ from: 'resources/js/backend/apiKeyRedirect.js', to: 'backend/', info: { minimized: true } },
+				{ from: 'resources/js/backend/notifications.js', to: 'backend/', info: { minimized: true } }
 			]
 		})
 	]

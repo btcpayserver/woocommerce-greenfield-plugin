@@ -1,11 +1,11 @@
-=== BTCPay for WooCommerce V2 ===
+=== BTCPay Server - Accept Bitcoin payments in WooCommerce ===
 Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
-Tags: bitcoin, btcpay, BTCPay Server, btcpayserver, WooCommerce, payment gateway, accept bitcoin, bitcoin plugin, bitcoin payment processor, bitcoin e-commerce, Lightning Network, Litecoin, cryptocurrency
+Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway, accept Bitcoin, Cryptocurrency, Crypto
 Requires at least: 5.2
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 2.4.0
+Stable tag: 2.4.1
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -15,7 +15,7 @@ BTCPay Server is a free and open-source bitcoin payment processor which allows y
 
 = Accept Bitcoin payments in your WooCommerce powered WordPress site with BTCPay Server =
 
-BTCPay Server for WooCommerce is a revolutionary, self-hosted, open-source payment gateway to accept Bitcoin payments. Our** seamless integration** with WooCommerce allows you to connect your self-hosted [BTCPay Server](https://btcpayserver.org) and start accepting Bitcoin payments in **just a few simple steps**.
+BTCPay Server for WooCommerce is a revolutionary, self-hosted, open-source payment gateway to accept Bitcoin payments. Our** seamless integration** with WooCommerce allows you to connect your self-hosted [BTCPay Server](https://btcpayserver.org) and start accepting Bitcoin payments in **[just a few simple steps](https://docs.btcpayserver.org/WooCommerce)**.
 
 = Features: =
 
@@ -31,7 +31,7 @@ BTCPay Server for WooCommerce is a revolutionary, self-hosted, open-source payme
 * **Lightning Network** integrated out of the box - instant, fast and low cost payments and payouts
 * **Reporting and accounting** - CSV exports
 * **Advanced invoice managemen**t and refunding integrated in the WooCommerce UI
-* **Real-time exchange price tracking **for correct payment amounts
+* **Real-time exchange price tracking** for correct payment amounts
 * **Versatile plugin system**:
     * Extend functionality according to your needs
     * Accept payments in altcoins through various plugins
@@ -103,12 +103,12 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Screenshots ==
 
-1. The BTCPay Server invoice. Your customers will see this at the checkout. They can pay from their wallet by scanning a QR or copy/pasting it manually into the wallet.
-2. Customizable plugin interface allows store owners to adjust store statuses according to their needs.
-3. Customer will see the pay with Bitcoin button at the checkout.Text can be customized.
-4. Example of successfully paid invoice.
-5. Example of an easy-embeddable HTML donation payment button.
-6. Example of the PoS app you can launch.
+1. Provides a Bitcoin / Lightning Network (and other) payment gateway on checkout.
+2. Your customers can pay by scanning the QR-Code with their wallet or copy and paste the receiving address.
+3. After successful payment the customers will get redirected to the order page. The order will be marked as paid automatically.
+4. On the settings form you can connect to your BTCPay Server instance by just entering the URL and clicking on "Generate API Key" button.
+5. You will get redirected to your BTCPay Server instance and just need to confirm the permissions of the API key. You will get redirected back to the settings form and the webhook will get set up automatically. You are ready to go.
+6. On BTCPay Server you have extensive reporting and accounting features.
 
 == Upgrade Notice ==
 = 2.4.0 =
@@ -116,7 +116,12 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Changelog ==
 
-= 2.4.0 :: 2023-12-12 =
+= 2.4.1 :: 2024-01-22 =
+* Fix: Ensure order status is not cancelled if paid by other payment gateway.
+* Show periodically notification to review the plugin.
+* Updating readme.txt (fixing text, updating banner and screenshots)
+
+= 2.4.0 :: 2023-12-15 =
 * Fix: Avoid error on InvoiceProcessing/InvoiceSettled event in case of paidOver property is missing.
 * New feature: Add basic support for WooCommerce cart and checkout blocks.
 Note: Works for default configuration; future versions will make it work with modal checkout and separate payment gateways too.

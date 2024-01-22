@@ -206,6 +206,13 @@ class GlobalSettings extends \WC_Settings_Page {
 				'type' => 'order_states',
 				'id' => 'btcpay_gf_order_states'
 			],
+			'protect_orders' => [
+				'title' => __( 'Protect order status', 'btcpay-greenfield-for-woocommerce' ),
+				'type' => 'checkbox',
+				'default' => 'yes',
+				'desc' => _x( 'Protects order status from changing if it is already "processing" or "completed". This will protect against orders getting cancelled via webhook if they were paid in the meantime with another payment gateway. Default is ON.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'id' => 'btcpay_gf_protect_order_status'
+			],
 			'modal_checkout' => [
 				'title' => __( 'Modal checkout', 'btcpay-greenfield-for-woocommerce' ),
 				'type' => 'checkbox',
