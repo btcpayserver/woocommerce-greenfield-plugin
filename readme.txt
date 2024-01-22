@@ -118,9 +118,8 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 = 2.4.1 :: 2024-01-22 =
 * Fix: Ensure order status is not cancelled if paid by other payment gateway.
+* Show periodically notification to review the plugin.
 * Updating readme.txt (fixing text, updating banner and screenshots)
-
-
 
 = 2.4.0 :: 2023-12-15 =
 * Fix: Avoid error on InvoiceProcessing/InvoiceSettled event in case of paidOver property is missing.
