@@ -15,7 +15,7 @@ BTCPay Server is a free and open-source bitcoin payment processor which allows y
 
 = Accept Bitcoin payments in your WooCommerce powered WordPress site with BTCPay Server =
 
-BTCPay Server for WooCommerce is a revolutionary, self-hosted, open-source payment gateway to accept Bitcoin payments. Our** seamless integration** with WooCommerce allows you to connect your self-hosted [BTCPay Server](https://btcpayserver.org) and start accepting Bitcoin payments in **[just a few simple steps](https://docs.btcpayserver.org/WooCommerce)**.
+BTCPay Server for WooCommerce is a revolutionary, self-hosted, open-source payment gateway to accept Bitcoin payments. Our **seamless integration** with WooCommerce allows you to connect your self-hosted [BTCPay Server](https://btcpayserver.org) and start accepting Bitcoin payments in **[just a few simple steps](https://docs.btcpayserver.org/WooCommerce)**.
 
 = Features: =
 
