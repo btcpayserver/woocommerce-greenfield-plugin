@@ -5,7 +5,7 @@ Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway, a
 Requires at least: 5.2
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 2.4.1
+Stable tag: 2.5.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -111,10 +111,13 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. On BTCPay Server you have extensive reporting and accounting features.
 
 == Upgrade Notice ==
-= 2.4.0 =
-* New feature: Add basic support for [WooCommerce cart and checkout blocks](https://woo.com/document/cart-checkout-blocks-status/).
+= 2.5.0 =
+* New feature: Added support for modal checkout with [WooCommerce checkout blocks](https://woo.com/document/cart-checkout-blocks-status/).
 
 == Changelog ==
+= 2.5.0 :: 2024-01-31 =
+* Fix: Formatting in readme.txt
+* Add support for modal overlay for checkout blocks.
 
 = 2.4.1 :: 2024-01-22 =
 * Fix: Ensure order status is not cancelled if paid by other payment gateway.
