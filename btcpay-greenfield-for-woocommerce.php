@@ -7,7 +7,7 @@
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
- * Version:         2.4.1
+ * Version:         2.5.0
  * Requires PHP:    7.4
  * Tested up to:    6.4
  * Requires at least: 5.2
@@ -26,7 +26,7 @@ use BTCPayServer\WC\Helper\Logger;
 
 defined( 'ABSPATH' ) || exit();
 
-define( 'BTCPAYSERVER_VERSION', '2.4.1' );
+define( 'BTCPAYSERVER_VERSION', '2.5.0' );
 define( 'BTCPAYSERVER_VERSION_KEY', 'btcpay_gf_version' );
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
@@ -44,6 +44,8 @@ class BTCPayServerWCPlugin {
 		add_action( 'wp_ajax_btcpaygf_notifications', [$this, 'processAjaxNotification'] );
 		add_action( 'wp_ajax_nopriv_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
 		add_action( 'admin_enqueue_scripts', [$this, 'enqueueAdminScripts'] );
+		add_action( 'wp_ajax_btcpaygf_modal_blocks_checkout', [$this, 'processAjaxModalBlocksCheckout'] );
+		add_action( 'wp_ajax_nopriv_btcpaygf_modal_blocks_checkout', [$this, 'processAjaxModalBlocksCheckout'] );
 
 		// Run the updates.
 		\BTCPayServer\WC\Helper\UpdateManager::processUpdates();
@@ -237,13 +239,14 @@ class BTCPayServerWCPlugin {
 	}
 
 	/**
-	 * Handles the AJAX callback from the Payment Request on the checkout page.
+	 * Handles the modal AJAX callback from the checkout page.
 	 */
 	public function processAjaxModalCheckout() {
 
 		Logger::debug('Entering ' . __METHOD__);
+		Logger::debug('$_POST: ' . print_r($_POST, true));
 
-		$nonce = $_POST['apiNonce'];
+		$nonce = sanitize_text_field($_POST['apiNonce']);
 		if ( ! wp_verify_nonce( $nonce, 'btcpay-nonce' ) ) {
 			wp_die('Unauthorized!', '', ['response' => 401]);
 		}
@@ -261,6 +264,61 @@ class BTCPayServerWCPlugin {
 		}
 	}
 
+	/**
+	 * Handles the modal AJAX callback on the blocks checkout page.
+	 */
+	public function processAjaxModalBlocksCheckout() {
+
+		Logger::debug('Entering ' . __METHOD__);
+		Logger::debug('$_POST: ' . print_r($_POST, true));
+
+		$nonce = sanitize_text_field($_POST['apiNonce']);
+		if ( ! wp_verify_nonce( $nonce, 'btcpay-nonce' ) ) {
+			wp_die('Unauthorized!', '', ['response' => 401]);
+		}
+
+		if ( get_option('btcpay_gf_modal_checkout') !== 'yes' ) {
+			wp_die('Modal checkout mode not enabled.', '', ['response' => 400]);
+		}
+
+		$selectedPaymentGateway = sanitize_text_field($_POST['paymentGateway']);
+		$orderId = sanitize_text_field($_POST['orderId']);
+		$order = wc_get_order($orderId);
+
+		if ($order) {
+
+			$orderPaymentMethod = $order->get_payment_method();
+			if (empty($orderPaymentMethod) || $orderPaymentMethod !== $selectedPaymentGateway) {
+				$order->set_payment_method($selectedPaymentGateway);
+				$order->save();
+			}
+
+			$payment_gateways = \WC_Payment_Gateways::instance();
+
+			if ($payment_gateway = $payment_gateways->payment_gateways()[$selectedPaymentGateway]) {
+
+				// Run the process_payment() method.
+				$result = $payment_gateway->process_payment($order->get_id());
+
+				if (isset($result['result']) && $result['result'] === 'success') {
+					wp_send_json_success($result);
+				} else {
+					wp_send_json_error($result);
+				}
+
+			} else {
+				wp_send_json_error('Payment gateway not found.');
+			}
+		} else {
+			wp_send_json_error('Order not found, stopped processing.');
+		}
+
+		wp_die();
+	}
+
+	/**
+	 * Handles the AJAX callback to dismiss review notification.
+	 */
 	public function processAjaxNotification() {
 		check_ajax_referer('btcpaygf-notifications-nonce', 'nonce');
 		// Dismiss review notice for 30 days.
@@ -268,6 +326,9 @@ class BTCPayServerWCPlugin {
 		wp_send_json_success();
 	}
 
+	/**
+	 * Displays the payment status on the thank you page.
+	 */
 	public static function orderStatusThankYouPage($order_id)
 	{
 		if (!$order = wc_get_order($order_id)) {
