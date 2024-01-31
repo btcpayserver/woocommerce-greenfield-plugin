@@ -375,7 +375,10 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Load BTCPay modal JS.
 		wp_enqueue_script( 'btcpay_gf_modal_js', $this->apiHelper->url . '/modal/btcpay.js', [], BTCPAYSERVER_VERSION );
 
-		$isBlockCheckout = has_block( 'woocommerce/checkout' );
+		// Get page id of checkout page.
+		$checkoutPageId = wc_get_page_id('checkout');
+		// Check if the checkout page uses the new woocommerce blocks.
+		$isBlockCheckout = has_block( 'woocommerce/checkout' , $checkoutPageId);
 		if ($isBlockCheckout) {
 			$scriptName = 'btcpay_gf_modal_blocks_checkout';
 			$scriptFile = BTCPAYSERVER_PLUGIN_URL . 'assets/js/frontend/blocksModalCheckout.js';
