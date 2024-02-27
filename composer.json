@@ -14,6 +14,6 @@
     }
   ],
   "require": {
-    "btcpayserver/btcpayserver-greenfield-php": "^1.0.0"
+    "btcpayserver/btcpayserver-greenfield-php": "^2.0.0"
   }
 }

@@ -114,7 +114,7 @@ class GlobalSettings extends \WC_Settings_Page {
 				),
 				'type' => 'text',
 				'desc' => esc_html_x( 'URL/host to your BTCPay Server instance. Note: if you use a self hosted node like Umbrel, RaspiBlitz, myNode, etc. you will have to make sure your node is reachable from the internet. You can do that through <a href="https://docs.btcpayserver.org/Deployment/ReverseProxyToTor/" target="_blank">Tor</a>, <a href="https://docs.btcpayserver.org/Docker/cloudflare-tunnel/" target="_blank">Cloudflare</a> or <a href="https://docs.btcpayserver.org/Deployment/ReverseSSHtunnel/" target="_blank">SSH (advanced)</a>.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
-				'placeholder' => esc_attr_x( 'e.g. https://btcpayserver.example.com', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'placeholder' => esc_attr_x( 'https://mainnet.demo.btcpayserver.org', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'desc_tip'    => true,
 				'id' => 'btcpay_gf_url'
 			],

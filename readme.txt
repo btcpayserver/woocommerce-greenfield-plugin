@@ -4,8 +4,8 @@ Donate link: https://btcpayserver.org/donate/
 Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway, accept Bitcoin, Cryptocurrency, Crypto
 Requires at least: 5.2
 Tested up to: 6.4
-Requires PHP: 7.4
-Stable tag: 2.5.0
+Requires PHP: 8.0
+Stable tag: 2.6.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -111,10 +111,15 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. On BTCPay Server you have extensive reporting and accounting features.
 
 == Upgrade Notice ==
-= 2.5.0 =
-* New feature: Added support for modal checkout with [WooCommerce checkout blocks](https://woo.com/document/cart-checkout-blocks-status/).
+= 2.6.0 =
+* Important: Minimum PHP version is now 8.0
 
 == Changelog ==
+= 2.6.0 :: 2024-02-27 =
+* Update PHP BTCPay library to 2.3.0, minimum PHP version 8.0.
+* Show warning when .local domain is used for BTCPay Server URL.
+* Change BTCPay Server URL placeholder to official demo server.
+
 = 2.5.0 :: 2024-01-31 =
 * Fix: Formatting in readme.txt
 * Add support for modal overlay for checkout blocks.
