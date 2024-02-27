@@ -199,7 +199,7 @@ class GreenfieldApiHelper {
 			$client = new Invoice($config['url'], $config['api_key']);
 			try {
 				$invoice = $client->getInvoice($config['store_id'], $invoiceId);
-				return $invoice->isFullyPaid() || $invoice->isPaidLate();
+				return $invoice->isSettled();
 			} catch (\Throwable $e) {
 				Logger::debug('Exception while checking if invoice settled '. $invoiceId . ': ' . $e->getMessage());
 			}

@@ -7,12 +7,12 @@
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
- * Version:         2.5.0
- * Requires PHP:    7.4
+ * Version:         2.6.0
+ * Requires PHP:    8.0
  * Tested up to:    6.4
- * Requires at least: 5.2
+ * Requires at least: 5.9
  * WC requires at least: 6.0
- * WC tested up to: 8.5
+ * WC tested up to: 8.6
  */
 
 use BTCPayServer\WC\Admin\Notice;
@@ -26,7 +26,7 @@ use BTCPayServer\WC\Helper\Logger;
 
 defined( 'ABSPATH' ) || exit();
 
-define( 'BTCPAYSERVER_VERSION', '2.5.0' );
+define( 'BTCPAYSERVER_VERSION', '2.6.0' );
 define( 'BTCPAYSERVER_VERSION_KEY', 'btcpay_gf_version' );
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
@@ -39,7 +39,7 @@ class BTCPayServerWCPlugin {
 	public function __construct() {
 		$this->includes();
 
-		add_action('woocommerce_thankyou_btcpaygf_default', ['BTCPayServerWCPlugin', 'orderStatusThankYouPage'], 10, 1);
+		add_action( 'woocommerce_thankyou_btcpaygf_default', ['BTCPayServerWCPlugin', 'orderStatusThankYouPage'], 10, 1);
 		add_action( 'wp_ajax_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
 		add_action( 'wp_ajax_btcpaygf_notifications', [$this, 'processAjaxNotification'] );
 		add_action( 'wp_ajax_nopriv_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
@@ -151,8 +151,8 @@ class BTCPayServerWCPlugin {
 	 */
 	public function dependenciesNotification() {
 		// Check PHP version.
-		if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
-			$versionMessage = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 7.4+.', 'btcpay-greenfield-for-woocommerce' ), PHP_VERSION );
+		if ( version_compare( PHP_VERSION, '8.0', '<' ) ) {
+			$versionMessage = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 8.0+.', 'btcpay-greenfield-for-woocommerce' ), PHP_VERSION );
 			Notice::addNotice('error', $versionMessage);
 		}
 
