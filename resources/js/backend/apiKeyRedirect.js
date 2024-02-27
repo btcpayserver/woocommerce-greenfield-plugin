@@ -5,6 +5,10 @@ jQuery(document).ready(function($) {
 			if (url.protocol !== 'https:' && url.protocol !== 'http:') {
 				return false;
 			}
+			if (url.hostname.endsWith('.local')) {
+				alert('You entered a .local domain which only works on your local network. Please make sure your BTCPay Server is reachable on the internet if you want to use it in production. Check the tooltip for this field for more information. Aborting.');
+				return false;
+			}
 		} catch (e) {
 			console.error(e);
 			return false;
