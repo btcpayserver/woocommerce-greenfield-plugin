@@ -193,11 +193,6 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			return new \WP_Error('1', $errNoBtcpayId);
 		}
 
-		$remaining = $order->get_remaining_refund_amount();
-		$totalRefunded = $order->get_total_refunded();
-		$total = $order->get_total();
-		$x = $order->get_refunds();
-
 		// Make sure the refund amount is not greater than the invoice amount.
 		// This is done by WC and no need to do it here, refund is already saved at this stage so below won't work.
 		// Leaving it here for future reference.
