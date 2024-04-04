@@ -43,6 +43,11 @@ class GlobalSettings extends \WC_Settings_Page {
 			wp_register_style( 'btcpay_gf_admin_styles', BTCPAYSERVER_PLUGIN_URL . 'assets/css/admin.css', array(), BTCPAYSERVER_VERSION );
 			wp_enqueue_style( 'btcpay_gf_admin_styles' );
 
+			// Check if PHP bcmath is available.
+			if ( ! function_exists('bcdiv') ) {
+				$bcmathMessage = __('The PHP bcmath extension is not installed. Make sure it is available otherwise the "Sats-Mode" will not work.', 'btcpay-greenfield-for-woocommerce');
+				Notice::addNotice('error', $bcmathMessage);
+			}
 		}
 		parent::__construct();
 	}
