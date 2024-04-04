@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2024-04-04T15:08:14+00:00\n"
+"POT-Creation-Date: 2024-04-04T15:31:42+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.9.0\n"
 "language-team: LANGUAGE <EMAIL@ADDRESS>\n"
@@ -55,49 +55,49 @@ msgstr ""
 msgid "Seems you have the old BTCPay for WooCommerce plugin installed. While it should work it is strongly recommended to not run both versions but rely on the maintained version (BTCPay Greenfield for WooCommerce)."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:189
+#: btcpay-greenfield-for-woocommerce.php:188
 msgid "Thank you for using BTCPay for WooCommerce! If you like the plugin, we would love if you %1$sleave us a review%2$s. %3$sRemind me later%4$s %5$sStop reminding me forever!%6$s"
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:444
+#: btcpay-greenfield-for-woocommerce.php:443
 msgid "Settings"
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:446
+#: btcpay-greenfield-for-woocommerce.php:445
 msgid "Debug log"
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:448
+#: btcpay-greenfield-for-woocommerce.php:447
 msgid "Docs"
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:450
+#: btcpay-greenfield-for-woocommerce.php:449
 msgid "Support Chat"
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:490
+#: btcpay-greenfield-for-woocommerce.php:489
 msgid "Error on verifiying redirected API wey with stored BTCPay Server url. Aborting API wizard. Please try again or do a manual setup."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:512
+#: btcpay-greenfield-for-woocommerce.php:511
 msgid "Successfully received api key and store id from BTCPay Server API. Please finish setup by saving this settings form."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:516
+#: btcpay-greenfield-for-woocommerce.php:515
 #: src/Admin/GlobalSettings.php:374
 msgid "Successfully registered a new webhook on BTCPay Server."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:520
+#: btcpay-greenfield-for-woocommerce.php:519
 #: src/Admin/GlobalSettings.php:378
 msgid "Could not register a new webhook on the store."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:529
+#: btcpay-greenfield-for-woocommerce.php:528
 msgid "Please make sure you only select one store on the BTCPay API authorization page."
 msgstr ""
 
-#: btcpay-greenfield-for-woocommerce.php:534
+#: btcpay-greenfield-for-woocommerce.php:533
 msgid "Error processing the data from BTCPay. Please try again."
 msgstr ""
 
@@ -368,6 +368,10 @@ msgstr ""
 
 #: src/Admin/GlobalSettings.php:406
 msgid "Error fetching data for this API key from server. Please check if the key is valid. Error: %s"
+msgstr ""
+
+#: src/Admin/GlobalSettings.php:423
+msgid "The PHP bcmath extension is not installed. Make sure it is available otherwise the \"Sats-Mode\" will not work. Disabled Sats-Mode until requirements are met."
 msgstr ""
 
 #: src/Gateway/AbstractGateway.php:26
