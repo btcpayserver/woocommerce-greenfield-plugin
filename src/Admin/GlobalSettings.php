@@ -43,6 +43,11 @@ class GlobalSettings extends \WC_Settings_Page {
 			wp_register_style( 'btcpay_gf_admin_styles', BTCPAYSERVER_PLUGIN_URL . 'assets/css/admin.css', array(), BTCPAYSERVER_VERSION );
 			wp_enqueue_style( 'btcpay_gf_admin_styles' );
 
+			// Check if PHP bcmath is available.
+			if ( ! function_exists('bcdiv') ) {
+				$bcmathMessage = __('The PHP bcmath extension is not installed. Make sure it is available otherwise the "Sats-Mode" will not work.', 'btcpay-greenfield-for-woocommerce');
+				Notice::addNotice('error', $bcmathMessage);
+			}
 		}
 		parent::__construct();
 	}
@@ -409,6 +414,14 @@ class GlobalSettings extends \WC_Settings_Page {
 			$messageNotConnecting = 'Did not try to connect to BTCPay Server API because one of the required information was missing: URL, key or storeID';
 			Notice::addNotice('warning', $messageNotConnecting);
 			Logger::debug($messageNotConnecting);
+		}
+
+		// If Sats-Mode enabled but bcmath missing show notice and delete the setting.
+		$satsMode = sanitize_text_field( $_POST['btcpay_gf_sats_mode'] ?? '' );
+		if ( $satsMode && ! function_exists('bcdiv') ) {
+			unset($_POST['btcpay_gf_sats_mode']);
+			$bcmathMessage = __('The PHP bcmath extension is not installed. Make sure it is available otherwise the "Sats-Mode" will not work. Disabled Sats-Mode until requirements are met.', 'btcpay-greenfield-for-woocommerce');
+			Notice::addNotice('error', $bcmathMessage);
 		}
 
 		parent::save();
