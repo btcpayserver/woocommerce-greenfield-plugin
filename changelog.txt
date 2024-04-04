@@ -1,3 +1,34 @@
+= 2.3.1 :: 2023-10-20 =
+* Fix: Ensure refunds text does not exceed API field limit.
+
+= 2.3.0 :: 2023-09-06 =
+* Support for high performance order storage (HPOS)
+
+Note: This is opt-in but brings performance improvements. Follow instructions [here](https://github.com/woocommerce/woocommerce/wiki/High-Performance-Order-Storage-Upgrade-Recipe-Book#how-to-enable-hpos) if you want to use it.
+
+= 2.2.3 :: 2023-08-22 =
+* Automatically create webhook after redirect.
+
+= 2.2.2 :: 2023-08-22 =
+* Fix edgecase JS error on payment method selection.
+
+= 2.2.1 :: 2023-08-17 =
+* Add tooltip with webhook callback information
+
+= 2.2.0 :: 2023-08-17 =
+* Refactor settings UI and allow manual webhook secret entry. This allows 3rd party integrators limit their API keys scope and not include the webhook permission.
+
+= 2.1.0 :: 2023-04-03 =
+* New feature: Modal / Overlay checkout mode (no redirect to BTCPay Server)
+
+= 2.0.0 :: 2023-03-20 =
+* New feature: Add support for refunds.
+
+Note: If you are upgrading from a version < 2.0 and you want to use refunds (via pull payments) you need to create a new API key with the "Create non-approved pull payments" which is available from BTCPay Server version 1.7.6.
+See this link for more information: https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key
+
+If you do NOT use refunds. You do NOT need to do anything, your existing API key and setup will continue to work as before.
+
 = 1.1.5 :: 2023-03-08 =
 * Fix: fix error when plugins override delete_transient function not returning boolean value
 

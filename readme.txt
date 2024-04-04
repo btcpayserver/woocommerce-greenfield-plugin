@@ -1,11 +1,11 @@
 === BTCPay Server - Accept Bitcoin payments in WooCommerce ===
 Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
-Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway, accept Bitcoin, Cryptocurrency, Crypto
+Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 5.2
 Tested up to: 6.4
 Requires PHP: 8.0
-Stable tag: 2.6.0
+Stable tag: 2.6.1
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -111,10 +111,14 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. On BTCPay Server you have extensive reporting and accounting features.
 
 == Upgrade Notice ==
-= 2.6.0 =
-* Important: Minimum PHP version is now 8.0
+= 2.6.1 =
+* Minor changes, just update.
 
 == Changelog ==
+= 2.6.1 :: 2024-04-04 =
+* Fix: Show warning when bcmath extension is missing.
+* Make it possible to dismiss the review notification forever.
+
 = 2.6.0 :: 2024-02-27 =
 * Update PHP BTCPay library to 2.3.0, minimum PHP version 8.0.
 * Show warning when .local domain is used for BTCPay Server URL.
@@ -134,35 +138,5 @@ You'll find extensive documentation and answers to many of your questions on [BT
 * New feature: Add basic support for WooCommerce cart and checkout blocks.
 Note: Works for default configuration; future versions will make it work with modal checkout and separate payment gateways too.
 
-= 2.3.1 :: 2023-10-20 =
-* Fix: Ensure refunds text does not exceed API field limit.
-
-= 2.3.0 :: 2023-09-06 =
-* Support for high performance order storage (HPOS)
-
-Note: This is opt-in but brings performance improvements. Follow instructions [here](https://github.com/woocommerce/woocommerce/wiki/High-Performance-Order-Storage-Upgrade-Recipe-Book#how-to-enable-hpos) if you want to use it.
-
-= 2.2.3 :: 2023-08-22 =
-* Automatically create webhook after redirect.
-
-= 2.2.2 :: 2023-08-22 =
-* Fix edgecase JS error on payment method selection.
-
-= 2.2.1 :: 2023-08-17 =
-* Add tooltip with webhook callback information
-
-= 2.2.0 :: 2023-08-17 =
-* Refactor settings UI and allow manual webhook secret entry. This allows 3rd party integrators limit their API keys scope and not include the webhook permission.
-
-= 2.1.0 :: 2023-04-03 =
-* New feature: Modal / Overlay checkout mode (no redirect to BTCPay Server)
-
-= 2.0.0 :: 2023-03-20 =
-* New feature: Add support for refunds.
-
-Note: If you are upgrading from a version < 2.0 and you want to use refunds (via pull payments) you need to create a new API key with the "Create non-approved pull payments" which is available from BTCPay Server version 1.7.6.
-See this link for more information: https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key
-
-If you do NOT use refunds. You do NOT need to do anything, your existing API key and setup will continue to work as before.
 
 Changelog of older releases can be found [here](https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/changelog.txt)
