@@ -4,3 +4,9 @@
 .btcpay-connection-error {
 	color: red;
 }
+.btcpay-review-dismiss {
+	margin-left: 20px;
+}
+.btcpay-review-dismiss-forever {
+	margin-left: 10px;
+}
