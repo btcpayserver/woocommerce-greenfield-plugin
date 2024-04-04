@@ -116,6 +116,7 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Changelog ==
 = 2.6.1 :: 2024-04-04 =
+* Fix: Error when processing full amount refunds.
 * Fix: Show warning when bcmath extension is missing.
 * Make it possible to dismiss the review notification forever.
 
