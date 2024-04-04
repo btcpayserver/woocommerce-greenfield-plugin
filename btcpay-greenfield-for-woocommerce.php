@@ -183,7 +183,7 @@ class BTCPayServerWCPlugin {
 	 * Shows a notice on the admin dashboard to periodically ask for a review.
 	 */
 	public function submitReviewNotification() {
-		if (!get_option('btcpaygf_review_dismissed_forever') && !get_transient('btcpaygf_review_dismissed')) {
+		if (!get_option('btcpay_gf_review_dismissed_forever') && !get_transient('btcpay_gf_review_dismissed')) {
 			$reviewMessage = sprintf(
 				__( 'Thank you for using BTCPay for WooCommerce! If you like the plugin, we would love if you %1$sleave us a review%2$s. %3$sRemind me later%4$s %5$sStop reminding me forever!%6$s', 'btcpay-greenfield-for-woocommerce' ),
 				'<a href="https://wordpress.org/support/plugin/btcpay-greenfield-for-woocommerce/reviews/?filter=5#new-post" target="_blank">',
@@ -329,10 +329,10 @@ class BTCPayServerWCPlugin {
 		$dismissForever = filter_var($_POST['dismiss_forever'], FILTER_VALIDATE_BOOL);
 
 		if ($dismissForever) {
-			update_option('btcpaygf_review_dismissed_forever', true);
+			update_option('btcpay_gf_review_dismissed_forever', true);
 		} else {
 			// Dismiss review notice for 30 days.
-			set_transient('btcpaygf_review_dismissed', true, DAY_IN_SECONDS * 30);
+			set_transient('btcpay_gf_review_dismissed', true, DAY_IN_SECONDS * 30);
 		}
 
 		wp_send_json_success();
