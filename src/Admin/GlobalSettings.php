@@ -416,6 +416,14 @@ class GlobalSettings extends \WC_Settings_Page {
 			Logger::debug($messageNotConnecting);
 		}
 
+		// If Sats-Mode enabled but bcmath missing show notice and delete the setting.
+		$satsMode = sanitize_text_field( $_POST['btcpay_gf_sats_mode'] ?? '' );
+		if ( $satsMode && ! function_exists('bcdiv') ) {
+			unset($_POST['btcpay_gf_sats_mode']);
+			$bcmathMessage = __('The PHP bcmath extension is not installed. Make sure it is available otherwise the "Sats-Mode" will not work. Disabled Sats-Mode until requirements are met.', 'btcpay-greenfield-for-woocommerce');
+			Notice::addNotice('error', $bcmathMessage);
+		}
+
 		parent::save();
 
 		// Purge separate payment methods cache.
