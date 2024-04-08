@@ -3,9 +3,9 @@ Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 5.2
-Tested up to: 6.4
+Tested up to: 6.5
 Requires PHP: 8.0
-Stable tag: 2.6.1
+Stable tag: 2.6.2
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -111,10 +111,13 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. On BTCPay Server you have extensive reporting and accounting features.
 
 == Upgrade Notice ==
-= 2.6.1 =
-* Minor changes, just update.
+= 2.6.2 =
+* Notifications fix, buttons should now work.
 
 == Changelog ==
+= 2.6.2 :: 2024-04-09 =
+* Fix: Dismissing the review notification forever, finally.
+
 = 2.6.1 :: 2024-04-04 =
 * Fix: Error when processing full amount refunds.
 * Fix: Show warning when bcmath extension is missing.

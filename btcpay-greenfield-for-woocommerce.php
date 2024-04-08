@@ -7,12 +7,12 @@
  * Author URI:      https://btcpayserver.org
  * Text Domain:     btcpay-greenfield-for-woocommerce
  * Domain Path:     /languages
- * Version:         2.6.1
+ * Version:         2.6.2
  * Requires PHP:    8.0
- * Tested up to:    6.4
+ * Tested up to:    6.5
  * Requires at least: 5.9
  * WC requires at least: 6.0
- * WC tested up to: 8.6
+ * WC tested up to: 8.7
  */
 
 use BTCPayServer\WC\Admin\Notice;
@@ -26,7 +26,7 @@ use BTCPayServer\WC\Helper\Logger;
 
 defined( 'ABSPATH' ) || exit();
 
-define( 'BTCPAYSERVER_VERSION', '2.6.1' );
+define( 'BTCPAYSERVER_VERSION', '2.6.2' );
 define( 'BTCPAYSERVER_VERSION_KEY', 'btcpay_gf_version' );
 define( 'BTCPAYSERVER_PLUGIN_FILE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'BTCPAYSERVER_PLUGIN_URL', plugin_dir_url(__FILE__ ) );
@@ -99,7 +99,8 @@ class BTCPayServerWCPlugin {
 	 * Add scripts to admin pages.
 	 */
 	public function enqueueAdminScripts(): void {
-		wp_enqueue_script('btcpaygf-notifications', plugin_dir_url(__FILE__) . 'assets/js/backend/notifications.js', ['jquery'], null, true);
+		wp_register_script('btcpaygf-notifications', plugin_dir_url(__FILE__) . 'assets/js/backend/notifications.js', ['jquery'], BTCPAYSERVER_VERSION);
+		wp_enqueue_script('btcpaygf-notifications');
 		wp_localize_script('btcpaygf-notifications', 'BTCPayNotifications', [
 			'ajax_url' => admin_url('admin-ajax.php'),
 			'nonce' => wp_create_nonce('btcpaygf-notifications-nonce')
@@ -324,7 +325,9 @@ class BTCPayServerWCPlugin {
 	 * Handles the AJAX callback to dismiss review notification.
 	 */
 	public function processAjaxNotification() {
-		check_ajax_referer('btcpaygf-notifications-nonce', 'nonce');
+		if ( ! check_ajax_referer( 'btcpaygf-notifications-nonce', 'nonce' ) ) {
+			wp_die( 'Unauthorized!', '', [ 'response' => 401 ] );
+		}
 
 		$dismissForever = filter_var($_POST['dismiss_forever'], FILTER_VALIDATE_BOOL);
 
