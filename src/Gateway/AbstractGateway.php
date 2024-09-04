@@ -185,6 +185,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$order = wc_get_order($order_id);
 		$refundAmount = PreciseNumber::parseString($amount);
 		$currency = $order->get_currency();
+		$originalCurrency = $order->get_currency();
 
 		// Check if order has invoice id.
 		if (!$invoiceId = $order->get_meta('BTCPay_id')) {
@@ -242,7 +243,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			if (!empty($pullPayment)) {
 				$refundMsg = "PullPayment ID: " . $pullPayment->getId() . "\n";
 				$refundMsg .= "Link: " . $pullPayment->getViewLink() . "\n";
-				$refundMsg .= "Amount: " . $amount . " " . $currency . "\n";
+				$refundMsg .= "Amount: " . $amount . " " . $originalCurrency . "\n";
 				$refundMsg .= "Reason: " . $reason;
 				$successMsg = 'Successfully created refund: ' . $refundMsg;
 
