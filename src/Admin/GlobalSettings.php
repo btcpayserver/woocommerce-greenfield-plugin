@@ -246,6 +246,13 @@ class GlobalSettings extends \WC_Settings_Page {
 				'desc' => _x( 'Makes Satoshis/Sats available as currency "SAT" (can be found in WooCommerce->Settings->General) and handles conversion to BTC before creating the invoice on BTCPay.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'id' => 'btcpay_gf_sats_mode'
 			],
+			'refund_note_visible' => [
+				'title' => __( 'Customer visible refunds', 'btcpay-greenfield-for-woocommerce' ),
+				'type' => 'checkbox',
+				'default' => 'no',
+				'desc' => _x( 'If enabled, it will show the order refund note also to the customer and trigger an email to customer with the refund link.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'id' => 'btcpay_gf_refund_note_visible'
+			],
 			'debug' => [
 				'title' => __( 'Debug Log', 'btcpay-greenfield-for-woocommerce' ),
 				'type' => 'checkbox',

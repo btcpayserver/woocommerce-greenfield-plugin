@@ -249,7 +249,13 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 				Logger::debug($successMsg);
 
-				$order->add_order_note($successMsg);
+				// Add public or private order note.
+				if (get_option('btcpay_gf_refund_note_visible') === 'yes') {
+					$order->add_order_note($successMsg, 1);
+				} else {
+					$order->add_order_note($successMsg);
+				}
+
 				// Use add_meta_data to allow for partial refunds.
 				$order->add_meta_data('BTCPay_refund', $refundMsg, false);
 				$order->save();
