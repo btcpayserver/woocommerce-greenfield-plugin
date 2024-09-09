@@ -466,6 +466,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					wp_die('Multiple orders found for this invoiceId, aborting.');
 				}
 
+				// Only continue if the order payment method contains string "btcpaygf_" to avoid processing other gateways.
+				if (strpos($orders[0]->get_payment_method(), 'btcpaygf_') === false) {
+					Logger::debug('Order payment method does not contain "btcpaygf_", aborting.');
+					wp_send_json_success(); // return 200 OK to not mess up BTCPay queue
+				}
+
 				$this->processOrderStatus($orders[0], $postData);
 
 			} catch (\Throwable $e) {
