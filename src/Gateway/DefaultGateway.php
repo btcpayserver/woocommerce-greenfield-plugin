@@ -64,7 +64,8 @@ class DefaultGateway extends AbstractGateway {
 
 		$btcPayPaymentGW = [];
 
-		if ($this->get_option('enforce_payment_tokens') === 'yes') {
+		// If separate gateways are enabled and payment tokens are enforced.
+		if (get_option('btcpay_gf_separate_gateways') === 'yes' && $this->get_option('enforce_payment_tokens') === 'yes') {
 			$gateways = WC()->payment_gateways->payment_gateways();
 			/** @var  $gateway AbstractGateway */
 			foreach ($gateways as $id => $gateway) {
@@ -78,7 +79,7 @@ class DefaultGateway extends AbstractGateway {
 			return $btcPayPaymentGW;
 		}
 
-		// If payment tokens are not enforced set all.
+		// If payment tokens are not enforced or separate gateways are not enabled.
 		$separateGateways = \BTCPayServer\WC\Helper\GreenfieldApiHelper::supportedPaymentMethods();
 		foreach ($separateGateways as $sgw) {
 			$btcPayPaymentGW[] = $sgw['symbol'];
