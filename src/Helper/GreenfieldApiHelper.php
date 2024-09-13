@@ -21,6 +21,7 @@ class GreenfieldApiHelper {
 	public $url;
 	public $apiKey;
 	public $storeId;
+	public $webhook;
 
 	// todo: need to refactor as it loads cached options if form submitted by ajax
 	public function __construct() {
@@ -63,7 +64,7 @@ class GreenfieldApiHelper {
 
 		if ($config) {
 			$client = new Store($config['url'], $config['api_key']);
-			if (!empty($stores = $client->getStores())) {
+			if (!empty($client->getStores())) {
 				return true;
 			} else {
 				Logger::debug('Could not fetch stores from BTCPay Server with the given API key.');

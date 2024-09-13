@@ -185,6 +185,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$order = wc_get_order($order_id);
 		$refundAmount = PreciseNumber::parseString($amount);
 		$currency = $order->get_currency();
+		$originalCurrency = $order->get_currency();
 
 		// Check if order has invoice id.
 		if (!$invoiceId = $order->get_meta('BTCPay_id')) {
@@ -214,8 +215,8 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Get payment methods.
 		$paymentMethods = $this->getPaymentMethods();
 		// Remove LNURL
-		if (in_array('BTC_LNURLPAY', $paymentMethods)) {
-			$paymentMethods = array_diff($paymentMethods, ['BTC_LNURLPAY']);
+		if (in_array('BTC_LNURLPAY', $paymentMethods) || in_array('BTC_LNURL', $paymentMethods)) {
+			$paymentMethods = array_diff($paymentMethods, ['BTC_LNURLPAY', 'BTC_LNURL']);
 		}
 
 		// Refund name is limited for 50 chars, but we do not have description field available until php lib v3 is out.
@@ -242,13 +243,19 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			if (!empty($pullPayment)) {
 				$refundMsg = "PullPayment ID: " . $pullPayment->getId() . "\n";
 				$refundMsg .= "Link: " . $pullPayment->getViewLink() . "\n";
-				$refundMsg .= "Amount: " . $amount . " " . $currency . "\n";
+				$refundMsg .= "Amount: " . $amount . " " . $originalCurrency . "\n";
 				$refundMsg .= "Reason: " . $reason;
 				$successMsg = 'Successfully created refund: ' . $refundMsg;
 
 				Logger::debug($successMsg);
 
-				$order->add_order_note($successMsg);
+				// Add public or private order note.
+				if (get_option('btcpay_gf_refund_note_visible') === 'yes') {
+					$order->add_order_note($successMsg, 1);
+				} else {
+					$order->add_order_note($successMsg);
+				}
+
 				// Use add_meta_data to allow for partial refunds.
 				$order->add_meta_data('BTCPay_refund', $refundMsg, false);
 				$order->save();
@@ -410,6 +417,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			'isPayForOrderPage' => is_wc_endpoint_url( 'order-pay' ) ? 'yes' : 'no',
 			'isAddPaymentMethodPage' => is_add_payment_method_page() ? 'yes' : 'no',
 			'textInvoiceExpired' => _x( 'The invoice expired. Please try again, choose a different payment method or contact us if you paid but the payment did not confirm in time.', 'js', 'btcpay-greenfield-for-woocommerce' ),
+			'textInvoiceInvalid' => _x( 'The invoice is invalid. Please try again, choose a different payment method or contact us if you paid but the payment did not confirm in time.', 'js', 'btcpay-greenfield-for-woocommerce' ),
 			'textModalClosed' => _x( 'Payment aborted by you. Please try again or choose a different payment method.', 'js', 'btcpay-greenfield-for-woocommerce' ),
 			'textProcessingError' => _x( 'Error processing checkout. Please try again or choose another payment option.', 'js', 'btcpay-greenfield-for-woocommerce' ),
 		] );
@@ -463,6 +471,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					Logger::debug('Found multiple orders for invoiceId: ' . $postData->invoiceId);
 					Logger::debug(print_r($orders, true));
 					wp_die('Multiple orders found for this invoiceId, aborting.');
+				}
+
+				// Only continue if the order payment method contains string "btcpaygf_" to avoid processing other gateways.
+				if (strpos($orders[0]->get_payment_method(), 'btcpaygf_') === false) {
+					Logger::debug('Order payment method does not contain "btcpaygf_", aborting.');
+					wp_send_json_success(); // return 200 OK to not mess up BTCPay queue
 				}
 
 				$this->processOrderStatus($orders[0], $postData);
