@@ -2,10 +2,10 @@
 Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
-Requires at least: 5.2
-Tested up to: 6.5
+Requires at least: 5.9
+Tested up to: 6.6
 Requires PHP: 8.0
-Stable tag: 2.6.2
+Stable tag: 2.7.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -111,10 +111,26 @@ You'll find extensive documentation and answers to many of your questions on [BT
 6. On BTCPay Server you have extensive reporting and accounting features.
 
 == Upgrade Notice ==
-= 2.6.2 =
-* Notifications fix, buttons should now work.
+
+
+
+= 2.7.0 =
+* IMPORTANT: If you use the "Separate Payment gateways" feature, when you upgrade your BTCPay Server to version 2.0.0 or newer, you will need to reconfigure your payment gateways in WooCommerce. This is due to the new way of handling and naming payment methods in BTCPay Server.
+* Feature: Add option to notify customers on refund order notes.
+* Feature: BTCPay Server 2.0.0 compatibility.
+* Fixes see changelog.
 
 == Changelog ==
+= 2.7.0 :: 2024-09-04 =
+* Feature: Add option to notify customers on refund order notes.
+* Feature: BTCPay Server 2.0.0 compatibility.
+* Fix: Make sure to not process orders if the assigned payment gateway is not one of BTCPay.
+* Fix: Make sure payment methods are set on refunds.
+* Fix: Wrong currency in refund comment.
+* Fix: Deprecation warnings.
+* Maintenance: Update NodeJS dependencies.
+* Maintenance: Update PHP library to v2.7.0.
+
 = 2.6.2 :: 2024-04-09 =
 * Fix: Dismissing the review notification forever, finally.
 
@@ -131,16 +147,6 @@ You'll find extensive documentation and answers to many of your questions on [BT
 = 2.5.0 :: 2024-01-31 =
 * Fix: Formatting in readme.txt
 * Add support for modal overlay for checkout blocks.
-
-= 2.4.1 :: 2024-01-22 =
-* Fix: Ensure order status is not cancelled if paid by other payment gateway.
-* Show periodically notification to review the plugin.
-* Updating readme.txt (fixing text, updating banner and screenshots)
-
-= 2.4.0 :: 2023-12-15 =
-* Fix: Avoid error on InvoiceProcessing/InvoiceSettled event in case of paidOver property is missing.
-* New feature: Add basic support for WooCommerce cart and checkout blocks.
-Note: Works for default configuration; future versions will make it work with modal checkout and separate payment gateways too.
 
 
 Changelog of older releases can be found [here](https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/changelog.txt)

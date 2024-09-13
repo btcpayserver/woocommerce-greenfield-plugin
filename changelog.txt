@@ -1,3 +1,13 @@
+= 2.4.1 :: 2024-01-22 =
+* Fix: Ensure order status is not cancelled if paid by other payment gateway.
+* Show periodically notification to review the plugin.
+* Updating readme.txt (fixing text, updating banner and screenshots)
+
+= 2.4.0 :: 2023-12-15 =
+* Fix: Avoid error on InvoiceProcessing/InvoiceSettled event in case of paidOver property is missing.
+* New feature: Add basic support for WooCommerce cart and checkout blocks.
+Note: Works for default configuration; future versions will make it work with modal checkout and separate payment gateways too.
+
 = 2.3.1 :: 2023-10-20 =
 * Fix: Ensure refunds text does not exceed API field limit.
 

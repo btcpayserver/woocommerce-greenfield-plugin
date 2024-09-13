@@ -2,36 +2,41 @@
 # This file is distributed under the same license as the BTCPay For Woocommerce V2 plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: BTCPay For Woocommerce V2 2.6.2\n"
+"Project-Id-Version: BTCPay For Woocommerce V2 2.7.0\n"
 "Report-Msgid-Bugs-To: https://woocommerce.com/my-account/create-a-ticket/\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2024-04-08T22:04:43+00:00\n"
+"POT-Creation-Date: 2024-09-13T14:31:36+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"X-Generator: WP-CLI 2.9.0\n"
+"X-Generator: WP-CLI 2.10.0\n"
 "language-team: LANGUAGE <EMAIL@ADDRESS>\n"
 "X-Domain: btcpay-greenfield-for-woocommerce\n"
 
 #. Plugin Name of the plugin
+#: btcpay-greenfield-for-woocommerce.php
 msgid "BTCPay For Woocommerce V2"
 msgstr ""
 
 #. Plugin URI of the plugin
+#: btcpay-greenfield-for-woocommerce.php
 msgid "https://wordpress.org/plugins/btcpay-greenfield-for-woocommerce/"
 msgstr ""
 
 #. Description of the plugin
+#: btcpay-greenfield-for-woocommerce.php
 msgid "BTCPay Server is a free and open-source bitcoin payment processor which allows you to receive payments in Bitcoin and altcoins directly, with no fees, transaction cost or a middleman."
 msgstr ""
 
 #. Author of the plugin
+#: btcpay-greenfield-for-woocommerce.php
 msgid "BTCPay Server"
 msgstr ""
 
 #. Author URI of the plugin
+#: btcpay-greenfield-for-woocommerce.php
 msgid "https://btcpayserver.org"
 msgstr ""
 
@@ -84,12 +89,12 @@ msgid "Successfully received api key and store id from BTCPay Server API. Please
 msgstr ""
 
 #: btcpay-greenfield-for-woocommerce.php:518
-#: src/Admin/GlobalSettings.php:374
+#: src/Admin/GlobalSettings.php:381
 msgid "Successfully registered a new webhook on BTCPay Server."
 msgstr ""
 
 #: btcpay-greenfield-for-woocommerce.php:522
-#: src/Admin/GlobalSettings.php:378
+#: src/Admin/GlobalSettings.php:385
 msgid "Could not register a new webhook on the store."
 msgstr ""
 
@@ -101,15 +106,15 @@ msgstr ""
 msgid "Error processing the data from BTCPay. Please try again."
 msgstr ""
 
-#: generated/BTCPay_GF_BTC.php:25
-#: generated/BTCPay_GF_BTC_LightningNetwork.php:25
-#: generated/BTCPay_GF_BTC_LNURLPAY.php:25
+#: generated/BTCPay_GF_BTC_CHAIN.php:25
+#: generated/BTCPay_GF_BTC_LN.php:25
+#: generated/BTCPay_GF_BTC_LNURL.php:25
 msgid "Token type"
 msgstr ""
 
-#: generated/BTCPay_GF_BTC.php:32
-#: generated/BTCPay_GF_BTC_LightningNetwork.php:32
-#: generated/BTCPay_GF_BTC_LNURLPAY.php:32
+#: generated/BTCPay_GF_BTC_CHAIN.php:32
+#: generated/BTCPay_GF_BTC_LN.php:32
+#: generated/BTCPay_GF_BTC_LNURL.php:32
 msgid "Tokens of type promotion will not have a FIAT (USD, EUR, ..) exchange rate but counted as 1 per item quantity. See <a target=\"_blank\" href=\"https://docs.btcpayserver.org/FAQ/Integrations/#token-types\">here</a> for more details."
 msgstr ""
 
@@ -321,56 +326,65 @@ msgid "Makes Satoshis/Sats available as currency \"SAT\" (can be found in WooCom
 msgstr ""
 
 #: src/Admin/GlobalSettings.php:250
-msgid "Debug Log"
+msgid "Customer visible refunds"
 msgstr ""
 
 #: src/Admin/GlobalSettings.php:253
 msgctxt "global_settings"
+msgid "If enabled, it will show the order refund note also to the customer and trigger an email to customer with the refund link."
+msgstr ""
+
+#: src/Admin/GlobalSettings.php:257
+msgid "Debug Log"
+msgstr ""
+
+#: src/Admin/GlobalSettings.php:260
+msgctxt "global_settings"
 msgid "Enable logging <a href=\"%s\" class=\"button\">View Logs</a>"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:285
+#: src/Admin/GlobalSettings.php:292
 msgid "The provided API key scope is valid for multiple stores, please make sure to create one for a single store."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:293
+#: src/Admin/GlobalSettings.php:300
 msgid "The provided API key does not match the required permissions. Please make sure the following permissions are are given: %s"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:307
+#: src/Admin/GlobalSettings.php:314
 msgid "Your BTCPay Server is not fully synched yet. Until fully synched the checkout will not work."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:316
+#: src/Admin/GlobalSettings.php:323
 msgid "Your BTCPay Server version does not support refunds, please update to at least version 1.7.6 or newer."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:322
+#: src/Admin/GlobalSettings.php:329
 msgid "Your api key does not support refunds, if you want to use that feature you need to create a new API key with permission. See our guide <a href=\"https://docs.btcpayserver.org/WooCommerce/#create-a-new-api-key\" target=\"_blank\" rel=\"noreferrer\">here</a>."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:345
-#: src/Admin/GlobalSettings.php:366
+#: src/Admin/GlobalSettings.php:352
+#: src/Admin/GlobalSettings.php:373
 msgid "Successfully setup manual webhook."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:349
+#: src/Admin/GlobalSettings.php:356
 msgid "Webhook already exists, skipping webhook creation."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:391
+#: src/Admin/GlobalSettings.php:398
 msgid "No wallet configured on your BTCPay Server store settings. Make sure to add at least one otherwise this plugin will not work."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:397
+#: src/Admin/GlobalSettings.php:404
 msgid "Exception loading wallet information (payment methods) from BTCPay Server: %s."
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:406
+#: src/Admin/GlobalSettings.php:413
 msgid "Error fetching data for this API key from server. Please check if the key is valid. Error: %s"
 msgstr ""
 
-#: src/Admin/GlobalSettings.php:423
+#: src/Admin/GlobalSettings.php:430
 msgid "The PHP bcmath extension is not installed. Make sure it is available otherwise the \"Sats-Mode\" will not work. Disabled Sats-Mode until requirements are met."
 msgstr ""
 
@@ -411,102 +425,107 @@ msgstr ""
 msgid "Can't process order. Please contact us if the problem persists."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:222
+#: src/Gateway/AbstractGateway.php:223
 msgid "Refund of order "
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:300
+#: src/Gateway/AbstractGateway.php:307
 msgid "Gateway Icon:"
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:305
+#: src/Gateway/AbstractGateway.php:312
 msgid "Upload or select icon"
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:311
+#: src/Gateway/AbstractGateway.php:318
 msgid "Remove image"
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:361
+#: src/Gateway/AbstractGateway.php:368
 msgid "Use this image"
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:362
+#: src/Gateway/AbstractGateway.php:369
 msgid "Insert image"
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:412
+#: src/Gateway/AbstractGateway.php:419
 msgctxt "js"
 msgid "The invoice expired. Please try again, choose a different payment method or contact us if you paid but the payment did not confirm in time."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:413
+#: src/Gateway/AbstractGateway.php:420
+msgctxt "js"
+msgid "The invoice is invalid. Please try again, choose a different payment method or contact us if you paid but the payment did not confirm in time."
+msgstr ""
+
+#: src/Gateway/AbstractGateway.php:421
 msgctxt "js"
 msgid "Payment aborted by you. Please try again or choose a different payment method."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:414
+#: src/Gateway/AbstractGateway.php:422
 msgctxt "js"
 msgid "Error processing checkout. Please try again or choose another payment option."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:496
+#: src/Gateway/AbstractGateway.php:510
 msgid "Webhook (%s) received from BTCPay, but the order is already processing or completed, skipping to update order status. Please manually check if everything is alright."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:508
+#: src/Gateway/AbstractGateway.php:522
 msgid "Invoice (partial) payment incoming (unconfirmed) after invoice was already expired."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:511
+#: src/Gateway/AbstractGateway.php:525
 msgid "Invoice (partial) payment incoming (unconfirmed). Waiting for settlement."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:530
+#: src/Gateway/AbstractGateway.php:544
 msgid "Invoice fully settled after invoice was already expired. Needs manual checking."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:535
+#: src/Gateway/AbstractGateway.php:549
 msgid "(Partial) payment settled but invoice not settled yet (could be more transactions incoming). Needs manual checking."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:539
+#: src/Gateway/AbstractGateway.php:553
 msgid "Invoice (partial) payment settled."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:549
+#: src/Gateway/AbstractGateway.php:563
 msgid "Invoice payment received fully with overpayment, waiting for settlement."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:551
+#: src/Gateway/AbstractGateway.php:565
 msgid "Invoice payment received fully, waiting for settlement."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:557
+#: src/Gateway/AbstractGateway.php:571
 msgid "Invoice manually marked invalid."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:559
+#: src/Gateway/AbstractGateway.php:573
 msgid "Invoice became invalid."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:565
+#: src/Gateway/AbstractGateway.php:579
 msgid "Invoice expired but was paid partially, please check."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:568
+#: src/Gateway/AbstractGateway.php:582
 msgid "Invoice expired."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:574
+#: src/Gateway/AbstractGateway.php:588
 msgid "Invoice payment settled but was overpaid."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:577
+#: src/Gateway/AbstractGateway.php:591
 msgid "Invoice payment settled."
 msgstr ""
 
-#: src/Gateway/AbstractGateway.php:620
+#: src/Gateway/AbstractGateway.php:634
 msgid "BTCPay invoice manually set to invalid because customer went back to checkout and changed payment gateway."
 msgstr ""
 
