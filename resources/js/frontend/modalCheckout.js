@@ -73,15 +73,23 @@ jQuery(function ($) {
 				//console.log('BTCPay modal event: invoiceId: ' + event.data.invoiceId);
 				//console.log('BTCPay modal event: status: ' + event.data.status);
 				if (event.data.status) {
-					switch (event.data.status) {
+					switch (event.data.status.toLowerCase()) {
 						case 'complete':
 						case 'paid':
+						case 'processing':
+						case 'settled':
 							invoice_paid = true;
-							window.location = data.orderCompleteLink;
+							setTimeout(function() {
+								window.location = data.orderCompleteLink;
+							}, 3000);
 							break;
 						case 'expired':
 							window.btcpay.hideFrame();
 							submitError(BTCPayWP.textInvoiceExpired);
+							break;
+						case 'invalid':
+							window.btcpay.hideFrame();
+							submitError(BTCPayWP.textInvoiceInvalid);
 							break;
 					}
 				}
