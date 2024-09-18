@@ -14,40 +14,44 @@ use BTCPayServer\WC\Helper\Logger;
 use BTCPayServer\WC\Helper\OrderStates;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
-	const ICON_MEDIA_OPTION = 'icon_media_id';
-	public $tokenType;
-	public $primaryPaymentMethod;
-	protected $apiHelper;
+    const ICON_MEDIA_OPTION = 'icon_media_id';
+    public $tokenType;
+    public $primaryPaymentMethod;
+    protected $apiHelper;
+    
+    // Added explicit properties to fix PHP 8.2 deprecation warnings
+    protected $debug_php_version;
+    protected $debug_plugin_version;
 
-	public function __construct() {
-		// General gateway setup.
-		$this->icon              = $this->getIcon();
-		$this->has_fields        = false;
-		$this->order_button_text = __( 'Proceed to BTCPay', 'btcpay-greenfield-for-woocommerce' );
+    public function __construct() {
+        // General gateway setup.
+        $this->icon              = $this->getIcon();
+        $this->has_fields        = false;
+        $this->order_button_text = __( 'Proceed to BTCPay', 'btcpay-greenfield-for-woocommerce' );
 
-		// Load the settings.
-		$this->init_form_fields();
-		$this->init_settings();
+        // Load the settings.
+        $this->init_form_fields();
+        $this->init_settings();
 
-		// Define user facing set variables.
-		$this->title        = $this->getTitle();
-		$this->description  = $this->getDescription();
+        // Define user facing set variables.
+        $this->title        = $this->getTitle();
+        $this->description  = $this->getDescription();
 
-		$this->apiHelper = new GreenfieldApiHelper();
-		// Debugging & informational settings.
-		$this->debug_php_version    = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
-		$this->debug_plugin_version = BTCPAYSERVER_VERSION;
+        $this->apiHelper = new GreenfieldApiHelper();
+        // Debugging & informational settings.
+        $this->debug_php_version    = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
+        $this->debug_plugin_version = BTCPAYSERVER_VERSION;
 
-		// Actions.
-		add_action('admin_enqueue_scripts', [$this, 'addAdminScripts']);
-		add_action('wp_enqueue_scripts', [$this, 'addPublicScripts']);
-		add_action('woocommerce_update_options_payment_gateways_' . $this->getId(), [$this, 'process_admin_options']);
+        // Actions.
+        add_action('admin_enqueue_scripts', [$this, 'addAdminScripts']);
+        add_action('wp_enqueue_scripts', [$this, 'addPublicScripts']);
+        add_action('woocommerce_update_options_payment_gateways_' . $this->getId(), [$this, 'process_admin_options']);
 
-		// Supported features.
-		$this->supports = [
-			'products',
-			'refunds'
-		];
+        // Supported features.
+        $this->supports = [
+                'products',
+                'refunds'
+        ];
 	}
 
 	/**
