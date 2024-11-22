@@ -5,7 +5,7 @@ Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 5.9
 Tested up to: 6.6
 Requires PHP: 8.0
-Stable tag: 2.7.0
+Stable tag: 2.7.1
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
