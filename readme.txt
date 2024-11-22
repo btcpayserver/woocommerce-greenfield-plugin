@@ -114,11 +114,12 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 
 
-= 2.7.0 =
-* IMPORTANT: If you use the "Separate Payment gateways" feature, when you upgrade your BTCPay Server to version 2.0.0 or newer, you will need to reconfigure your payment gateways in WooCommerce. This is due to the new way of handling and naming payment methods in BTCPay Server.
-* Feature: Add option to notify customers on refund order notes.
-* Feature: BTCPay Server 2.0.0 compatibility.
-* Fixes see changelog.
+= 2.7.1 =
+* Fix: Update PHP library to v2.8.1 to fix a compatibility issue with refunds on BTCPay 2.0
+
+== Changelog ==
+= 2.7.1 :: 2024-11-22 =
+* Fix: Update PHP library to v2.8.1 to fix a compatibility issue with refunds on BTCPay 2.0
 
 == Changelog ==
 = 2.7.0 :: 2024-09-04 =
