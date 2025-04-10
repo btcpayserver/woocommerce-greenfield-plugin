@@ -111,14 +111,17 @@ You'll find extensive documentation and answers to many of your questions on [BT
 == Upgrade Notice ==
 
 = 2.7.2 =
-* Fix: Fix deprecation warnings of dynamic properties.
+* Feature: Support custom icon on woocommerce checkout blocks too
+* Fix: Fix deprecation warnings of dynamic properties
 * Fix: Formatting in readme.txt
 
 
-= 2.7.1 =
-* Fix: Update PHP library to v2.8.1 to fix a compatibility issue with refunds on BTCPay 2.0
-
 == Changelog ==
+= 2.7.2 :: 2025-04-10 =
+* Feature: Make icons visible on woocommerce blocks too
+* Fix: Fix deprecation warnings of dynamic properties
+* Fix: Formatting in readme.txt
+
 = 2.7.1 :: 2024-11-22 =
 * Fix: Update PHP library to v2.8.1 to fix a compatibility issue with refunds on BTCPay 2.0
 
