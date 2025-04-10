@@ -18,6 +18,8 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	public $tokenType;
 	public $primaryPaymentMethod;
 	protected $apiHelper;
+	protected $debug_php_version;
+	protected $debug_plugin_version;
 
 	public function __construct() {
 		// General gateway setup.
@@ -726,6 +728,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		// POS metadata.
 		$metadata['posData'] = $this->preparePosMetadata( $order );
+
+		// Add orderUrl to make order id clickable and leading to the order edit page.
+		$metadata['orderUrl'] = $order->get_edit_order_url();
 
 		// Checkout options.
 		$checkoutOptions = new InvoiceCheckoutOptions();
