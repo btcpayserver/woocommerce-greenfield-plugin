@@ -16,7 +16,6 @@ behat.yml
 bitbucket-pipelines.yml
 bin
 .circleci/config.yml
-composer.json
 composer.lock
 dependencies.yml
 DOCKER_ENV

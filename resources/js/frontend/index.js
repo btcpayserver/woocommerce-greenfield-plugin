@@ -11,6 +11,9 @@ const defaultLabel = __(
 );
 
 const label = decodeEntities( settings.title ) || defaultLabel;
+
+// Get the icon from the settings
+const icon = settings.icon || '';
 /**
  * Content component
  */
@@ -24,7 +27,23 @@ const Content = () => {
  */
 const Label = ( props ) => {
 	const { PaymentMethodLabel } = props.components;
-	return <PaymentMethodLabel text={ label } />;
+	return (
+		<div className="btcpay-payment-method-label">
+			{icon && (
+				<img
+					src={icon}
+					alt="BTCPay Bitcoin payment icon"
+					className="btcpay-payment-icon"
+					style={{
+						width: '50px',
+						marginRight: '10px',
+						verticalAlign: 'middle'
+					}}
+				/>
+			)}
+			<PaymentMethodLabel text={ label } />
+		</div>
+	);
 };
 
 /**
@@ -37,6 +56,7 @@ const BTCPayDefault = {
 	edit: <Content />,
 	canMakePayment: () => true,
 	ariaLabel: label,
+	iconUrl: icon,
 	supports: {
 		features: settings.supports,
 	},

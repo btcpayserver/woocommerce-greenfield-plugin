@@ -3,9 +3,9 @@ Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 5.9
-Tested up to: 6.6
+Tested up to: 6.7
 Requires PHP: 8.0
-Stable tag: 2.7.1
+Stable tag: 2.7.2
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -30,7 +30,7 @@ BTCPay Server for WooCommerce is a revolutionary, self-hosted, open-source payme
 * **Direct wallet payments**: Be your own bank with a self-custodial service.
 * **Lightning Network** integrated out of the box - instant, fast and low cost payments and payouts
 * **Reporting and accounting** - CSV exports
-* **Advanced invoice managemen**t and refunding integrated in the WooCommerce UI
+* **Advanced invoice management** and refunding integrated in the WooCommerce UI
 * **Real-time exchange price tracking** for correct payment amounts
 * **Versatile plugin system**:
     * Extend functionality according to your needs
@@ -48,8 +48,6 @@ The non-profit [BTCPay Server Foundation ](https://foundation.btcpayserver.org)i
 == Installation ==
 
 This plugin requires WooCommerce. Please make sure you have WooCommerce installed.
-
-<img src="https://github.com/btcpayserver/btcpayserver-doc/blob/master/img/BTCPayWooCommerceInfoggraphic.png" alt="Infographic" />
 
 To integrate BTCPay Server into an existing WooCommerce store, follow the steps below or check our official [installation instructions](https://docs.btcpayserver.org/WooCommerce/).
 
@@ -112,16 +110,21 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
+= 2.7.2 =
+* Feature: Support custom icon on woocommerce checkout blocks too
+* Fix: Fix deprecation warnings of dynamic properties
+* Fix: Formatting in readme.txt
 
-
-= 2.7.1 =
-* Fix: Update PHP library to v2.8.1 to fix a compatibility issue with refunds on BTCPay 2.0
 
 == Changelog ==
+= 2.7.2 :: 2025-04-10 =
+* Feature: Make icons visible on woocommerce blocks too
+* Fix: Fix deprecation warnings of dynamic properties
+* Fix: Formatting in readme.txt
+
 = 2.7.1 :: 2024-11-22 =
 * Fix: Update PHP library to v2.8.1 to fix a compatibility issue with refunds on BTCPay 2.0
 
-== Changelog ==
 = 2.7.0 :: 2024-09-04 =
 * Feature: Add option to notify customers on refund order notes.
 * Feature: BTCPay Server 2.0.0 compatibility.
