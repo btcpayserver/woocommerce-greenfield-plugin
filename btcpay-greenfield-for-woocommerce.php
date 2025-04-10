@@ -12,7 +12,7 @@
  * Tested up to:    6.7
  * Requires at least: 6.2
  * WC requires at least: 7.0
- * WC tested up to: 9.4
+ * WC tested up to: 9.8
  */
 
 use BTCPayServer\WC\Admin\Notice;
