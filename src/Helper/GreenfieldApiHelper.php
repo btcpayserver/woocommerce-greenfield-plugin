@@ -52,7 +52,7 @@ class GreenfieldApiHelper {
 		}
 	}
 
-	public static function checkApiKeyWorks(string $url = null, string $apiKey = null): bool {
+	public static function checkApiKeyWorks(?string $url = null, ?string $apiKey = null): bool {
 		$config = [];
 
 		if ($url && $apiKey) {

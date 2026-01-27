@@ -92,7 +92,7 @@ class SeparateGateways {
 		// Set cache for written files to avoid doing it every request, no expiration (will be cleared elsewhere)
 		if ($writtenFiles > 0) {
 			set_transient( self::PM_GENERATED_CACHE_KEY, $gateways,0 );
-			Logger::debug("Successfully wrote ${writtenFiles} to filesystem.");
+			Logger::debug("Successfully wrote {$writtenFiles} to filesystem.");
 		}
 	}
 
