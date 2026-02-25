@@ -468,13 +468,6 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					wp_die('No order found for this invoiceId.', '', ['response' => 200]);
 				}
 
-				// Abort on multiple orders found.
-				if (count($orders) > 1) {
-					Logger::debug('Found multiple orders for invoiceId: ' . $postData->invoiceId);
-					Logger::debug(print_r($orders, true));
-					wp_die('Multiple orders found for this invoiceId, aborting.');
-				}
-
 				// Only continue if the order payment method contains string "btcpaygf_" to avoid processing other gateways.
 				if (strpos($orders[0]->get_payment_method(), 'btcpaygf_') === false) {
 					Logger::debug('Order payment method does not contain "btcpaygf_", aborting.');
@@ -508,12 +501,15 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		if ($protectedOrders === 'yes') {
 			// Check if the order status is either 'processing' or 'completed'
 			if ($order->has_status(array('processing', 'completed'))) {
-				$note = sprintf(
-					__('Webhook (%s) received from BTCPay, but the order is already processing or completed, skipping to update order status. Please manually check if everything is alright.', 'btcpay-greenfield-for-woocommerce'),
-					$webhookData->type
-				);
-				$order->add_order_note($note);
-				return;
+				// Allow BTCPay's own cancellation events through regardless to ensure system self-correction.
+				if (!in_array($webhookData->type, ['InvoiceExpired', 'InvoiceInvalid'])) {
+					$note = sprintf(
+						__('Webhook (%s) received from BTCPay, but the order is already processing or completed, skipping to update order status. Please manually check if everything is alright.', 'btcpay-greenfield-for-woocommerce'),
+						$webhookData->type
+					);
+					$order->add_order_note($note);
+					return;
+				}
 			}
 		}
 
@@ -680,22 +676,22 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					// Update order meta data with payment methods and transactions.
 					$order->update_meta_data( "BTCPay_{$paymentMethodName}_total_paid", $payment->getTotalPaid() ?? '' );
 					$order->update_meta_data( "BTCPay_{$paymentMethodName}_total_amount", $payment->getAmount() ?? '' );
-					$order->update_meta_data( "BTCPay_{$paymentMethodName}_total_due", $payment->getDue() ?? '' );
-					$order->update_meta_data( "BTCPay_{$paymentMethodName}_total_fee", $payment->getNetworkFee() ?? '' );
-					$order->update_meta_data( "BTCPay_{$paymentMethodName}_rate", $payment->getRate() ?? '' );
+					$order->update_meta_data( "BTCPay_{$paymentMethodName}_total_due\", $payment->getDue() ?? '' );
+					$order->update_meta_data( \"BTCPay_{$paymentMethodName}_total_fee\", $payment->getNetworkFee() ?? '' );
+					$order->update_meta_data( \"BTCPay_{$paymentMethodName}_rate\", $payment->getRate() ?? '' );
 					if ((float) $payment->getRate() > 0.0) {
 						$formattedRate = number_format((float) $payment->getRate(), wc_get_price_decimals(), wc_get_price_decimal_separator(), wc_get_price_thousand_separator());
-						$order->update_meta_data( "BTCPay_{$paymentMethodName}_rateFormatted", $formattedRate );
+						$order->update_meta_data( \"BTCPay_{$paymentMethodName}_rateFormatted\", $formattedRate );
 					}
 
 					// For each actual payment make a separate entry to make sense of it.
 					foreach ($payment->getPayments() as $index => $trx) {
-						$order->update_meta_data( "BTCPay_{$paymentMethodName}_{$index}_id", $trx->getTransactionId() ?? '' );
-						$order->update_meta_data( "BTCPay_{$paymentMethodName}_{$index}_timestamp", $trx->getReceivedTimestamp() ?? '' );
-						$order->update_meta_data( "BTCPay_{$paymentMethodName}_{$index}_destination", $trx->getDestination() ?? '' );
-						$order->update_meta_data( "BTCPay_{$paymentMethodName}_{$index}_amount", $trx->getValue() ?? '' );
-						$order->update_meta_data( "BTCPay_{$paymentMethodName}_{$index}_status", $trx->getStatus() ?? '' );
-						$order->update_meta_data( "BTCPay_{$paymentMethodName}_{$index}_networkFee", $trx->getFee() ?? '' );
+						$order->update_meta_data( \"BTCPay_{$paymentMethodName}_{$index}_id\", $trx->getTransactionId() ?? '' );
+						$order->update_meta_data( \"BTCPay_{$paymentMethodName}_{$index}_timestamp\", $trx->getReceivedTimestamp() ?? '' );
+						$order->update_meta_data( \"BTCPay_{$paymentMethodName}_{$index}_destination\", $trx->getDestination() ?? '' );
+						$order->update_meta_data( \"BTCPay_{$paymentMethodName}_{$index}_amount\", $trx->getValue() ?? '' );
+						$order->update_meta_data( \"BTCPay_{$paymentMethodName}_{$index}_status\", $trx->getStatus() ?? '' );
+						$order->update_meta_data( \"BTCPay_{$paymentMethodName}_{$index}_networkFee\", $trx->getFee() ?? '' );
 					}
 
 					// Save the order.
