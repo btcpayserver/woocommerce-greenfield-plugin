@@ -50,7 +50,8 @@ module.exports = {
 				{ from: 'resources/js/frontend/blocksModalCheckout.js', to: 'frontend/', info: { minimized: false } },
 				{ from: 'resources/js/backend/gatewayIconMedia.js', to: 'backend/', info: { minimized: true } },
 				{ from: 'resources/js/backend/apiKeyRedirect.js', to: 'backend/', info: { minimized: true } },
-				{ from: 'resources/js/backend/notifications.js', to: 'backend/', info: { minimized: true } }
+				{ from: 'resources/js/backend/notifications.js', to: 'backend/', info: { minimized: true } },
+				{ from: 'resources/js/backend/orderStatesWarning.js', to: 'backend/', info: { minimized: true } }
 			]
 		})
 	]
