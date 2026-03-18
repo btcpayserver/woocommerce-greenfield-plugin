@@ -39,6 +39,16 @@ class GlobalSettings extends \WC_Settings_Page {
 				]
 			);
 
+			// Order states warning script.
+			wp_register_script('btcpay_gf_order_states_warning', BTCPAYSERVER_PLUGIN_URL . 'assets/js/backend/orderStatesWarning.js', ['jquery'], BTCPAYSERVER_VERSION);
+			wp_enqueue_script('btcpay_gf_order_states_warning');
+			wp_localize_script('btcpay_gf_order_states_warning',
+				'BTCPayOrderStatesWarning',
+				[
+					'warningText' => __('Warning: Changing this from the default "On hold" while "Protect order status" is enabled is not recommended as it could have unintended side effects. <a href="https://docs.btcpayserver.org/FAQ/Integrations/#overriding-the-paid-payment-status" target="_blank">Learn more</a>.', 'btcpay-greenfield-for-woocommerce'),
+				]
+			);
+
 			// Register and include CSS.
 			wp_register_style( 'btcpay_gf_admin_styles', BTCPAYSERVER_PLUGIN_URL . 'assets/css/admin.css', array(), BTCPAYSERVER_VERSION );
 			wp_enqueue_style( 'btcpay_gf_admin_styles' );
