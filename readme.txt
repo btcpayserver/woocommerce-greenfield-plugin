@@ -5,7 +5,7 @@ Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 5.9
 Tested up to: 6.7
 Requires PHP: 8.0
-Stable tag: 2.7.2
+Stable tag: 2.7.3
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -110,13 +110,18 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
-= 2.7.2 =
-* Feature: Support custom icon on woocommerce checkout blocks too
+= 2.7.3 =
+* Fix: Add warnings and docs on changing order status mapping of "paid" payment status
 * Fix: Fix deprecation warnings of dynamic properties
-* Fix: Formatting in readme.txt
+* Maintenance: Add more debug logging for refunds
 
 
 == Changelog ==
+= 2.7.3 :: 2026-03-23 =
+* Fix: Add warnings and docs on changing order status mapping of "paid" payment status
+* Fix: Fix deprecation warnings of dynamic properties
+* Maintenance: Add more debug logging for refunds
+
 = 2.7.2 :: 2025-04-10 =
 * Feature: Make icons visible on woocommerce blocks too
 * Fix: Fix deprecation warnings of dynamic properties
