@@ -188,12 +188,12 @@ jQuery(function ($) {
 			return;
 		}
 
+		// Always unbind first to prevent duplicate handlers.
+		checkout_form.off('checkout_place_order', submitOrder);
+
 		if (selected_gateway.startsWith('btcpaygf_')) {
 			// Bind our custom event handler to the checkout button.
 			checkout_form.on('checkout_place_order', submitOrder);
-		} else {
-			// Unbind custom event handlers.
-			checkout_form.off('checkout_place_order', submitOrder);
 		}
 	}
 
