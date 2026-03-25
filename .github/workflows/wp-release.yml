@@ -24,9 +24,9 @@ jobs:
           sudo mv wp-cli.phar /usr/local/bin/wp
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '20'
 
       - name: Set Execute Permissions for build_i18n.sh
         run: chmod +x bin/build_i18n.sh
