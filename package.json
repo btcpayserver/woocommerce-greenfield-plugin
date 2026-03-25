@@ -4,10 +4,10 @@
   "author": "BTCPay Server Team",
   "license": "MIT",
   "devDependencies": {
-    "@woocommerce/dependency-extraction-webpack-plugin": "^1.7.0",
-    "@wordpress/scripts": "^28.6.0",
-    "copy-webpack-plugin": "^11.0.0",
-    "cross-env": "6.0.3",
+    "@woocommerce/dependency-extraction-webpack-plugin": "^4.0.0",
+    "@wordpress/scripts": "^31.7.0",
+    "copy-webpack-plugin": "^12.0.2",
+    "cross-env": "^7.0.3",
     "webpack-cli": "^5.1.4"
   },
   "scripts": {
