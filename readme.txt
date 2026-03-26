@@ -3,9 +3,9 @@ Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 5.9
-Tested up to: 6.7
+Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 2.7.3
+Stable tag: 2.7.4
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -110,13 +110,16 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
-= 2.7.3 =
-* Fix: Add warnings and docs on changing order status mapping of "paid" payment status
-* Fix: Fix deprecation warnings of dynamic properties
-* Maintenance: Add more debug logging for refunds
+= 2.7.4 =
+* Fix: Make sure modal checkout event handler does not get attached multiple times
+* Maintenance: Update NodeJS and dependencies to v20
 
 
 == Changelog ==
+= 2.7.4 :: 2026-03-26 =
+* Fix: Make sure modal checkout event handler does not get attached multiple times
+* Maintenance: Update NodeJS and dependencies to v20
+
 = 2.7.3 :: 2026-03-23 =
 * Fix: Add warnings and docs on changing order status mapping of "paid" payment status
 * Fix: Fix deprecation warnings of dynamic properties
@@ -139,23 +142,6 @@ You'll find extensive documentation and answers to many of your questions on [BT
 * Fix: Deprecation warnings.
 * Maintenance: Update NodeJS dependencies.
 * Maintenance: Update PHP library to v2.7.0.
-
-= 2.6.2 :: 2024-04-09 =
-* Fix: Dismissing the review notification forever, finally.
-
-= 2.6.1 :: 2024-04-04 =
-* Fix: Error when processing full amount refunds.
-* Fix: Show warning when bcmath extension is missing.
-* Make it possible to dismiss the review notification forever.
-
-= 2.6.0 :: 2024-02-27 =
-* Update PHP BTCPay library to 2.3.0, minimum PHP version 8.0.
-* Show warning when .local domain is used for BTCPay Server URL.
-* Change BTCPay Server URL placeholder to official demo server.
-
-= 2.5.0 :: 2024-01-31 =
-* Fix: Formatting in readme.txt
-* Add support for modal overlay for checkout blocks.
 
 
 Changelog of older releases can be found [here](https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/changelog.txt)

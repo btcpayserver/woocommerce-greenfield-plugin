@@ -1,3 +1,24 @@
+Find current version release changelog in readme.txt
+
+Changelog for older versions:
+
+= 2.6.2 :: 2024-04-09 =
+* Fix: Dismissing the review notification forever, finally.
+
+= 2.6.1 :: 2024-04-04 =
+* Fix: Error when processing full amount refunds.
+* Fix: Show warning when bcmath extension is missing.
+* Make it possible to dismiss the review notification forever.
+
+= 2.6.0 :: 2024-02-27 =
+* Update PHP BTCPay library to 2.3.0, minimum PHP version 8.0.
+* Show warning when .local domain is used for BTCPay Server URL.
+* Change BTCPay Server URL placeholder to official demo server.
+
+= 2.5.0 :: 2024-01-31 =
+* Fix: Formatting in readme.txt
+* Add support for modal overlay for checkout blocks.
+
 = 2.4.1 :: 2024-01-22 =
 * Fix: Ensure order status is not cancelled if paid by other payment gateway.
 * Show periodically notification to review the plugin.
