@@ -35,6 +35,16 @@ wp.data.subscribe(() => {
 		if (activePM.startsWith('btcpaygf_')) {
 			//console.log('BTCPay is selected');
 
+			// Check for validation errors before proceeding.
+			// This ensures required fields (address, email, etc.) are filled in.
+			const validationStore = wp.data.select(wc.wcBlocksData.VALIDATION_STORE_KEY);
+			if (validationStore && validationStore.hasValidationErrors()) {
+				// Make all validation errors visible to the user.
+				wp.data.dispatch(wc.wcBlocksData.VALIDATION_STORE_KEY).showAllValidationErrors();
+				isProcessingOrder = false;
+				return;
+			}
+
 			// Make sure the order exists and invoice is created.
 			let responseData = blocksProcessOrder(activePM);
 			//console.log(responseData);
