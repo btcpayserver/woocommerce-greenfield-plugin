@@ -381,10 +381,28 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Load BTCPay modal JS.
 		wp_enqueue_script( 'btcpay_gf_modal_js', $this->apiHelper->url . '/modal/btcpay.js', [], BTCPAYSERVER_VERSION );
 
-		// Get page id of checkout page.
-		$checkoutPageId = wc_get_page_id('checkout');
 		// Check if the checkout page uses the new woocommerce blocks.
-		$isBlockCheckout = has_block( 'woocommerce/checkout' , $checkoutPageId);
+		$isBlockCheckout = false;
+
+		// 1. Try WooCommerce utility (handles block themes with DB-customized templates + page content).
+		if ( class_exists( '\Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils' )
+			&& method_exists( '\Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils', 'is_checkout_block_default' ) ) {
+			$isBlockCheckout = \Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils::is_checkout_block_default();
+		}
+
+		// 2. Fallback: directly check the checkout page content for the block.
+		if ( ! $isBlockCheckout ) {
+			$checkoutPageId = wc_get_page_id( 'checkout' );
+			$isBlockCheckout = $checkoutPageId && has_block( 'woocommerce/checkout', $checkoutPageId );
+		}
+
+		// 3. Block themes with WooCommerce Blocks always use block-based checkout via templates,
+		//    even if the checkout page content doesn't contain the block directly and the
+		//    template hasn't been customized (saved to DB). The WC utility misses this case.
+		if ( ! $isBlockCheckout && function_exists( 'wp_is_block_theme' ) && wp_is_block_theme()
+			&& class_exists( '\Automattic\WooCommerce\Blocks\Package' ) ) {
+			$isBlockCheckout = true;
+		}
 		if ($isBlockCheckout) {
 			$scriptName = 'btcpay_gf_modal_blocks_checkout';
 			$scriptFile = BTCPAYSERVER_PLUGIN_URL . 'assets/js/frontend/blocksModalCheckout.js';
