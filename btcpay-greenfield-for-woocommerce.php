@@ -557,3 +557,39 @@ add_action( 'before_woocommerce_init', function() {
 
 // Register WooCommerce Blocks integration.
 add_action( 'woocommerce_blocks_loaded', [ 'BTCPayServerWCPlugin', 'blocksSupport' ] );
+
+
+
+// Feld im Admin hinzufügen
+add_action('woocommerce_product_options_general_product_data', 'add_custom_field_offering');
+add_action('woocommerce_product_options_general_product_data', 'add_custom_field_plan');
+function add_custom_field_offering() {
+    woocommerce_wp_text_input([
+        'id' => '_btcpay_offering_id',
+        'label' => 'Offering ID',
+        'desc_tip' => true,
+        'description' => ''
+    ]);
+}
+function add_custom_field_plan() {
+    woocommerce_wp_text_input([
+        'id' => '_btcpay_plan_id',
+        'label' => 'Plan ID',
+        'desc_tip' => true,
+        'description' => ''
+    ]);
+}
+
+
+
+// Feld speichern
+add_action('woocommerce_process_product_meta', 'save_custom_field_offering');
+add_action('woocommerce_process_product_meta', 'save_custom_field_plan');
+function save_custom_field_offering($post_id) {
+    $value = isset($_POST['_btcpay_offering_id']) ? sanitize_text_field($_POST['_btcpay_offering_id']) : '';
+    update_post_meta($post_id, '_btcpay_offering_id', $value);
+}
+function save_custom_field_plan($post_id) {
+    $value = isset($_POST['_btcpay_plan_id']) ? sanitize_text_field($_POST['_btcpay_plan_id']) : '';
+    update_post_meta($post_id, '_btcpay_plan_id', $value);
+}

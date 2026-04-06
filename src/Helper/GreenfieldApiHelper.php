@@ -224,6 +224,36 @@ class GreenfieldApiHelper {
 		return false;
 	}
 
+	public function apiKeyHasManageSubscribersPermission(): bool {
+		if ($this->configured) {
+			$client = new ApiKey($this->url, $this->apiKey);
+			try {
+				$apiKey = $client->getCurrent();
+				$apiAuth = new GreenfieldApiAuthorization( $apiKey->getData() );
+				return $apiAuth->hasManageSubscribersPermission();
+			} catch (\Throwable $e) {
+				Logger::debug('Exception while checking manage subscribers permission: ' . $e->getMessage());
+			}
+		}
+
+		return false;
+	}
+
+	public function apiKeyHasCreditSubscribersPermission(): bool {
+		if ($this->configured) {
+			$client = new ApiKey($this->url, $this->apiKey);
+			try {
+				$apiKey = $client->getCurrent();
+				$apiAuth = new GreenfieldApiAuthorization( $apiKey->getData() );
+				return $apiAuth->hasCreditSubscribersPermission();
+			} catch (\Throwable $e) {
+				Logger::debug('Exception while checking credit subscribers permission: ' . $e->getMessage());
+			}
+		}
+
+		return false;
+	}
+
 	public function serverSupportsRefunds(): bool {
 		if ($this->configured) {
 			$client = new Server($this->url, $this->apiKey);

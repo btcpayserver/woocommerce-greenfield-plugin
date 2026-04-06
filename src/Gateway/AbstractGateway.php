@@ -7,6 +7,7 @@ namespace BTCPayServer\WC\Gateway;
 use BTCPayServer\Client\Invoice;
 use BTCPayServer\Client\InvoiceCheckoutOptions;
 use BTCPayServer\Client\PullPayment;
+use BTCPayServer\Client\Subscriptions;
 use BTCPayServer\Util\PreciseNumber;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
@@ -48,8 +49,33 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Supported features.
 		$this->supports = [
 			'products',
-			'refunds'
+			'refunds',
 		];
+
+		if ( class_exists( 'WC_Subscriptions' ) ) {
+			$this->supports = array_merge(
+				$this->supports,
+				[
+					'subscriptions',
+					'subscription_cancellation',
+					'subscription_suspension',
+					'subscription_reactivation',
+					'subscription_amount_changes',
+					'subscription_date_changes',
+					'subscription_payment_method_change_customer',
+					'subscription_payment_method_change_admin',
+					'subscription_payment_method_change',
+					'gateway_scheduled_payments',
+				]
+			);
+
+			add_action(
+				'woocommerce_scheduled_subscription_payment_' . $this->getId(),
+				[ $this, 'process_scheduled_subscription_payment' ],
+				10,
+				2
+			);
+		}
 	}
 
 	/**
@@ -116,6 +142,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$isModal = true;
 		}
 
+		// Check if this is a subscription order
+		if ( $this->isSubscriptionOrder( $order ) ) {
+			Logger::debug( 'Processing subscription order' );
+			return $this->processSubscriptionPayment( $order, $isModal );
+		}
+
 		// Check for existing invoice and redirect instead.
 		if ( $this->validInvoiceExists( $orderId ) ) {
 			$existingInvoiceId = $order->get_meta( 'BTCPay_id' );
@@ -136,6 +168,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		// Create an invoice.
 		Logger::debug( 'Creating invoice on BTCPay Server' );
+		
 		if ( $invoice = $this->createInvoice( $order ) ) {
 
 			// Todo: update order status and BTCPay meta data.
@@ -274,6 +307,60 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 
 		return new \WP_Error('1', 'Error processing the refund, please check logs.');
+	}
+
+	/**
+	 * Process scheduled subscription payments.
+	 */
+	public function process_scheduled_subscription_payment( $amount_to_charge, $renewal_order ): void {
+		$order = $renewal_order instanceof \WC_Order ? $renewal_order : wc_get_order( $renewal_order );
+		if ( ! $order ) {
+			Logger::debug( __METHOD__ . ': renewal order not found.' );
+			return;
+		}
+
+		Logger::debug( __METHOD__ . ': scheduled subscription payment for order ' . $order->get_id() . ' amount ' . $amount_to_charge );
+		// call to btcpay api creating the subscription
+
+		$subscription = $this->getSubscriptionForOrder( $order );
+		$planData = $this->getBtcpayPlanData( $order, $subscription );
+		if ( empty( $planData['offering_id'] ) || empty( $planData['plan_id'] ) ) {
+			$order->update_status(
+				'failed',
+				__( 'Missing BTCPay offering/plan metadata for subscription renewal.', 'btcpay-greenfield-for-woocommerce' )
+			);
+			return;
+		}
+
+		$customerSelector = $this->getBtcpayCustomerSelector( $order, $subscription );
+		try {
+			$checkout = $this->createPlanCheckout(
+				$order,
+				$planData['offering_id'],
+				$planData['plan_id'],
+				$customerSelector,
+				null
+			);
+
+			$this->storeSubscriptionMetadata(
+				$order,
+				$planData['offering_id'],
+				$planData['plan_id'],
+				$checkout,
+				$subscription
+			);
+
+			$order->update_status(
+				'on-hold',
+				__( 'Awaiting BTCPay subscription payment.', 'btcpay-greenfield-for-woocommerce' )
+			);
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to create plan checkout: ' . $e->getMessage() );
+			$order->update_status(
+				'failed',
+				__( 'BTCPay subscription renewal failed to initialize.', 'btcpay-greenfield-for-woocommerce' )
+			);
+		}
 	}
 
 	public function process_admin_options() {
@@ -462,10 +549,15 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 				// Abort if no orders found.
 				if (count($orders) === 0) {
-					Logger::debug('Could not load order by BTCPay invoiceId: ' . $postData->invoiceId);
-					// Note: we return status 200 here for wp_die() which seems counter intuative but needs to be done
-					// to not clog up the BTCPay servers webhook processing queue until it is fixed there.
-					wp_die('No order found for this invoiceId.', '', ['response' => 200]);
+					$orderFromMetadata = $this->getOrderByInvoiceMetadata( $postData->invoiceId );
+					if ( $orderFromMetadata ) {
+						$orders = [ $orderFromMetadata ];
+					} else {
+						Logger::debug('Could not load order by BTCPay invoiceId: ' . $postData->invoiceId);
+						// Note: we return status 200 here for wp_die() which seems counter intuative but needs to be done
+						// to not clog up the BTCPay servers webhook processing queue until it is fixed there.
+						wp_die('No order found for this invoiceId.', '', ['response' => 200]);
+					}
 				}
 
 				// Abort on multiple orders found.
@@ -482,11 +574,112 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				}
 
 				$this->processOrderStatus($orders[0], $postData);
+				$this->maybeStoreSubscriptionCustomerId( $orders[0] );
 
 			} catch (\Throwable $e) {
 				Logger::debug('Error decoding webook payload: ' . $e->getMessage());
 				Logger::debug($rawPostData);
 			}
+		}
+	}
+
+	protected function getOrderByInvoiceMetadata( string $invoiceId ): ?\WC_Order {
+		try {
+			$client = new Invoice( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$invoice = $client->getInvoice( $this->apiHelper->storeId, $invoiceId );
+			$data = $invoice->getData();
+			$metadata = $data['metadata'] ?? $data['invoiceMetadata'] ?? null;
+
+			if ( ! is_array( $metadata ) ) {
+				return null;
+			}
+
+			if ( ! empty( $metadata['wc_order_id'] ) ) {
+				$order = wc_get_order( (int) $metadata['wc_order_id'] );
+				if ( $order ) {
+					if ( ! $order->get_meta( 'BTCPay_id' ) ) {
+						$order->update_meta_data( 'BTCPay_id', $invoiceId );
+						$order->save();
+					}
+					return $order;
+				}
+			}
+
+			if ( ! empty( $metadata['wc_subscription_id'] ) && function_exists( 'wcs_get_subscription' ) ) {
+				$subscription = wcs_get_subscription( (int) $metadata['wc_subscription_id'] );
+				if ( $subscription ) {
+					$renewalOrder = $subscription->get_last_order( 'all', 'renewal' );
+					if ( $renewalOrder ) {
+						if ( ! $renewalOrder->get_meta( 'BTCPay_id' ) ) {
+							$renewalOrder->update_meta_data( 'BTCPay_id', $invoiceId );
+							$renewalOrder->save();
+						}
+						return $renewalOrder;
+					}
+
+					$parentId = $subscription->get_parent_id();
+					if ( $parentId ) {
+						$order = wc_get_order( $parentId );
+						if ( $order ) {
+							if ( ! $order->get_meta( 'BTCPay_id' ) ) {
+								$order->update_meta_data( 'BTCPay_id', $invoiceId );
+								$order->save();
+							}
+							return $order;
+						}
+					}
+				}
+			}
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to load invoice metadata: ' . $e->getMessage() );
+		}
+
+		return null;
+	}
+
+	protected function maybeStoreSubscriptionCustomerId( \WC_Order $order ): void {
+		if ( ! $this->isSubscriptionOrder( $order ) ) {
+			return;
+		}
+
+		$subscription = $this->getSubscriptionForOrder( $order );
+		$existing = $order->get_meta( 'BTCPay_subscriber_id' );
+		if ( empty( $existing ) && $subscription ) {
+			$existing = $subscription->get_meta( 'BTCPay_subscriber_id' );
+		}
+
+		if ( ! empty( $existing ) ) {
+			return;
+		}
+
+		$planCheckoutId = $order->get_meta( 'BTCPay_plan_checkout_id' );
+		if ( empty( $planCheckoutId ) ) {
+			return;
+		}
+
+		try {
+			$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$checkout = $client->getPlanCheckout( $planCheckoutId );
+
+			if ( $checkout->getInvoiceId() && ! $order->get_meta( 'BTCPay_id' ) ) {
+				$order->update_meta_data( 'BTCPay_id', $checkout->getInvoiceId() );
+			}
+
+			$subscriber = $checkout->getSubscriber();
+			if ( $subscriber ) {
+				$customer = $subscriber->getCustomer();
+				$customerId = $customer->getId();
+
+				$order->update_meta_data( 'BTCPay_subscriber_id', $customerId );
+				$order->save();
+
+				if ( $subscription ) {
+					$subscription->update_meta_data( 'BTCPay_subscriber_id', $customerId );
+					$subscription->save();
+				}
+			}
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to read plan checkout: ' . $e->getMessage() );
 		}
 	}
 
@@ -801,6 +994,236 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	/**
+	 * Check if the order contains a subscription.
+	 */
+	protected function isSubscriptionOrder( \WC_Order $order ): bool {
+		if ( function_exists( 'wcs_order_contains_subscription' ) ) {
+			return wcs_order_contains_subscription( $order );
+		}
+
+		if ( class_exists( 'WC_Subscriptions_Order' ) ) {
+			return \WC_Subscriptions_Order::order_contains_subscription( $order->get_id() );
+		}
+
+		return false;
+	}
+
+	/**
+	 * Process subscription payment.
+	 */
+	protected function processSubscriptionPayment( \WC_Order $order, bool $isModal ): array {
+		Logger::debug( 'Processing subscription payment for order ' . $order->get_id() );
+
+		try {
+			$planData = $this->getBtcpayPlanData( $order, $this->getSubscriptionForOrder( $order ) );
+			if ( empty( $planData['offering_id'] ) || empty( $planData['plan_id'] ) ) {
+				throw new \Exception( __( 'Subscription offering or plan ID not configured.', 'btcpay-greenfield-for-woocommerce' ) );
+			}
+
+			$planCheckout = $this->createPlanCheckout(
+				$order,
+				$planData['offering_id'],
+				$planData['plan_id'],
+				null,
+				$order->get_billing_email()
+			);
+
+			$this->storeSubscriptionMetadata(
+				$order,
+				$planData['offering_id'],
+				$planData['plan_id'],
+				$planCheckout,
+				$this->getSubscriptionForOrder( $order )
+			);
+
+			Logger::debug( 'BTCPay plan checkout created successfully: ' . $planCheckout->getId() );
+
+			$response = [
+				'result' => 'success',
+				'planCheckoutId' => $planCheckout->getId(),
+				'orderCompleteLink' => $order->get_checkout_order_received_url(),
+				'subscription' => true,
+				'redirect' => $planCheckout->getUrl(),
+			];
+
+			if ( $planCheckout->getInvoiceId() ) {
+				$response['invoiceId'] = $planCheckout->getInvoiceId();
+			}
+
+			if ( $isModal ) {
+				unset( $response['redirect'] );
+			}
+
+			return $response;
+
+		} catch ( \Throwable $e ) {
+			Logger::debug( 'Error processing subscription payment: ' . $e->getMessage() );
+			throw new \Exception( __( 'Error processing subscription payment. Please try again.', 'btcpay-greenfield-for-woocommerce' ) );
+		}
+	}
+
+protected function createPlanCheckout(
+		\WC_Order $order,
+		string $offeringId,
+		string $planId,
+		?string $customerSelector,
+		?string $newSubscriberEmail
+	): \BTCPayServer\Result\PlanCheckout {
+		$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
+		$subscription = $this->getSubscriptionForOrder( $order );
+
+		$invoiceMetadata = $this->buildSubscriptionInvoiceMetadata( $order, $subscription );
+		$newSubscriberMetadata = $this->buildSubscriptionInvoiceMetadata( $order, $subscription );
+		$successRedirect = $this->get_return_url( $order );
+
+		return $client->createPlanCheckout(
+			$this->apiHelper->storeId,
+			$offeringId,
+			$planId,
+			$customerSelector,
+			null,
+			null,
+			$newSubscriberMetadata,
+			$invoiceMetadata,
+			null,
+			null,
+			null,
+			$successRedirect,
+			$newSubscriberEmail
+		);
+	}
+
+protected function buildSubscriptionInvoiceMetadata( \WC_Order $order, ?\WC_Subscription $subscription ): array {
+		$metadata = [
+			'wc_order_id' => (string) $order->get_id(),
+			'wc_order_number' => (string) $order->get_order_number(),
+		];
+
+		if ( $subscription ) {
+			$metadata['wc_subscription_id'] = (string) $subscription->get_id();
+		}
+
+		return $metadata;
+	}
+
+protected function getSubscriptionForOrder( \WC_Order $order ): ?\WC_Subscription {
+		if ( function_exists( 'wcs_get_subscriptions_for_renewal_order' ) ) {
+			$subscriptions = wcs_get_subscriptions_for_renewal_order( $order );
+			if ( ! empty( $subscriptions ) ) {
+				return array_shift( $subscriptions );
+			}
+		}
+
+		if ( function_exists( 'wcs_get_subscriptions_for_order' ) ) {
+			$subscriptions = wcs_get_subscriptions_for_order( $order->get_id(), [ 'order_type' => 'parent' ] );
+			if ( ! empty( $subscriptions ) ) {
+				return array_shift( $subscriptions );
+			}
+		}
+
+		return null;
+	}
+
+protected function getBtcpayPlanData( \WC_Order $order, ?\WC_Subscription $subscription ): array {
+		$offeringId = $order->get_meta( 'BTCPay_offering_id' );
+		$planId = $order->get_meta( 'BTCPay_plan_id' );
+
+		if ( ( empty( $offeringId ) || empty( $planId ) ) && $subscription ) {
+			$offeringId = $subscription->get_meta( 'BTCPay_offering_id' );
+			$planId = $subscription->get_meta( 'BTCPay_plan_id' );
+		}
+
+		if ( empty( $offeringId ) || empty( $planId ) ) {
+			$productMeta = $this->getBtcpayPlanDataFromProducts( $order );
+			$offeringId = $productMeta['offering_id'] ?? $offeringId;
+			$planId = $productMeta['plan_id'] ?? $planId;
+		}
+
+		return [
+			'offering_id' => $offeringId,
+			'plan_id' => $planId,
+		];
+	}
+
+protected function getBtcpayPlanDataFromProducts( \WC_Order $order ): array {
+		if ( ! class_exists( 'WC_Subscriptions_Product' ) ) {
+			return [];
+		}
+
+		$matches = [];
+		foreach ( $order->get_items() as $item ) {
+			$product = $item->get_product();
+			if ( ! $product ) {
+				continue;
+			}
+
+			if ( ! \WC_Subscriptions_Product::is_subscription( $product ) ) {
+				continue;
+			}
+
+			$offeringId = $product->get_meta( '_btcpay_offering_id', true );
+			$planId = $product->get_meta( '_btcpay_plan_id', true );
+			if ( $offeringId && $planId ) {
+				$matches[] = [
+					'offering_id' => $offeringId,
+					'plan_id' => $planId,
+					'product_id' => $product->get_id(),
+				];
+			}
+		}
+
+		if ( empty( $matches ) ) {
+			return [];
+		}
+
+		if ( count( $matches ) > 1 ) {
+			throw new \Exception( __( 'Only one subscription product can be purchased per order for BTCPay subscriptions.', 'btcpay-greenfield-for-woocommerce' ) );
+		}
+
+		return $matches[0];
+	}
+
+protected function getBtcpayCustomerSelector( \WC_Order $order, ?\WC_Subscription $subscription ): ?string {
+		$subscriberId = $order->get_meta( 'BTCPay_subscriber_id' );
+		if ( ! empty( $subscriberId ) ) {
+			return $subscriberId;
+		}
+
+		if ( $subscription ) {
+			$subscriberId = $subscription->get_meta( 'BTCPay_subscriber_id' );
+			if ( ! empty( $subscriberId ) ) {
+				return $subscriberId;
+			}
+		}
+
+		return $order->get_billing_email() ?: null;
+	}
+
+protected function storeSubscriptionMetadata(
+		\WC_Order $order,
+		string $offeringId,
+		string $planId,
+		\BTCPayServer\Result\PlanCheckout $checkout,
+		?\WC_Subscription $subscription
+	): void {
+		$order->update_meta_data( 'BTCPay_offering_id', $offeringId );
+		$order->update_meta_data( 'BTCPay_plan_id', $planId );
+		$order->update_meta_data( 'BTCPay_plan_checkout_id', $checkout->getId() );
+
+		if ( $checkout->getInvoiceId() ) {
+			$order->update_meta_data( 'BTCPay_id', $checkout->getInvoiceId() );
+		}
+
+		$order->save();
+
+		if ( $subscription ) {
+			$subscription->update_meta_data( 'BTCPay_offering_id', $offeringId );
+			$subscription->update_meta_data( 'BTCPay_plan_id', $planId );
+			$subscription->save();
+		}
+	}
+
+	/**
 	 * Maps customer billing metadata.
 	 */
 	protected function prepareCustomerMetadata( \WC_Order $order ): array {
@@ -880,4 +1303,86 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	 * Get allowed BTCPay payment methods (needed for limiting invoices to specific payment methods).
 	 */
 	abstract public function getPaymentMethods(): array;
+
+	/**
+	 * Get offering ID from subscription products
+	 */
+	protected function getSubscriptionOfferingId( \WC_Order $order ): ?string {
+		if ( ! class_exists( 'WC_Subscriptions_Order' ) ) {
+			return null;
+		}
+
+		$subscriptions = \WC_Subscriptions_Order::get_subscriptions_for_order( $order->get_id() );
+		foreach ( $subscriptions as $subscription ) {
+			$items = $subscription->get_items();
+			foreach ( $items as $item ) {
+				$product = $item->get_product();
+				if ( $product && $offeringId = $product->get_meta( '_btcpay_offering_id' ) ) {
+					return $offeringId;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Get plan ID from subscription products
+	 */
+	protected function getSubscriptionPlanId( \WC_Order $order ): ?string {
+		if ( ! class_exists( 'WC_Subscriptions_Order' ) ) {
+			return null;
+		}
+
+		$subscriptions = \WC_Subscriptions_Order::get_subscriptions_for_order( $order->get_id() );
+		foreach ( $subscriptions as $subscription ) {
+			$items = $subscription->get_items();
+			foreach ( $items as $item ) {
+				$product = $item->get_product();
+				if ( $product && $planId = $product->get_meta( '_btcpay_plan_id' ) ) {
+					return $planId;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Create BTCPay plan checkout
+	 */
+	protected function createBtcpayPlanCheckout( \WC_Order $order, string $offeringId, string $planId ): \BTCPayServer\Result\PlanCheckout {
+		// Check if API key has required permissions
+		if ( ! $this->apiHelper->apiKeyHasManageSubscribersPermission() ) {
+			throw new \Exception( __( 'Your API key does not have permission to manage subscribers. Please create a new API key with the required permissions.', 'btcpay-greenfield-for-woocommerce' ) );
+		}
+
+		$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
+		
+		// Prepare metadata
+		$metadata = [
+			'orderId' => $order->get_id(),
+			'orderNumber' => $order->get_order_number(),
+			'woocommerce' => true
+		];
+
+		// Create plan checkout
+		$planCheckout = $client->createPlanCheckout(
+			$this->apiHelper->storeId,
+			$offeringId,
+			$planId,
+			null, // customerSelector - let BTCPay handle it
+			1440, // durationMinutes - 24 hours
+			null, // onPayBehavior
+			[ 'source' => 'woocommerce' ], // newSubscriberMetadata
+			$metadata, // invoiceMetadata
+			$metadata, // metadata
+			false, // isTrial - will be determined by plan settings
+			null, // creditPurchase
+			$this->get_return_url( $order ), // successRedirectLink
+			$order->get_billing_email() // newSubscriberEmail
+		);
+
+		return $planCheckout;
+	}
 }
