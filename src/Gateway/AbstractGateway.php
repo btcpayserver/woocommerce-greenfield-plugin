@@ -207,10 +207,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		// Get payment methods.
 		$paymentMethods = $this->getPaymentMethods();
-		// Remove LNURL
-		if (in_array('BTC_LNURLPAY', $paymentMethods) || in_array('BTC_LNURL', $paymentMethods)) {
-			$paymentMethods = array_diff($paymentMethods, ['BTC_LNURLPAY', 'BTC_LNURL']);
-		}
+		// Remove unsupported payment methods for refunds.
+		$unsupportedPaymentMethods = ['BTC_LNURLPAY', 'BTC_LNURL', 'XMR_CHAIN'];
+		$paymentMethods = array_diff($paymentMethods, $unsupportedPaymentMethods);
 
 		// Refund name is limited for 50 chars, but we do not have description field available until php lib v3 is out.
 		$refundName = __('Refund of order ', 'btcpay-greenfield-for-woocommerce') . $order->get_order_number() . '; ' . $reason;
