@@ -3,6 +3,21 @@
 let isProcessingOrder = false;
 let lastExecutionTime = 0;
 const debounceInterval = 1000;
+let invoiceCreatedForOrder = null;
+
+let originalButtonText = null;
+
+const setButtonProcessing = function (processing) {
+	const textEl = document.querySelector('.wc-block-components-checkout-place-order-button__text');
+	if (!textEl) return;
+	if (processing) {
+		originalButtonText = textEl.textContent;
+		textEl.textContent = BTCPayWP.textProcessingButton || 'Processing…';
+	} else if (originalButtonText) {
+		textEl.textContent = originalButtonText;
+		originalButtonText = null;
+	}
+};
 
 /**
  * Subscribe to the checkout store and listen to place order button event,
@@ -34,6 +49,7 @@ wp.data.subscribe(() => {
 
 		if (activePM.startsWith('btcpaygf_')) {
 			//console.log('BTCPay is selected');
+			setButtonProcessing(true);
 
 			// Check for validation errors before proceeding.
 			// This ensures required fields (address, email, etc.) are filled in.
@@ -51,8 +67,12 @@ wp.data.subscribe(() => {
 			if (responseData) {
 				//console.log('got response: ');
 				//console.log(responseData);
+				// Reset checkout to idle to prevent WooCommerce blocks from also
+				// sending its own REST checkout request (which would call
+				// process_payment a second time and create a duplicate invoice).
+				resetCheckout();
 				blocksShowBTCPayModal(responseData);
-				isProcessingOrder = false;
+				// Keep isProcessingOrder = true while modal is open to prevent duplicate invoices.
 				return false;
 			} else {
 				blocksSubmitError(BTCPayWP.textProcessingError);
@@ -79,6 +99,11 @@ const blocksProcessOrder = function (paymentGateway) {
 	const checkout = wp.data.select(wc.wcBlocksData.CHECKOUT_STORE_KEY);
 	const orderId = checkout.getOrderId();
 
+	// Prevent duplicate invoice creation for the same order.
+	if (orderId && orderId === invoiceCreatedForOrder) {
+		return null;
+	}
+
 	// Prepare form data.
 	let data = {
 		'action': 'btcpaygf_modal_blocks_checkout',
@@ -96,6 +121,7 @@ const blocksProcessOrder = function (paymentGateway) {
 		//console.log(response);
 
 		if (response.data.invoiceId) {
+			invoiceCreatedForOrder = orderId;
 			responseData = response.data;
 		} else {
 			///unblockElement('.woocommerce-checkout-payment');
@@ -126,6 +152,9 @@ const blocksShowBTCPayModal = function (data) {
 
 	if (data.invoiceId !== undefined) {
 		window.btcpay.setApiUrlPrefix(BTCPayWP.apiUrl);
+		window.btcpay.onModalWillEnter(function () {
+			setButtonProcessing(false);
+		});
 		window.btcpay.showInvoice(data.invoiceId);
 	}
 	let invoice_paid = false;
@@ -146,11 +175,15 @@ const blocksShowBTCPayModal = function (data) {
 						break;
 					case 'expired':
 						window.btcpay.hideFrame();
-						submitError(BTCPayWP.textInvoiceExpired);
+						isProcessingOrder = false;
+						invoiceCreatedForOrder = null;
+						blocksSubmitError(BTCPayWP.textInvoiceExpired);
 						break;
 					case 'invalid':
 						window.btcpay.hideFrame();
-						submitError(BTCPayWP.textInvoiceInvalid);
+						isProcessingOrder = false;
+						invoiceCreatedForOrder = null;
+						blocksSubmitError(BTCPayWP.textInvoiceInvalid);
 						break;
 				}
 			}
@@ -159,6 +192,8 @@ const blocksShowBTCPayModal = function (data) {
 				if (invoice_paid === true) {
 					window.location = data.orderCompleteLink;
 				}
+				isProcessingOrder = false;
+				invoiceCreatedForOrder = null;
 				blocksSubmitError(BTCPayWP.textModalClosed);
 			}
 		}
@@ -174,6 +209,7 @@ const blocksShowBTCPayModal = function (data) {
  * @param error_message
  */
 const blocksSubmitError = function (error_message) {
+	setButtonProcessing(false);
 	window.wp.data.dispatch( 'core/notices' )
 		.createErrorNotice(
 			error_message,

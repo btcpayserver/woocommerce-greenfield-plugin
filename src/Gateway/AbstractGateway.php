@@ -412,10 +412,14 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 
 		// Register modal script.
+		$scriptDeps = [ 'jquery', 'wp-data' ];
+		if ($isBlockCheckout) {
+			$scriptDeps[] = 'wc-blocks-data-store';
+		}
 		wp_register_script(
 			$scriptName,
 			$scriptFile,
-			[ 'jquery', 'wp-data' ],
+			$scriptDeps,
 			BTCPAYSERVER_VERSION,
 			true
 		);
@@ -434,6 +438,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			'textInvoiceInvalid' => _x( 'The invoice is invalid. Please try again, choose a different payment method or contact us if you paid but the payment did not confirm in time.', 'js', 'btcpay-greenfield-for-woocommerce' ),
 			'textModalClosed' => _x( 'Payment aborted by you. Please try again or choose a different payment method.', 'js', 'btcpay-greenfield-for-woocommerce' ),
 			'textProcessingError' => _x( 'Error processing checkout. Please try again or choose another payment option.', 'js', 'btcpay-greenfield-for-woocommerce' ),
+			'textProcessingButton' => _x( 'Processing…', 'js', 'btcpay-greenfield-for-woocommerce' ),
 		] );
 		// Add the registered modal blocks script to frontend.
 		wp_enqueue_script( $scriptName );
@@ -640,6 +645,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 						sort($pmInvoice);
 						$pm = $this->getPaymentMethods();
 						sort($pm);
+						Logger::debug( 'validInvoiceExists: pmInvoice: ' . print_r($pmInvoice, true) . ' pm: ' . print_r($pm, true) . ' match: ' . ($pm === $pmInvoice ? 'yes' : 'no') );
 						if ($pm === $pmInvoice) {
 							return true;
 						}
