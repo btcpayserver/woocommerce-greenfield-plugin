@@ -558,3 +558,66 @@ add_action( 'before_woocommerce_init', function() {
 
 // Register WooCommerce Blocks integration.
 add_action( 'woocommerce_blocks_loaded', [ 'BTCPayServerWCPlugin', 'blocksSupport' ] );
+
+// Render BTCPay / Lightning icons in a dedicated column on the orders list.
+function btcpaygf_render_order_list_icons( $order ): string {
+	if ( ! $order instanceof \WC_Abstract_Order ) {
+		return '';
+	}
+
+	$payment_method = (string) $order->get_payment_method();
+	if ( strpos( $payment_method, 'btcpaygf_' ) !== 0 ) {
+		return '';
+	}
+
+	$bitcoin_icon = '<img src="' . esc_url( BTCPAYSERVER_PLUGIN_URL . 'assets/images/bitcoin.svg' ) . '" alt="Bitcoin" title="Bitcoin" style="width:16px;height:16px;vertical-align:middle;" />';
+	$btcpay_icon  = '<img src="' . esc_url( BTCPAYSERVER_PLUGIN_URL . 'assets/images/btcpay-logo.svg' ) . '" alt="BTCPay" title="BTCPay" style="width:16px;height:16px;vertical-align:middle;" />';
+
+	$ln_paid  = $order->get_meta( 'BTCPay_BTC-LN_total_paid' );
+	$btc_paid = $order->get_meta( 'BTCPay_BTC_total_amount' );
+
+	if ( $ln_paid !== '' && (float) $ln_paid > 0 ) {
+		return $btcpay_icon . ' ' . $bitcoin_icon . ' <span title="Lightning Network">⚡</span>';
+	}
+
+	if ( $btc_paid !== '' ) {
+		return $bitcoin_icon;
+	}
+
+	return $btcpay_icon;
+}
+
+// Insert a column right after "status" on both HPOS and legacy screens.
+function btcpaygf_insert_icon_column( array $columns ): array {
+	$new = [];
+	foreach ( $columns as $key => $label ) {
+		$new[ $key ] = $label;
+		if ( 'order_status' === $key || 'status' === $key ) {
+			$new['btcpaygf_icons'] = __( 'Payment', 'btcpay-greenfield-for-woocommerce' );
+		}
+	}
+	if ( ! isset( $new['btcpaygf_icons'] ) ) {
+		$new['btcpaygf_icons'] = __( 'Payment', 'btcpay-greenfield-for-woocommerce' );
+	}
+	return $new;
+}
+
+// HPOS orders list.
+add_filter( 'woocommerce_shop_order_list_table_columns', 'btcpaygf_insert_icon_column' );
+add_action( 'woocommerce_shop_order_list_table_custom_column', function( $column, $order ) {
+	if ( 'btcpaygf_icons' === $column ) {
+		echo btcpaygf_render_order_list_icons( $order );
+	}
+}, 10, 2 );
+
+// Legacy (post-based) orders list.
+add_filter( 'manage_edit-shop_order_columns', 'btcpaygf_insert_icon_column' );
+add_action( 'manage_shop_order_posts_custom_column', function( $column, $post_id ) {
+	if ( 'btcpaygf_icons' !== $column ) {
+		return;
+	}
+	$order = wc_get_order( $post_id );
+	if ( $order ) {
+		echo btcpaygf_render_order_list_icons( $order );
+	}
+}, 10, 2 );
