@@ -575,16 +575,24 @@ function btcpaygf_render_order_list_icons( $order ): string {
 
 	$ln_paid  = $order->get_meta( 'BTCPay_BTC-LN_total_paid' );
 	$btc_paid = $order->get_meta( 'BTCPay_BTC_total_amount' );
+	$redirect = (string) $order->get_meta( 'BTCPay_redirect' );
+
+	$invoice_link = '';
+	if ( $redirect !== '' ) {
+		$invoice_url  = str_replace( '/i/', '/invoices/', $redirect );
+		$receipt_svg  = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2-3-2z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>';
+		$invoice_link = ' <a href="' . esc_url( $invoice_url ) . '" target="_blank" rel="noopener noreferrer" title="' . esc_attr__( 'Open BTCPay invoice', 'btcpay-greenfield-for-woocommerce' ) . '" style="text-decoration:none;color:inherit;">' . $receipt_svg . '</a>';
+	}
 
 	if ( $ln_paid !== '' && (float) $ln_paid > 0 ) {
-		return $btcpay_icon . ' ' . $bitcoin_icon . ' <span title="Lightning Network">⚡</span>';
+		return $btcpay_icon . ' ' . $bitcoin_icon . ' <span title="Lightning Network">⚡</span>' . $invoice_link;
 	}
 
 	if ( $btc_paid !== '' ) {
-		return $btcpay_icon . ' ' . $bitcoin_icon;
+		return $btcpay_icon . ' ' . $bitcoin_icon . $invoice_link;
 	}
 
-	return $btcpay_icon;
+	return $btcpay_icon . $invoice_link;
 }
 
 // Insert a column right after "status" on both HPOS and legacy screens.
@@ -593,11 +601,11 @@ function btcpaygf_insert_icon_column( array $columns ): array {
 	foreach ( $columns as $key => $label ) {
 		$new[ $key ] = $label;
 		if ( 'order_status' === $key || 'status' === $key ) {
-			$new['btcpaygf_icons'] = __( 'Payment', 'btcpay-greenfield-for-woocommerce' );
+			$new['btcpaygf_icons'] = __( 'BTCPay', 'btcpay-greenfield-for-woocommerce' );
 		}
 	}
 	if ( ! isset( $new['btcpaygf_icons'] ) ) {
-		$new['btcpaygf_icons'] = __( 'Payment', 'btcpay-greenfield-for-woocommerce' );
+		$new['btcpaygf_icons'] = __( 'BTCPay', 'btcpay-greenfield-for-woocommerce' );
 	}
 	return $new;
 }
