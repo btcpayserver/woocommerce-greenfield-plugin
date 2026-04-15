@@ -581,7 +581,7 @@ function btcpaygf_render_order_list_icons( $order ): string {
 	}
 
 	if ( $btc_paid !== '' ) {
-		return $bitcoin_icon;
+		return $btcpay_icon . ' ' . $bitcoin_icon;
 	}
 
 	return $btcpay_icon;
