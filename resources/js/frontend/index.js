@@ -1,65 +1,66 @@
-import { sprintf, __ } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 import { registerPaymentMethod } from '@woocommerce/blocks-registry';
 import { decodeEntities } from '@wordpress/html-entities';
 import { getSetting } from '@woocommerce/settings';
 
-const settings = getSetting( 'btcpaygf_default_data', {} );
-
-const defaultLabel = __(
-	'Bitcoin / Lightning Network over BTCPay Server',
-	'woo-gutenberg-products-block'
-);
-
-const label = decodeEntities( settings.title ) || defaultLabel;
-
-// Get the icon from the settings
-const icon = settings.icon || '';
-/**
- * Content component
- */
-const Content = () => {
+const makeContent = ( settings ) => () => {
 	return decodeEntities( settings.description || '' );
 };
-/**
- * Label component
- *
- * @param {*} props Props from payment API.
- */
-const Label = ( props ) => {
+
+const makeLabel = ( settings, labelText ) => ( props ) => {
 	const { PaymentMethodLabel } = props.components;
+	const icon = settings.icon || '';
 	return (
 		<div className="btcpay-payment-method-label">
-			{icon && (
+			{ icon && (
 				<img
-					src={icon}
+					src={ icon }
 					alt="BTCPay Bitcoin payment icon"
 					className="btcpay-payment-icon"
-					style={{
+					style={ {
 						width: '50px',
 						marginRight: '10px',
 						verticalAlign: 'middle'
-					}}
+					} }
 				/>
-			)}
-			<PaymentMethodLabel text={ label } />
+			) }
+			<PaymentMethodLabel text={ labelText } />
 		</div>
 	);
 };
 
-/**
- * Payment method config object.
- */
-const BTCPayDefault = {
-	name: "btcpaygf_default",
-	label: <Label />,
-	content: <Content />,
-	edit: <Content />,
-	canMakePayment: () => true,
-	ariaLabel: label,
-	iconUrl: icon,
-	supports: {
-		features: settings.supports,
-	},
+const registerBTCPayGateway = ( name, defaultTitle ) => {
+	const settings = getSetting( `${ name }_data`, {} );
+
+	if ( ! settings || Object.keys( settings ).length === 0 ) {
+		return;
+	}
+
+	const label = decodeEntities( settings.title ) || defaultTitle;
+	const Content = makeContent( settings );
+	const Label = makeLabel( settings, label );
+
+	registerPaymentMethod( {
+		name: name,
+		label: <Label />,
+		content: <Content />,
+		edit: <Content />,
+		canMakePayment: () => true,
+		ariaLabel: label,
+		supports: {
+			features: settings.supports,
+		},
+	} );
 };
 
-registerPaymentMethod( BTCPayDefault );
+registerBTCPayGateway(
+	'btcpaygf_default',
+	__( 'Bitcoin / Lightning Network over BTCPay Server', 'btcpay-greenfield-for-woocommerce' )
+);
+
+const paymentMethodData = getSetting( 'paymentMethodData', {} );
+Object.keys( paymentMethodData ).forEach( ( name ) => {
+	if ( name.startsWith( 'btcpaygf_' ) && name !== 'btcpaygf_default' ) {
+		registerBTCPayGateway( name, name );
+	}
+} );
