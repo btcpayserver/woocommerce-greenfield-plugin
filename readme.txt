@@ -5,7 +5,7 @@ Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 5.9
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 2.7.5
+Stable tag: 2.8.0
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -110,45 +110,19 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
-= 2.7.5 =
-* Fix: Refunds: remove XMR from payment methods to not break refunds
-* Fix: Blocks checkout: Improve blocks checkout detection
-* Fix: Blocks checkout: Allow re-trigger on abort
-* Fix: Blocks checkout: Ensure customer data form validation can't get skipped
+= 2.8.0 =
+* Feature: On customer order details show link to BTCPay invoice checkout page to see receipt or retry payment in case of interruption
+* Feature: Make separate payment gateways work for WooCommerce blocks checkout
+* Feature: Add column to order overview with icons for BTCPay, Bitcoin and LN payments and link to the invoice on BTCPay
+
+Note: None of those features introduce breaking changes, you should be safe to upgrade.
 
 == Changelog ==
-= 2.7.5 :: 2026-04-13 =
-* Fix: Refunds: remove XMR from payment methods to not break refunds
-* Fix: Blocks checkout: Improve blocks checkout detection
-* Fix: Blocks checkout: Allow re-trigger on abort
-* Fix: Blocks checkout: Ensure customer data form validation can't get skipped
 
-= 2.7.4 :: 2026-03-26 =
-* Fix: Make sure modal checkout event handler does not get attached multiple times
-* Maintenance: Update NodeJS and dependencies to v20
-
-= 2.7.3 :: 2026-03-23 =
-* Fix: Add warnings and docs on changing order status mapping of "paid" payment status
-* Fix: Fix deprecation warnings of dynamic properties
-* Maintenance: Add more debug logging for refunds
-
-= 2.7.2 :: 2025-04-10 =
-* Feature: Make icons visible on woocommerce blocks too
-* Fix: Fix deprecation warnings of dynamic properties
-* Fix: Formatting in readme.txt
-
-= 2.7.1 :: 2024-11-22 =
-* Fix: Update PHP library to v2.8.1 to fix a compatibility issue with refunds on BTCPay 2.0
-
-= 2.7.0 :: 2024-09-04 =
-* Feature: Add option to notify customers on refund order notes.
-* Feature: BTCPay Server 2.0.0 compatibility.
-* Fix: Make sure to not process orders if the assigned payment gateway is not one of BTCPay.
-* Fix: Make sure payment methods are set on refunds.
-* Fix: Wrong currency in refund comment.
-* Fix: Deprecation warnings.
-* Maintenance: Update NodeJS dependencies.
-* Maintenance: Update PHP library to v2.7.0.
+= 2.8.0 :: 2026-04-20 =
+* Feature: On customer order details show link to BTCPay invoice checkout page to see receipt or retry payment in case of interruption
+* Feature: Make separate payment gateways work for WooCommerce blocks checkout
+* Feature: Add column to order overview with icons for BTCPay, Bitcoin and LN payments and link to the invoice on BTCPay
 
 
 Changelog of older releases can be found [here](https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/changelog.txt)

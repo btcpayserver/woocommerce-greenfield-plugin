@@ -2,6 +2,39 @@ Find current version release changelog in readme.txt
 
 Changelog for older versions:
 
+= 2.7.5 :: 2026-04-13 =
+* Fix: Refunds: remove XMR from payment methods to not break refunds
+* Fix: Blocks checkout: Improve blocks checkout detection
+* Fix: Blocks checkout: Allow re-trigger on abort
+* Fix: Blocks checkout: Ensure customer data form validation can't get skipped
+
+= 2.7.4 :: 2026-03-26 =
+* Fix: Make sure modal checkout event handler does not get attached multiple times
+* Maintenance: Update NodeJS and dependencies to v20
+
+= 2.7.3 :: 2026-03-23 =
+* Fix: Add warnings and docs on changing order status mapping of "paid" payment status
+* Fix: Fix deprecation warnings of dynamic properties
+* Maintenance: Add more debug logging for refunds
+
+= 2.7.2 :: 2025-04-10 =
+* Feature: Make icons visible on woocommerce blocks too
+* Fix: Fix deprecation warnings of dynamic properties
+* Fix: Formatting in readme.txt
+
+= 2.7.1 :: 2024-11-22 =
+* Fix: Update PHP library to v2.8.1 to fix a compatibility issue with refunds on BTCPay 2.0
+
+= 2.7.0 :: 2024-09-04 =
+* Feature: Add option to notify customers on refund order notes.
+* Feature: BTCPay Server 2.0.0 compatibility.
+* Fix: Make sure to not process orders if the assigned payment gateway is not one of BTCPay.
+* Fix: Make sure payment methods are set on refunds.
+* Fix: Wrong currency in refund comment.
+* Fix: Deprecation warnings.
+* Maintenance: Update NodeJS dependencies.
+* Maintenance: Update PHP library to v2.7.0.
+
 = 2.6.2 :: 2024-04-09 =
 * Fix: Dismissing the review notification forever, finally.
 
