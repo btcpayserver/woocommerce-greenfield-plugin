@@ -112,6 +112,7 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 = 2.8.0 =
 * Feature: On customer order details show link to BTCPay invoice checkout page to see receipt or retry payment in case of interruption
+* Feature: On customer order details show link refunds (setting "Customer visible refunds" needs to be enabled)
 * Feature: Make separate payment gateways work for WooCommerce blocks checkout
 * Feature: Add column to order overview with icons for BTCPay, Bitcoin and LN payments and link to the invoice on BTCPay
 
@@ -121,6 +122,7 @@ Note: None of those features introduce breaking changes, you should be safe to u
 
 = 2.8.0 :: 2026-04-20 =
 * Feature: On customer order details show link to BTCPay invoice checkout page to see receipt or retry payment in case of interruption
+* Feature: On customer order details show link refunds (setting "Customer visible refunds" needs to be enabled)
 * Feature: Make separate payment gateways work for WooCommerce blocks checkout
 * Feature: Add column to order overview with icons for BTCPay, Bitcoin and LN payments and link to the invoice on BTCPay
 
