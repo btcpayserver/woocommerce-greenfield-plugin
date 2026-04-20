@@ -41,6 +41,7 @@ class BTCPayServerWCPlugin {
 		$this->includes();
 
 		add_action( 'woocommerce_thankyou_btcpaygf_default', ['BTCPayServerWCPlugin', 'orderStatusThankYouPage'], 10, 1);
+		add_action( 'woocommerce_order_details_after_order_table', ['BTCPayServerWCPlugin', 'orderDetailsCheckoutLink'], 10, 1);
 		add_action( 'wp_ajax_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
 		add_action( 'wp_ajax_btcpaygf_notifications', [$this, 'processAjaxNotification'] );
 		add_action( 'wp_ajax_nopriv_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
@@ -375,12 +376,58 @@ class BTCPayServerWCPlugin {
 				break;
 		}
 
+		$checkoutLink = self::getCheckoutLink($order);
+
 		echo "
 		<section class='woocommerce-order-payment-status'>
 		    <h2 class='woocommerce-order-payment-status-title'>{$title}</h2>
 		    <p><strong>{$statusDesc}</strong></p>
+		    {$checkoutLink}
 		</section>
 		";
+	}
+
+	/**
+	 * Displays the BTCPay checkout link on the customer order details page (My Account).
+	 */
+	public static function orderDetailsCheckoutLink($order)
+	{
+		if (!$order instanceof \WC_Order) {
+			return;
+		}
+
+		$payment_method = (string) $order->get_payment_method();
+		if (strpos($payment_method, 'btcpaygf_') !== 0) {
+			return;
+		}
+
+		$checkoutLink = self::getCheckoutLink($order);
+		if ($checkoutLink === '') {
+			return;
+		}
+
+		$title = _x('Payment information', 'btcpay-greenfield-for-woocommerce');
+		echo "
+		<section class='woocommerce-order-payment-status'>
+		    <h2 class='woocommerce-order-payment-status-title'>{$title}</h2>
+		    {$checkoutLink}
+		</section>
+		";
+	}
+
+	/**
+	 * Returns the BTCPay checkout link HTML for unpaid orders.
+	 */
+	private static function getCheckoutLink(\WC_Order $order): string
+	{
+		$url = $order->get_meta('BTCPay_redirect');
+		if (empty($url)) {
+			return '';
+		}
+
+		$label = esc_html_x('BTCPay Invoice:', 'btcpay-greenfield-for-woocommerce');
+		$escapedUrl = esc_url($url);
+		return "<p>{$label} <a href='{$escapedUrl}' target='_blank' rel='noreferrer'>{$escapedUrl}</a></p>";
 	}
 
 	/**
