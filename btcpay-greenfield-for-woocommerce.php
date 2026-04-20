@@ -392,6 +392,17 @@ class BTCPayServerWCPlugin {
 				'woocommerce_blocks_payment_method_type_registration',
 				function( \Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry ) {
 					$payment_method_registry->register(new \BTCPayServer\WC\Blocks\DefaultGatewayBlocks());
+
+					if (get_option('btcpay_gf_separate_gateways') === 'yes') {
+						if ($separateGateways = \BTCPayServer\WC\Helper\GreenfieldApiHelper::supportedPaymentMethods()) {
+							foreach ($separateGateways as $gw) {
+								$gatewayId = 'btcpaygf_' . strtolower($gw['symbol']);
+								$payment_method_registry->register(
+									new \BTCPayServer\WC\Blocks\SeparateGatewayBlocks($gatewayId)
+								);
+							}
+						}
+					}
 				}
 			);
 		}
