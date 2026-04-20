@@ -260,7 +260,7 @@ class GlobalSettings extends \WC_Settings_Page {
 				'title' => __( 'Customer visible refunds', 'btcpay-greenfield-for-woocommerce' ),
 				'type' => 'checkbox',
 				'default' => 'no',
-				'desc' => _x( 'If enabled, it will show the order refund note also to the customer and trigger an email to customer with the refund link.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'desc' => _x( 'If enabled, it will show the order refund note also to the customer, trigger an email to customer with the refund link, and display refund links on the customer order details page.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'id' => 'btcpay_gf_refund_note_visible'
 			],
 			'debug' => [

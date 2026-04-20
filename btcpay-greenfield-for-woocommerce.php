@@ -402,7 +402,9 @@ class BTCPayServerWCPlugin {
 		}
 
 		$checkoutLink = self::getCheckoutLink($order);
-		if ($checkoutLink === '') {
+		$refundLinks = self::getRefundLinks($order);
+
+		if ($checkoutLink === '' && $refundLinks === '') {
 			return;
 		}
 
@@ -411,6 +413,7 @@ class BTCPayServerWCPlugin {
 		<section class='woocommerce-order-payment-status'>
 		    <h2 class='woocommerce-order-payment-status-title'>{$title}</h2>
 		    {$checkoutLink}
+		    {$refundLinks}
 		</section>
 		";
 	}
@@ -428,6 +431,35 @@ class BTCPayServerWCPlugin {
 		$label = esc_html_x('BTCPay Invoice:', 'btcpay-greenfield-for-woocommerce');
 		$escapedUrl = esc_url($url);
 		return "<p>{$label} <a href='{$escapedUrl}' target='_blank' rel='noreferrer'>{$escapedUrl}</a></p>";
+	}
+
+	/**
+	 * Returns refund link(s) HTML if the refund visibility setting is enabled.
+	 */
+	private static function getRefundLinks(\WC_Order $order): string
+	{
+		if (get_option('btcpay_gf_refund_note_visible') !== 'yes') {
+			return '';
+		}
+
+		$refunds = $order->get_meta('BTCPay_refund', false);
+		if (empty($refunds)) {
+			return '';
+		}
+
+		$html = '';
+		$label = esc_html_x('Refund:', 'btcpay-greenfield-for-woocommerce');
+		foreach ($refunds as $refund) {
+			$value = $refund->value;
+			if (preg_match('/Link:\s*(.+)/i', $value, $matches)) {
+				$url = esc_url(trim($matches[1]));
+				if (!empty($url)) {
+					$html .= "<p>{$label} <a href='{$url}' target='_blank' rel='noreferrer'>{$url}</a></p>";
+				}
+			}
+		}
+
+		return $html;
 	}
 
 	/**
