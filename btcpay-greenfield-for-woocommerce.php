@@ -377,14 +377,12 @@ class BTCPayServerWCPlugin {
 		}
 
 		$checkoutLink = self::getCheckoutLink($order);
-		$refundLinks = self::getRefundLinks($order);
 
 		echo "
 		<section class='woocommerce-order-payment-status'>
 		    <h2 class='woocommerce-order-payment-status-title'>{$title}</h2>
 		    <p><strong>{$statusDesc}</strong></p>
 		    {$checkoutLink}
-		    {$refundLinks}
 		</section>
 		";
 	}
