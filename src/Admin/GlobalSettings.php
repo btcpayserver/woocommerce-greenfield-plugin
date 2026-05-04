@@ -6,6 +6,7 @@ namespace BTCPayServer\WC\Admin;
 
 use BTCPayServer\Client\ApiKey;
 use BTCPayServer\Client\StorePaymentMethod;
+use BTCPayServer\Client\Subscriptions;
 use BTCPayServer\WC\Gateway\SeparateGateways;
 use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
@@ -62,8 +63,28 @@ class GlobalSettings extends \WC_Settings_Page {
 		parent::__construct();
 	}
 
+	public function get_sections(): array
+	{
+		$sections = [
+			'' => __( 'General', 'btcpay-greenfield-for-woocommerce' ),
+		];
+
+		if ( class_exists( 'WC_Subscriptions' ) ) {
+			$sections['subscription_products'] = __( 'Subscription Products', 'btcpay-greenfield-for-woocommerce' );
+		}
+
+		return $sections;
+	}
+
 	public function output(): void
 	{
+		global $current_section;
+
+		if ( $current_section === 'subscription_products' ) {
+			$this->outputSubscriptionProducts();
+			return;
+		}
+
 		echo '<h1>' . _x('BTCPay Server Payments settings', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</h1>';
 		$settings = $this->get_settings_for_default_section();
 		\WC_Admin_Settings::output_fields($settings);
@@ -291,6 +312,13 @@ class GlobalSettings extends \WC_Settings_Page {
 	 * On saving the settings form make sure to check if the API key works and register a webhook if needed.
 	 */
 	public function save() {
+		global $current_section;
+
+		if ( $current_section === 'subscription_products' ) {
+			$this->saveSubscriptionProducts();
+			return;
+		}
+
 		// If we have url, storeID and apiKey we want to check if the api key works and register a webhook.
 		Logger::debug('Saving GlobalSettings.');
 		if ( $this->hasNeededApiCredentials() ) {
@@ -499,6 +527,227 @@ class GlobalSettings extends \WC_Settings_Page {
 		echo $value['markup'];
 		echo '</td>';
 		echo '</tr>';
+	}
+
+	private function outputSubscriptionProducts(): void
+	{
+		if ( ! $this->apiHelper->configured ) {
+			echo '<div class="notice notice-error"><p>';
+			echo esc_html__( 'Please configure your BTCPay Server connection first.', 'btcpay-greenfield-for-woocommerce' );
+			echo '</p></div>';
+			return;
+		}
+
+		if ( ! $this->apiHelper->apiKeyHasManageSubscribersPermission() ) {
+			echo '<div class="notice notice-error"><p>';
+			echo esc_html__( 'Your API key does not have the "Manage Subscribers" permission. Please create a new API key with this permission to use subscription features.', 'btcpay-greenfield-for-woocommerce' );
+			echo '</p></div>';
+			return;
+		}
+
+		$offerings = $this->getOfferingsWithPlans();
+		$subscriptionProducts = $this->getSubscriptionProducts();
+		$mappings = get_option( 'btcpay_gf_subscription_mappings', [] );
+
+		$mappedProductIds = [];
+		foreach ( $mappings as $mapping ) {
+			if ( ! empty( $mapping['product_id'] ) ) {
+				$mappedProductIds[ $mapping['product_id'] ] = $mapping['offering_id'] . '|' . $mapping['plan_id'];
+			}
+		}
+
+		echo '<h2>' . esc_html__( 'Subscription Product Mapping', 'btcpay-greenfield-for-woocommerce' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Map your BTCPay Server subscription plans to WooCommerce subscription products. Each plan can be mapped to one product and vice versa.', 'btcpay-greenfield-for-woocommerce' ) . '</p>';
+
+		if ( empty( $offerings ) ) {
+			echo '<div class="notice notice-warning"><p>';
+			echo esc_html__( 'No offerings found on your BTCPay Server. Please create an offering with plans first.', 'btcpay-greenfield-for-woocommerce' );
+			echo '</p></div>';
+			return;
+		}
+
+		if ( empty( $subscriptionProducts ) ) {
+			echo '<div class="notice notice-warning"><p>';
+			echo esc_html__( 'No subscription products found in your store. Please create subscription products in WooCommerce first.', 'btcpay-greenfield-for-woocommerce' );
+			echo '</p></div>';
+			return;
+		}
+
+		echo '<form method="post" action="">';
+		wp_nonce_field( 'btcpay_gf_subscription_mappings', 'btcpay_gf_subscription_mappings_nonce' );
+
+		foreach ( $offerings as $offering ) {
+			$plans = $offering['plans'];
+			if ( empty( $plans ) ) {
+				continue;
+			}
+
+			$offeringLabel = ! empty( $offering['app_name'] ) ? $offering['app_name'] : $offering['id'];
+
+			echo '<table class="btcpay-subscription-mapping widefat striped">';
+			echo '<thead><tr>';
+			echo '<th colspan="2"><strong>' . esc_html( sprintf(
+				__( 'Offering: %s', 'btcpay-greenfield-for-woocommerce' ),
+				$offeringLabel
+			) ) . '</strong></th>';
+			echo '</tr><tr>';
+			echo '<th>' . esc_html__( 'Plan', 'btcpay-greenfield-for-woocommerce' ) . '</th>';
+			echo '<th>' . esc_html__( 'WooCommerce Product', 'btcpay-greenfield-for-woocommerce' ) . '</th>';
+			echo '</tr></thead>';
+			echo '<tbody>';
+
+			foreach ( $plans as $plan ) {
+				$planKey = $offering['id'] . '|' . $plan['id'];
+				$currentProductId = '';
+				foreach ( $mappings as $mapping ) {
+					if ( $mapping['offering_id'] === $offering['id'] && $mapping['plan_id'] === $plan['id'] ) {
+						$currentProductId = $mapping['product_id'];
+						break;
+					}
+				}
+
+				$planLabel = $plan['name'];
+				if ( ! empty( $plan['price'] ) && ! empty( $plan['currency'] ) ) {
+					$planLabel .= ' (' . $plan['price'] . ' ' . strtoupper( $plan['currency'] ) . '/' . $plan['recurring_type'] . ')';
+				}
+
+				echo '<tr>';
+				echo '<td>' . esc_html( $planLabel ) . '</td>';
+				echo '<td>';
+				echo '<select name="btcpay_mapping[' . esc_attr( $offering['id'] ) . '][' . esc_attr( $plan['id'] ) . ']" class="btcpay-plan-product-select">';
+				echo '<option value="">' . esc_html__( '— Not mapped —', 'btcpay-greenfield-for-woocommerce' ) . '</option>';
+
+				foreach ( $subscriptionProducts as $product ) {
+					$productId = $product['id'];
+					$disabled = '';
+					if ( isset( $mappedProductIds[ $productId ] ) && $mappedProductIds[ $productId ] !== $planKey ) {
+						$disabled = ' disabled';
+					}
+					$selected = ( (int) $currentProductId === $productId ) ? ' selected' : '';
+					echo '<option value="' . esc_attr( $productId ) . '"' . $selected . $disabled . '>';
+					echo esc_html( $product['name'] . ' (#' . $productId . ')' );
+					if ( $disabled ) {
+						echo esc_html( ' — ' . __( 'already mapped', 'btcpay-greenfield-for-woocommerce' ) );
+					}
+					echo '</option>';
+				}
+
+				echo '</select>';
+				echo '</td>';
+				echo '</tr>';
+			}
+
+			echo '</tbody></table>';
+		}
+
+		echo '<p class="submit"><button type="submit" class="button button-primary" value="save">';
+		echo esc_html__( 'Save Mappings', 'btcpay-greenfield-for-woocommerce' );
+		echo '</button></p>';
+		echo '</form>';
+	}
+
+	private function saveSubscriptionProducts(): void
+	{
+		if ( ! isset( $_POST['btcpay_gf_subscription_mappings_nonce'] )
+			|| ! wp_verify_nonce( $_POST['btcpay_gf_subscription_mappings_nonce'], 'btcpay_gf_subscription_mappings' )
+		) {
+			return;
+		}
+
+		$rawMappings = $_POST['btcpay_mapping'] ?? [];
+		$mappings = [];
+		$usedProductIds = [];
+
+		foreach ( $rawMappings as $offeringId => $plans ) {
+			$offeringId = sanitize_text_field( $offeringId );
+			if ( ! is_array( $plans ) ) {
+				continue;
+			}
+
+			foreach ( $plans as $planId => $productId ) {
+				$planId = sanitize_text_field( $planId );
+				$productId = absint( $productId );
+				if ( ! $productId ) {
+					continue;
+				}
+
+				if ( in_array( $productId, $usedProductIds, true ) ) {
+					continue;
+				}
+
+				$mappings[] = [
+					'offering_id' => $offeringId,
+					'plan_id'     => $planId,
+					'product_id'  => $productId,
+				];
+				$usedProductIds[] = $productId;
+			}
+		}
+
+		update_option( 'btcpay_gf_subscription_mappings', $mappings );
+		Notice::addNotice( 'success', __( 'Subscription product mappings saved.', 'btcpay-greenfield-for-woocommerce' ) );
+	}
+
+	private function getOfferingsWithPlans(): array
+	{
+		$cacheKey = 'btcpay_gf_offerings';
+		$cached = get_transient( $cacheKey );
+		if ( $cached !== false ) {
+			return $cached;
+		}
+
+		$offerings = [];
+		try {
+			$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$offeringList = $client->getOfferings( $this->apiHelper->storeId );
+
+			foreach ( $offeringList->all() as $offering ) {
+				$plans = [];
+				foreach ( $offering->getPlans() as $plan ) {
+					$plans[] = [
+						'id'             => $plan->getId(),
+						'name'           => $plan->getName(),
+						'price'          => $plan->getPrice(),
+						'currency'       => $plan->getCurrency(),
+						'recurring_type' => $plan->getRecurringType(),
+					];
+				}
+				$offerings[] = [
+					'id'       => $offering->getId(),
+					'app_name' => $offering->getAppName(),
+					'plans'    => $plans,
+				];
+			}
+		} catch ( \Throwable $e ) {
+			Logger::debug( 'Error fetching offerings: ' . $e->getMessage() );
+			Notice::addNotice( 'error', sprintf(
+				__( 'Could not fetch offerings from BTCPay Server: %s', 'btcpay-greenfield-for-woocommerce' ),
+				$e->getMessage()
+			) );
+			return [];
+		}
+
+		set_transient( $cacheKey, $offerings, 120 );
+		return $offerings;
+	}
+
+	private function getSubscriptionProducts(): array
+	{
+		$products = wc_get_products( [
+			'type'   => 'subscription',
+			'limit'  => -1,
+			'status' => 'publish',
+		] );
+
+		$result = [];
+		foreach ( $products as $product ) {
+			$result[] = [
+				'id'   => $product->get_id(),
+				'name' => $product->get_name(),
+			];
+		}
+
+		return $result;
 	}
 
 }

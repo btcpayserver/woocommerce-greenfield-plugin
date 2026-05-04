@@ -10,3 +10,18 @@
 .btcpay-review-dismiss-forever {
 	margin-left: 10px;
 }
+table.btcpay-subscription-mapping {
+	margin-bottom: 20px;
+	max-width: 800px;
+}
+table.btcpay-subscription-mapping th {
+	padding: 10px 12px;
+}
+table.btcpay-subscription-mapping td {
+	padding: 8px 12px;
+	vertical-align: middle;
+}
+table.btcpay-subscription-mapping select {
+	width: 100%;
+	max-width: 400px;
+}

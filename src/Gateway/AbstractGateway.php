@@ -1240,6 +1240,16 @@ protected function getBtcpayPlanDataFromProducts( \WC_Order $order ): array {
 			return [];
 		}
 
+		$mappings = get_option( 'btcpay_gf_subscription_mappings', [] );
+		if ( empty( $mappings ) ) {
+			return [];
+		}
+
+		$mappingsByProduct = [];
+		foreach ( $mappings as $mapping ) {
+			$mappingsByProduct[ (int) $mapping['product_id'] ] = $mapping;
+		}
+
 		$matches = [];
 		foreach ( $order->get_items() as $item ) {
 			$product = $item->get_product();
@@ -1251,13 +1261,12 @@ protected function getBtcpayPlanDataFromProducts( \WC_Order $order ): array {
 				continue;
 			}
 
-			$offeringId = $product->get_meta( '_btcpay_offering_id', true );
-			$planId = $product->get_meta( '_btcpay_plan_id', true );
-			if ( $offeringId && $planId ) {
+			$productId = $product->get_id();
+			if ( isset( $mappingsByProduct[ $productId ] ) ) {
 				$matches[] = [
-					'offering_id' => $offeringId,
-					'plan_id' => $planId,
-					'product_id' => $product->get_id(),
+					'offering_id' => $mappingsByProduct[ $productId ]['offering_id'],
+					'plan_id'     => $mappingsByProduct[ $productId ]['plan_id'],
+					'product_id'  => $productId,
 				];
 			}
 		}
