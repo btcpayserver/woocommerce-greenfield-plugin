@@ -545,6 +545,13 @@ class GlobalSettings extends \WC_Settings_Page {
 			return;
 		}
 
+		if ( ! $this->apiHelper->apiKeyHasViewOfferingsPermission() ) {
+			echo '<div class="notice notice-error"><p>';
+			echo esc_html__( 'Your API key does not have the "View Offerings" permission. Please create a new API key with this permission to use subscription features.', 'btcpay-greenfield-for-woocommerce' );
+			echo '</p></div>';
+			return;
+		}
+
 		$offerings = $this->getOfferingsWithPlans();
 		$subscriptionProducts = $this->getSubscriptionProducts();
 		$mappings = get_option( 'btcpay_gf_subscription_mappings', [] );
@@ -573,7 +580,6 @@ class GlobalSettings extends \WC_Settings_Page {
 			return;
 		}
 
-		echo '<form method="post" action="">';
 		wp_nonce_field( 'btcpay_gf_subscription_mappings', 'btcpay_gf_subscription_mappings_nonce' );
 
 		foreach ( $offerings as $offering ) {
@@ -640,10 +646,6 @@ class GlobalSettings extends \WC_Settings_Page {
 			echo '</tbody></table>';
 		}
 
-		echo '<p class="submit"><button type="submit" class="button button-primary" value="save">';
-		echo esc_html__( 'Save Mappings', 'btcpay-greenfield-for-woocommerce' );
-		echo '</button></p>';
-		echo '</form>';
 	}
 
 	private function saveSubscriptionProducts(): void

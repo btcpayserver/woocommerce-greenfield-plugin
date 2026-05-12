@@ -16,6 +16,8 @@ class GreenfieldApiAuthorization {
 		'btcpay.store.webhooks.canmodifywebhooks',
 		'btcpay.store.canmanagesubscribers',
 		'btcpay.store.cancreditsubscribers',
+		'btcpay.store.canviewofferings',
+		'btcpay.store.canmodifyofferings',
 	];
 
 	private $apiKey;
@@ -108,5 +110,21 @@ class GreenfieldApiAuthorization {
 		}, []);
 
 		return in_array('btcpay.store.cancreditsubscribers', $permissions, true);
+	}
+
+	public function hasViewOfferingsPermission(): bool {
+		$permissions = array_reduce($this->permissions, static function (array $carry, string $permission) {
+			return array_merge($carry, [explode(':', $permission)[0]]);
+		}, []);
+
+		return in_array('btcpay.store.canviewofferings', $permissions, true);
+	}
+
+	public function hasModifyOfferingsPermission(): bool {
+		$permissions = array_reduce($this->permissions, static function (array $carry, string $permission) {
+			return array_merge($carry, [explode(':', $permission)[0]]);
+		}, []);
+
+		return in_array('btcpay.store.canmodifyofferings', $permissions, true);
 	}
 }

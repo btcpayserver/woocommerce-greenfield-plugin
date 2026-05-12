@@ -295,6 +295,36 @@ class GreenfieldApiHelper {
 		return false;
 	}
 
+	public function apiKeyHasViewOfferingsPermission(): bool {
+		if ($this->configured) {
+			$client = new ApiKey($this->url, $this->apiKey);
+			try {
+				$apiKey = $client->getCurrent();
+				$apiAuth = new GreenfieldApiAuthorization( $apiKey->getData() );
+				return $apiAuth->hasViewOfferingsPermission();
+			} catch (\Throwable $e) {
+				Logger::debug('Exception while checking view offerings permission: ' . $e->getMessage());
+			}
+		}
+
+		return false;
+	}
+
+	public function apiKeyHasModifyOfferingsPermission(): bool {
+		if ($this->configured) {
+			$client = new ApiKey($this->url, $this->apiKey);
+			try {
+				$apiKey = $client->getCurrent();
+				$apiAuth = new GreenfieldApiAuthorization( $apiKey->getData() );
+				return $apiAuth->hasModifyOfferingsPermission();
+			} catch (\Throwable $e) {
+				Logger::debug('Exception while checking modify offerings permission: ' . $e->getMessage());
+			}
+		}
+
+		return false;
+	}
+
 	public function serverSupportsRefunds(): bool {
 		if ($this->configured) {
 			$client = new Server($this->url, $this->apiKey);
