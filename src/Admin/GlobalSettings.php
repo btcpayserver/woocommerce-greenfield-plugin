@@ -59,6 +59,17 @@ class GlobalSettings extends \WC_Settings_Page {
 				$bcmathMessage = __('The PHP bcmath extension is not installed. Make sure it is available otherwise the "Sats-Mode" will not work.', 'btcpay-greenfield-for-woocommerce');
 				Notice::addNotice('error', $bcmathMessage);
 			}
+
+			if ( class_exists( 'WC_Subscriptions' )
+				&& get_option( 'btcpay_gf_modal_checkout' ) === 'yes'
+				&& ! empty( get_option( 'btcpay_gf_subscription_mappings', [] ) )
+			) {
+				Notice::addNotice(
+					'warning',
+					__( 'BTCPay subscription checkout currently uses redirect checkout. Modal checkout remains available for regular products, but subscription purchases will redirect to BTCPay.', 'btcpay-greenfield-for-woocommerce' ),
+					true
+				);
+			}
 		}
 		parent::__construct();
 	}
@@ -639,6 +650,19 @@ class GlobalSettings extends \WC_Settings_Page {
 				}
 
 				echo '</select>';
+				if ( $currentProductId ) {
+					foreach ( $subscriptionProducts as $product ) {
+						if ( (int) $product['id'] !== (int) $currentProductId ) {
+							continue;
+						}
+
+						$warnings = $this->getSubscriptionMappingWarnings( $product, $plan );
+						if ( ! empty( $warnings ) ) {
+							echo '<p class="description btcpay-subscription-warning">' . esc_html( implode( ' ', $warnings ) ) . '</p>';
+						}
+						break;
+					}
+				}
 				echo '</td>';
 				echo '</tr>';
 			}
@@ -712,6 +736,7 @@ class GlobalSettings extends \WC_Settings_Page {
 						'price'          => $plan->getPrice(),
 						'currency'       => $plan->getCurrency(),
 						'recurring_type' => $plan->getRecurringType(),
+						'trial_days'     => $plan->getTrialDays(),
 					];
 				}
 				$offerings[] = [
@@ -743,13 +768,147 @@ class GlobalSettings extends \WC_Settings_Page {
 
 		$result = [];
 		foreach ( $products as $product ) {
+			$period = null;
+			$interval = null;
+			$trialLength = null;
+			$trialPeriod = null;
+			if ( class_exists( 'WC_Subscriptions_Product' ) ) {
+				$period = \WC_Subscriptions_Product::get_period( $product );
+				$interval = \WC_Subscriptions_Product::get_interval( $product );
+				$trialLength = \WC_Subscriptions_Product::get_trial_length( $product );
+				$trialPeriod = \WC_Subscriptions_Product::get_trial_period( $product );
+			}
+
 			$result[] = [
-				'id'   => $product->get_id(),
-				'name' => $product->get_name(),
+				'id'           => $product->get_id(),
+				'name'         => $product->get_name(),
+				'price'        => $product->get_price(),
+				'currency'     => get_woocommerce_currency(),
+				'period'       => $period,
+				'interval'     => $interval,
+				'trial_length' => $trialLength,
+				'trial_period' => $trialPeriod,
 			];
 		}
 
 		return $result;
+	}
+
+	private function getSubscriptionMappingWarnings( array $product, array $plan ): array
+	{
+		$warnings = [];
+		if ( isset( $product['currency'], $plan['currency'] )
+			&& strtoupper( (string) $product['currency'] ) !== strtoupper( (string) $plan['currency'] )
+		) {
+			$warnings[] = sprintf(
+				__( 'Currency mismatch: WooCommerce uses %1$s, BTCPay uses %2$s.', 'btcpay-greenfield-for-woocommerce' ),
+				$product['currency'],
+				strtoupper( (string) $plan['currency'] )
+			);
+		}
+
+		if ( isset( $product['price'], $plan['price'] )
+			&& (string) wc_format_decimal( $product['price'] ) !== (string) wc_format_decimal( $plan['price'] )
+		) {
+			$warnings[] = sprintf(
+				__( 'Price mismatch: WooCommerce uses %1$s, BTCPay uses %2$s.', 'btcpay-greenfield-for-woocommerce' ),
+				$product['price'],
+				$plan['price']
+			);
+		}
+
+		$expectedSchedule = $this->getExpectedWooBillingSchedule( $plan['recurring_type'] ?? '' );
+		if ( $expectedSchedule
+			&& (
+				empty( $product['period'] )
+				|| (string) $product['period'] !== $expectedSchedule['period']
+				|| (int) ( $product['interval'] ?? 1 ) !== $expectedSchedule['interval']
+			)
+		) {
+			$warnings[] = sprintf(
+				__( 'Billing schedule mismatch: WooCommerce uses %1$s, BTCPay uses %2$s.', 'btcpay-greenfield-for-woocommerce' ),
+				$this->formatWooBillingSchedule( $product ),
+				$this->formatBtcpayBillingSchedule( $plan['recurring_type'] ?? '' )
+			);
+		}
+
+		$wooTrialDays = $this->getWooTrialDays( $product );
+		$btcpayTrialDays = (int) ( $plan['trial_days'] ?? 0 );
+		if ( $wooTrialDays !== $btcpayTrialDays ) {
+			$warnings[] = sprintf(
+				__( 'Trial mismatch: WooCommerce uses %1$d days, BTCPay uses %2$d days.', 'btcpay-greenfield-for-woocommerce' ),
+				$wooTrialDays,
+				$btcpayTrialDays
+			);
+		}
+
+		return $warnings;
+	}
+
+	private function getExpectedWooBillingSchedule( string $recurringType ): ?array
+	{
+		return [
+			'Monthly'   => [
+				'period'   => 'month',
+				'interval' => 1,
+			],
+			'Quarterly' => [
+				'period'   => 'month',
+				'interval' => 3,
+			],
+			'Yearly'    => [
+				'period'   => 'year',
+				'interval' => 1,
+			],
+		][ $recurringType ] ?? null;
+	}
+
+	private function formatWooBillingSchedule( array $product ): string
+	{
+		$period = (string) ( $product['period'] ?? '' );
+		if ( $period === '' ) {
+			return __( 'unknown billing period', 'btcpay-greenfield-for-woocommerce' );
+		}
+
+		$interval = max( 1, (int) ( $product['interval'] ?? 1 ) );
+		if ( $interval === 1 ) {
+			return sprintf(
+				__( 'every %s', 'btcpay-greenfield-for-woocommerce' ),
+				$period
+			);
+		}
+
+		return sprintf(
+			__( 'every %1$d %2$ss', 'btcpay-greenfield-for-woocommerce' ),
+			$interval,
+			$period
+		);
+	}
+
+	private function formatBtcpayBillingSchedule( string $recurringType ): string
+	{
+		return [
+			'Monthly'   => __( 'every month', 'btcpay-greenfield-for-woocommerce' ),
+			'Quarterly' => __( 'every 3 months', 'btcpay-greenfield-for-woocommerce' ),
+			'Yearly'    => __( 'every year', 'btcpay-greenfield-for-woocommerce' ),
+			'Lifetime'  => __( 'lifetime', 'btcpay-greenfield-for-woocommerce' ),
+		][ $recurringType ] ?? $recurringType;
+	}
+
+	private function getWooTrialDays( array $product ): int
+	{
+		$length = (int) ( $product['trial_length'] ?? 0 );
+		$period = $product['trial_period'] ?? '';
+		if ( $length === 0 ) {
+			return 0;
+		}
+
+		return match ( $period ) {
+			'week' => $length * 7,
+			'month' => $length * 30,
+			'year' => $length * 365,
+			default => $length,
+		};
 	}
 
 }

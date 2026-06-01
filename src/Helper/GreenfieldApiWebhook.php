@@ -15,7 +15,16 @@ class GreenfieldApiWebhook {
 		'InvoiceProcessing',
 		'InvoiceExpired',
 		'InvoiceSettled',
-		'InvoiceInvalid'
+		'InvoiceInvalid',
+		'SubscriberCreated',
+		'SubscriberCredited',
+		'SubscriberCharged',
+		'SubscriberActivated',
+		'SubscriberPhaseChanged',
+		'SubscriberDisabled',
+		'PaymentReminder',
+		'PlanStarted',
+		'SubscriberNeedUpgrade',
 	];
 
 	/**

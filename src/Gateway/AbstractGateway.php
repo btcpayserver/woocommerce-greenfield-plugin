@@ -15,6 +15,7 @@ use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
 use BTCPayServer\WC\Helper\Logger;
 use BTCPayServer\WC\Helper\OrderReturn;
 use BTCPayServer\WC\Helper\OrderStates;
+use BTCPayServer\WC\Helper\SubscriptionPortalEmail;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
 	const ICON_MEDIA_OPTION = 'icon_media_id';
@@ -24,6 +25,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	protected $apiHelper;
 	protected $debug_php_version;
 	protected $debug_plugin_version;
+	protected $syncingSubscriptionFromBtcpay = false;
 
 	public function __construct() {
 		// General gateway setup.
@@ -63,18 +65,33 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					'subscription_cancellation',
 					'subscription_suspension',
 					'subscription_reactivation',
-					'subscription_amount_changes',
-					'subscription_date_changes',
-					'subscription_payment_method_change_customer',
-					'subscription_payment_method_change_admin',
-					'subscription_payment_method_change',
-					'gateway_scheduled_payments',
 				]
 			);
 
 			add_action(
-				'woocommerce_scheduled_subscription_payment_' . $this->getId(),
-				[ $this, 'process_scheduled_subscription_payment' ],
+				'woocommerce_subscription_status_updated',
+				[ $this, 'process_subscription_status_update' ],
+				10,
+				3
+			);
+
+			add_action(
+				'woocommerce_scheduled_subscription_expiration',
+				[ $this, 'process_scheduled_subscription_expiration' ],
+				1,
+				1
+			);
+
+			add_action(
+				'woocommerce_scheduled_subscription_expiration',
+				[ $this, 'restore_wc_subscription_expiration_handler' ],
+				11,
+				1
+			);
+
+			add_filter(
+				'woocommerce_can_subscription_be_updated_to_new-payment-method',
+				[ $this, 'prevent_subscription_payment_method_change' ],
 				10,
 				2
 			);
@@ -383,6 +400,634 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 	}
 
+	/**
+	 * Mirror WooCommerce subscription status changes to the BTCPay subscriber.
+	 */
+	public function process_subscription_status_update( $subscription, string $new_status, string $old_status ): void {
+		if ( ! $subscription instanceof \WC_Subscription ) {
+			return;
+		}
+
+		if ( $this->syncingSubscriptionFromBtcpay || $new_status === $old_status || ! $this->subscriptionUsesThisGateway( $subscription ) ) {
+			return;
+		}
+
+		switch ( $new_status ) {
+			case 'on-hold':
+				$this->suspendBtcpaySubscriberForSubscription(
+					$subscription,
+					__( 'WooCommerce subscription was suspended.', 'btcpay-greenfield-for-woocommerce' )
+				);
+				break;
+			case 'cancelled':
+				$this->suspendBtcpaySubscriberForSubscription(
+					$subscription,
+					__( 'WooCommerce subscription was cancelled.', 'btcpay-greenfield-for-woocommerce' )
+				);
+				break;
+			case 'expired':
+				if ( $this->reconcileSubscriptionWithBtcpaySubscriber( $subscription, __( 'WooCommerce expiry check', 'btcpay-greenfield-for-woocommerce' ) ) ) {
+					break;
+				}
+
+				$this->suspendBtcpaySubscriberForSubscription(
+					$subscription,
+					__( 'WooCommerce subscription expired.', 'btcpay-greenfield-for-woocommerce' )
+				);
+				break;
+			case 'active':
+				if ( in_array( $old_status, [ 'on-hold', 'cancelled', 'expired' ], true ) ) {
+					$this->unsuspendBtcpaySubscriberForSubscription( $subscription );
+				}
+				break;
+		}
+	}
+
+	/**
+	 * Let BTCPay's subscriber state win if Woo's local expiration job is stale.
+	 */
+	public function process_scheduled_subscription_expiration( $subscription_id ): void {
+		$subscription = function_exists( 'wcs_get_subscription' ) ? wcs_get_subscription( $subscription_id ) : null;
+		if ( ! $subscription instanceof \WC_Subscription || ! $this->subscriptionUsesThisGateway( $subscription ) ) {
+			return;
+		}
+
+		$subscriber = $this->getFreshBtcpaySubscriberForSubscription( $subscription );
+		if ( ! $subscriber ) {
+			return;
+		}
+
+		$source = __( 'WooCommerce scheduled expiration check', 'btcpay-greenfield-for-woocommerce' );
+		$this->reconcileWooSubscriptionFromBtcpaySubscriber( $subscription, $subscriber, $source );
+
+		$periodEnd = $this->getBtcpaySubscriberExpirationTimestamp( $subscriber );
+		if ( $this->btcpaySubscriberIsActive( $subscriber ) && $periodEnd && $periodEnd > time() && class_exists( 'WC_Subscriptions_Manager' ) ) {
+			remove_action(
+				'woocommerce_scheduled_subscription_expiration',
+				[ 'WC_Subscriptions_Manager', 'expire_subscription' ],
+				10
+			);
+			$this->addSubscriptionNote(
+				$subscription,
+				__( 'Skipped WooCommerce scheduled expiration because BTCPay reports the subscriber is active.', 'btcpay-greenfield-for-woocommerce' )
+			);
+		}
+	}
+
+	public function restore_wc_subscription_expiration_handler( $subscription_id = null ): void {
+		if ( ! class_exists( 'WC_Subscriptions_Manager' ) ) {
+			return;
+		}
+
+		$handler = [ 'WC_Subscriptions_Manager', 'expire_subscription' ];
+		if ( ! has_action( 'woocommerce_scheduled_subscription_expiration', $handler ) ) {
+			add_action(
+				'woocommerce_scheduled_subscription_expiration',
+				$handler,
+				10,
+				1
+			);
+		}
+	}
+
+	public function prevent_subscription_payment_method_change( $canBeUpdated, $subscription ) {
+		if ( $subscription instanceof \WC_Subscription && $this->subscriptionUsesThisGateway( $subscription ) ) {
+			return false;
+		}
+
+		return $canBeUpdated;
+	}
+
+	protected function subscriptionUsesThisGateway( \WC_Subscription $subscription ): bool {
+		return $subscription->get_payment_method() === $this->getId();
+	}
+
+	protected function suspendBtcpaySubscriberForSubscription( \WC_Subscription $subscription, string $reason ): void {
+		$subscriberData = $this->getBtcpaySubscriberControlData( $subscription );
+		if ( empty( $subscriberData['offering_id'] ) || empty( $subscriberData['customer_selector'] ) ) {
+			$message = __( 'Could not suspend BTCPay subscriber because offering or subscriber metadata is missing.', 'btcpay-greenfield-for-woocommerce' );
+			Logger::debug( __METHOD__ . ': ' . $message . ' Subscription ID: ' . $subscription->get_id() );
+			$this->addSubscriptionNote( $subscription, $message );
+			return;
+		}
+
+		try {
+			$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$client->suspendSubscriber(
+				$this->apiHelper->storeId,
+				$subscriberData['offering_id'],
+				$subscriberData['customer_selector'],
+				$reason
+			);
+
+			$this->addSubscriptionNote(
+				$subscription,
+				__( 'BTCPay subscriber suspended.', 'btcpay-greenfield-for-woocommerce' )
+			);
+		} catch ( \Throwable $e ) {
+			$message = sprintf(
+				__( 'Failed to suspend BTCPay subscriber: %s', 'btcpay-greenfield-for-woocommerce' ),
+				$e->getMessage()
+			);
+			Logger::debug( __METHOD__ . ': ' . $message );
+			$this->addSubscriptionNote( $subscription, $message );
+		}
+	}
+
+	protected function unsuspendBtcpaySubscriberForSubscription( \WC_Subscription $subscription ): void {
+		$subscriberData = $this->getBtcpaySubscriberControlData( $subscription );
+		if ( empty( $subscriberData['offering_id'] ) || empty( $subscriberData['customer_selector'] ) ) {
+			$message = __( 'Could not reactivate BTCPay subscriber because offering or subscriber metadata is missing.', 'btcpay-greenfield-for-woocommerce' );
+			Logger::debug( __METHOD__ . ': ' . $message . ' Subscription ID: ' . $subscription->get_id() );
+			$this->addSubscriptionNote( $subscription, $message );
+			return;
+		}
+
+		try {
+			$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$client->unsuspendSubscriber(
+				$this->apiHelper->storeId,
+				$subscriberData['offering_id'],
+				$subscriberData['customer_selector']
+			);
+
+			$this->addSubscriptionNote(
+				$subscription,
+				__( 'BTCPay subscriber unsuspended.', 'btcpay-greenfield-for-woocommerce' )
+			);
+		} catch ( \Throwable $e ) {
+			$message = sprintf(
+				__( 'Failed to unsuspend BTCPay subscriber: %s', 'btcpay-greenfield-for-woocommerce' ),
+				$e->getMessage()
+			);
+			Logger::debug( __METHOD__ . ': ' . $message );
+			$this->addSubscriptionNote( $subscription, $message );
+		}
+	}
+
+	protected function getBtcpaySubscriberControlData( \WC_Subscription $subscription ): array {
+		return [
+			'offering_id'       => $this->getBtcpaySubscriptionOfferingId( $subscription ),
+			'customer_selector' => $this->getBtcpaySubscriptionCustomerSelector( $subscription ),
+		];
+	}
+
+	protected function getBtcpaySubscriptionOfferingId( \WC_Subscription $subscription ): ?string {
+		$offeringId = $subscription->get_meta( 'BTCPay_offering_id' );
+		if ( ! empty( $offeringId ) ) {
+			return $offeringId;
+		}
+
+		$parentId = $subscription->get_parent_id();
+		if ( $parentId ) {
+			$parentOrder = wc_get_order( $parentId );
+			if ( $parentOrder ) {
+				$offeringId = $parentOrder->get_meta( 'BTCPay_offering_id' );
+				if ( ! empty( $offeringId ) ) {
+					return $offeringId;
+				}
+			}
+		}
+
+		$mappingsByProduct = [];
+		foreach ( get_option( 'btcpay_gf_subscription_mappings', [] ) as $mapping ) {
+			if ( ! empty( $mapping['product_id'] ) && ! empty( $mapping['offering_id'] ) ) {
+				$mappingsByProduct[ (int) $mapping['product_id'] ] = $mapping['offering_id'];
+			}
+		}
+
+		foreach ( $subscription->get_items() as $item ) {
+			$product = $item->get_product();
+			if ( ! $product ) {
+				continue;
+			}
+
+			$productOfferingId = $product->get_meta( '_btcpay_offering_id' );
+			if ( ! empty( $productOfferingId ) ) {
+				return $productOfferingId;
+			}
+
+			$productId = $product->get_id();
+			if ( isset( $mappingsByProduct[ $productId ] ) ) {
+				return $mappingsByProduct[ $productId ];
+			}
+		}
+
+		return null;
+	}
+
+	protected function getBtcpaySubscriptionCustomerSelector( \WC_Subscription $subscription ): ?string {
+		$subscriberId = $subscription->get_meta( 'BTCPay_subscriber_id' );
+		if ( ! empty( $subscriberId ) ) {
+			return $subscriberId;
+		}
+
+		$parentId = $subscription->get_parent_id();
+		if ( $parentId ) {
+			$parentOrder = wc_get_order( $parentId );
+			if ( $parentOrder ) {
+				$subscriberId = $parentOrder->get_meta( 'BTCPay_subscriber_id' );
+				if ( ! empty( $subscriberId ) ) {
+					return $subscriberId;
+				}
+			}
+		}
+
+		return $subscription->get_billing_email() ?: null;
+	}
+
+	protected function addSubscriptionNote( \WC_Subscription $subscription, string $message ): void {
+		if ( method_exists( $subscription, 'add_order_note' ) ) {
+			$subscription->add_order_note( $message );
+		}
+	}
+
+	protected function isSubscriptionWebhookEvent( string $eventType ): bool {
+		return in_array(
+			$eventType,
+			[
+				'SubscriberCreated',
+				'SubscriberCredited',
+				'SubscriberCharged',
+				'SubscriberActivated',
+				'SubscriberPhaseChanged',
+				'SubscriberDisabled',
+				'PaymentReminder',
+				'PlanStarted',
+				'SubscriberNeedUpgrade',
+			],
+			true
+		);
+	}
+
+	protected function processSubscriptionWebhook( \stdClass $webhookData ): void {
+		if ( empty( $webhookData->subscriber ) ) {
+			Logger::debug( __METHOD__ . ': subscription webhook has no subscriber payload. Event: ' . $webhookData->type );
+			return;
+		}
+
+		$subscription = $this->getWooSubscriptionFromBtcpaySubscriberPayload( $webhookData->subscriber );
+		if ( ! $subscription ) {
+			Logger::debug( __METHOD__ . ': no WooCommerce subscription found for BTCPay subscriber event: ' . $webhookData->type );
+			return;
+		}
+
+		if ( ! $this->subscriptionUsesThisGateway( $subscription ) ) {
+			Logger::debug( __METHOD__ . ': subscription does not use this BTCPay gateway, skipping. Subscription ID: ' . $subscription->get_id() );
+			return;
+		}
+
+		$subscriber = $this->getFreshBtcpaySubscriberForSubscription( $subscription ) ?? $webhookData->subscriber;
+		$this->storeBtcpaySubscriberMetadata( $subscription, $subscriber );
+
+		switch ( $webhookData->type ) {
+			case 'SubscriberCreated':
+				$this->addSubscriptionNote(
+					$subscription,
+					__( 'BTCPay subscriber created. Waiting for plan activation before activating WooCommerce subscription.', 'btcpay-greenfield-for-woocommerce' )
+				);
+				break;
+			case 'SubscriberActivated':
+			case 'SubscriberCredited':
+			case 'SubscriberCharged':
+			case 'PlanStarted':
+			case 'SubscriberPhaseChanged':
+				$this->reconcileWooSubscriptionFromBtcpaySubscriber( $subscription, $subscriber, $webhookData->type );
+				break;
+			case 'SubscriberDisabled':
+				$this->processDisabledBtcpaySubscriberWebhook( $subscription, $webhookData, $subscriber );
+				$this->maybeSendSubscriptionPortalEmailForWebhook( $subscription, $subscriber, $webhookData );
+				break;
+			case 'PaymentReminder':
+				$this->maybeSendSubscriptionPortalEmailForWebhook( $subscription, $subscriber, $webhookData );
+				break;
+			case 'SubscriberNeedUpgrade':
+				$this->maybeSendSubscriptionPortalEmailForWebhook( $subscription, $subscriber, $webhookData );
+				break;
+		}
+	}
+
+	protected function maybeSendSubscriptionPortalEmailForWebhook( \WC_Subscription $subscription, \stdClass $subscriber, \stdClass $webhookData ): void {
+		try {
+			$portalEmail = new SubscriptionPortalEmail( $this->apiHelper );
+			$portalEmail->maybeSendForWebhook(
+				$subscription,
+				$subscriber,
+				$webhookData,
+				$this->getBtcpaySubscriberControlData( $subscription )
+			);
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to send subscription portal email: ' . $e->getMessage() );
+			$this->addSubscriptionNote(
+				$subscription,
+				sprintf(
+					__( 'Failed to send BTCPay subscription portal email: %s', 'btcpay-greenfield-for-woocommerce' ),
+					$e->getMessage()
+				)
+			);
+		}
+	}
+
+	protected function getWooSubscriptionFromBtcpaySubscriberPayload( \stdClass $subscriber ): ?\WC_Subscription {
+		$metadata = $this->objectToArray( $subscriber->metadata ?? [] );
+		if ( ! empty( $metadata['wc_subscription_id'] ) && function_exists( 'wcs_get_subscription' ) ) {
+			$subscription = wcs_get_subscription( (int) $metadata['wc_subscription_id'] );
+			if ( $subscription instanceof \WC_Subscription ) {
+				return $subscription;
+			}
+		}
+
+		if ( ! empty( $metadata['wc_order_id'] ) ) {
+			$order = wc_get_order( (int) $metadata['wc_order_id'] );
+			if ( $order ) {
+				$subscription = $this->getSubscriptionForOrder( $order );
+				if ( $subscription ) {
+					return $subscription;
+				}
+			}
+		}
+
+		$customerId = $subscriber->customer->id ?? null;
+		if ( ! empty( $customerId ) ) {
+			$subscriptions = wc_get_orders(
+				[
+					'type'       => 'shop_subscription',
+					'limit'      => 1,
+					'meta_key'   => 'BTCPay_subscriber_id',
+					'meta_value' => $customerId,
+				]
+			);
+
+			if ( ! empty( $subscriptions ) && $subscriptions[0] instanceof \WC_Subscription ) {
+				return $subscriptions[0];
+			}
+		}
+
+		return null;
+	}
+
+	protected function getFreshBtcpaySubscriberForSubscription( \WC_Subscription $subscription ): ?\stdClass {
+		$subscriberData = $this->getBtcpaySubscriberControlData( $subscription );
+		if ( empty( $subscriberData['offering_id'] ) || empty( $subscriberData['customer_selector'] ) ) {
+			return null;
+		}
+
+		try {
+			$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$subscriber = $client->getSubscriber(
+				$this->apiHelper->storeId,
+				$subscriberData['offering_id'],
+				$subscriberData['customer_selector']
+			);
+
+			return json_decode( json_encode( $subscriber->getData(), JSON_THROW_ON_ERROR ), false, 512, JSON_THROW_ON_ERROR );
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to refresh BTCPay subscriber: ' . $e->getMessage() );
+			return null;
+		}
+	}
+
+	protected function reconcileSubscriptionWithBtcpaySubscriber( \WC_Subscription $subscription, string $source ): bool {
+		$subscriber = $this->getFreshBtcpaySubscriberForSubscription( $subscription );
+		if ( ! $subscriber ) {
+			return false;
+		}
+
+		return $this->reconcileWooSubscriptionFromBtcpaySubscriber( $subscription, $subscriber, $source );
+	}
+
+	protected function reconcileWooSubscriptionFromBtcpaySubscriber( \WC_Subscription $subscription, \stdClass $subscriber, string $source ): bool {
+		$this->storeBtcpaySubscriberMetadata( $subscription, $subscriber );
+
+		$periodEnd = $this->getBtcpaySubscriberExpirationTimestamp( $subscriber );
+		if ( $periodEnd && $periodEnd > time() ) {
+			$this->updateWooSubscriptionNextPaymentDate( $subscription, $periodEnd );
+		}
+
+		if ( $this->btcpaySubscriberIsActive( $subscriber ) ) {
+			$this->syncingSubscriptionFromBtcpay = true;
+			try {
+				if ( ! $subscription->has_status( 'active' ) ) {
+					$subscription->update_status(
+						'active',
+						sprintf(
+							__( 'BTCPay subscriber is active. Source: %s', 'btcpay-greenfield-for-woocommerce' ),
+							$source
+						)
+					);
+				}
+			} finally {
+				$this->syncingSubscriptionFromBtcpay = false;
+			}
+
+			$this->maybeCompleteInitialSubscriptionOrderFromBtcpaySubscriber( $subscription, $subscriber, $source );
+			$this->maybeCreateBtcpayRenewalOrder( $subscription, $subscriber, $source );
+			$this->addSubscriptionNote(
+				$subscription,
+				sprintf(
+					__( 'BTCPay subscriber reconciled as active. Source: %s', 'btcpay-greenfield-for-woocommerce' ),
+					$source
+				)
+			);
+			return true;
+		}
+
+		if ( ! empty( $subscriber->isSuspended ) ) {
+			$this->updateWooSubscriptionStatusFromBtcpay(
+				$subscription,
+				'on-hold',
+				sprintf(
+					__( 'BTCPay subscriber is suspended. Source: %s', 'btcpay-greenfield-for-woocommerce' ),
+					$source
+				)
+			);
+			return true;
+		}
+
+		if ( ! empty( $subscriber->phase ) && strtolower( (string) $subscriber->phase ) === 'expired' ) {
+			$this->updateWooSubscriptionStatusFromBtcpay(
+				$subscription,
+				'expired',
+				sprintf(
+					__( 'BTCPay subscriber expired. Source: %s', 'btcpay-greenfield-for-woocommerce' ),
+					$source
+				)
+			);
+			return true;
+		}
+
+		return false;
+	}
+
+	protected function maybeCompleteInitialSubscriptionOrderFromBtcpaySubscriber( \WC_Subscription $subscription, \stdClass $subscriber, string $source ): void {
+		$parentId = $subscription->get_parent_id();
+		if ( ! $parentId ) {
+			return;
+		}
+
+		$order = wc_get_order( $parentId );
+		if ( ! $order instanceof \WC_Order || $order->get_payment_method() !== $this->getId() || $order->is_paid() ) {
+			return;
+		}
+
+		if ( ! empty( $subscriber->processingInvoiceId ) && ! $order->get_meta( 'BTCPay_id' ) ) {
+			$order->update_meta_data( 'BTCPay_id', (string) $subscriber->processingInvoiceId );
+		}
+
+		$order->payment_complete( $order->get_meta( 'BTCPay_id' ) ?: '' );
+		$order->add_order_note(
+			sprintf(
+				__( 'BTCPay subscription plan activated. Source: %s', 'btcpay-greenfield-for-woocommerce' ),
+				$source
+			)
+		);
+		$order->save();
+	}
+
+	protected function processDisabledBtcpaySubscriberWebhook( \WC_Subscription $subscription, \stdClass $webhookData, \stdClass $subscriber ): void {
+		$reason = $webhookData->reason ?? '';
+		$status = strtolower( (string) $reason ) === 'expired' ? 'expired' : 'on-hold';
+		$message = $status === 'expired'
+			? __( 'BTCPay subscriber expired.', 'btcpay-greenfield-for-woocommerce' )
+			: __( 'BTCPay subscriber was disabled or suspended.', 'btcpay-greenfield-for-woocommerce' );
+
+		$this->storeBtcpaySubscriberMetadata( $subscription, $subscriber );
+		$this->updateWooSubscriptionStatusFromBtcpay( $subscription, $status, $message );
+	}
+
+	protected function updateWooSubscriptionStatusFromBtcpay( \WC_Subscription $subscription, string $status, string $message ): void {
+		if ( $subscription->has_status( $status ) ) {
+			$this->addSubscriptionNote( $subscription, $message );
+			return;
+		}
+
+		$this->syncingSubscriptionFromBtcpay = true;
+		try {
+			$subscription->update_status( $status, $message );
+		} finally {
+			$this->syncingSubscriptionFromBtcpay = false;
+		}
+	}
+
+	protected function storeBtcpaySubscriberMetadata( \WC_Subscription $subscription, \stdClass $subscriber ): void {
+		if ( ! empty( $subscriber->customer->id ) ) {
+			$subscription->update_meta_data( 'BTCPay_subscriber_id', (string) $subscriber->customer->id );
+		}
+
+		if ( ! empty( $subscriber->offering->id ) ) {
+			$subscription->update_meta_data( 'BTCPay_offering_id', (string) $subscriber->offering->id );
+		}
+
+		if ( ! empty( $subscriber->plan->id ) ) {
+			$subscription->update_meta_data( 'BTCPay_plan_id', (string) $subscriber->plan->id );
+		}
+
+		foreach ( [ 'periodEnd', 'trialEnd', 'gracePeriodEnd', 'phase', 'isActive', 'isSuspended' ] as $field ) {
+			if ( property_exists( $subscriber, $field ) ) {
+				$subscription->update_meta_data( 'BTCPay_subscriber_' . $field, is_bool( $subscriber->{$field} ) ? (int) $subscriber->{$field} : $subscriber->{$field} );
+			}
+		}
+
+		$subscription->save();
+	}
+
+	protected function updateWooSubscriptionNextPaymentDate( \WC_Subscription $subscription, int $timestamp ): void {
+		if ( ! method_exists( $subscription, 'update_dates' ) ) {
+			return;
+		}
+
+		$date = gmdate( 'Y-m-d H:i:s', $timestamp );
+		try {
+			$subscription->update_dates( [ 'next_payment' => $date ] );
+			$subscription->save();
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to update Woo subscription next payment date: ' . $e->getMessage() );
+		}
+	}
+
+	protected function maybeCreateBtcpayRenewalOrder( \WC_Subscription $subscription, \stdClass $subscriber, string $source ): void {
+		if ( ! function_exists( 'wcs_create_renewal_order' ) ) {
+			return;
+		}
+
+		$periodEnd = $this->getBtcpaySubscriberExpirationTimestamp( $subscriber );
+		if ( ! $periodEnd ) {
+			return;
+		}
+
+		$lastPeriodEnd = (int) $subscription->get_meta( 'BTCPay_last_renewal_period_end' );
+		if ( $lastPeriodEnd === 0 ) {
+			$subscription->update_meta_data( 'BTCPay_last_renewal_period_end', $periodEnd );
+			$subscription->save();
+			return;
+		}
+
+		if ( $periodEnd <= $lastPeriodEnd ) {
+			return;
+		}
+
+		try {
+			$renewalOrder = wcs_create_renewal_order( $subscription );
+			if ( $renewalOrder instanceof \WC_Order ) {
+				$renewalOrder->set_payment_method( $this->getId() );
+				$renewalOrder->update_meta_data( 'BTCPay_subscription_period_end', $periodEnd );
+				if ( ! empty( $subscriber->processingInvoiceId ) ) {
+					$renewalOrder->update_meta_data( 'BTCPay_id', (string) $subscriber->processingInvoiceId );
+				}
+				$renewalOrder->add_order_note(
+					sprintf(
+						__( 'BTCPay subscription renewal recorded from %s.', 'btcpay-greenfield-for-woocommerce' ),
+						$source
+					)
+				);
+				$renewalOrder->payment_complete();
+				$renewalOrder->save();
+			}
+
+			$subscription->update_meta_data( 'BTCPay_last_renewal_period_end', $periodEnd );
+			$subscription->save();
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to create Woo renewal order: ' . $e->getMessage() );
+			$this->addSubscriptionNote(
+				$subscription,
+				sprintf(
+					__( 'Failed to create Woo renewal order for BTCPay renewal: %s', 'btcpay-greenfield-for-woocommerce' ),
+					$e->getMessage()
+				)
+			);
+		}
+	}
+
+	protected function btcpaySubscriberIsActive( \stdClass $subscriber ): bool {
+		if ( isset( $subscriber->isActive ) ) {
+			return (bool) $subscriber->isActive;
+		}
+
+		return ! empty( $subscriber->phase ) && strtolower( (string) $subscriber->phase ) !== 'expired' && empty( $subscriber->isSuspended );
+	}
+
+	protected function getBtcpaySubscriberExpirationTimestamp( \stdClass $subscriber ): ?int {
+		foreach ( [ 'periodEnd', 'trialEnd', 'gracePeriodEnd' ] as $field ) {
+			if ( ! empty( $subscriber->{$field} ) ) {
+				return (int) $subscriber->{$field};
+			}
+		}
+
+		return null;
+	}
+
+	protected function objectToArray( $value ): array {
+		if ( is_array( $value ) ) {
+			return $value;
+		}
+
+		if ( is_object( $value ) ) {
+			return json_decode( json_encode( $value ), true ) ?: [];
+		}
+
+		return [];
+	}
+
 	public function process_admin_options() {
 		// Store media id.
 		$iconFieldName = 'woocommerce_' . $this->getId() . '_' . self::ICON_MEDIA_OPTION;
@@ -579,6 +1224,16 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			try {
 				$postData = json_decode($rawPostData, false, 512, JSON_THROW_ON_ERROR);
 
+				if ( ! isset( $postData->type ) ) {
+					Logger::debug('No BTCPay webhook type provided, aborting.');
+					wp_die('No BTCPay webhook type provided, aborting.');
+				}
+
+				if ( $this->isSubscriptionWebhookEvent( $postData->type ) ) {
+					$this->processSubscriptionWebhook( $postData );
+					wp_send_json_success();
+				}
+
 				if (!isset($postData->invoiceId)) {
 					Logger::debug('No BTCPay invoiceId provided, aborting.');
 					wp_die('No BTCPay invoiceId provided, aborting.');
@@ -614,6 +1269,10 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				if (strpos($orders[0]->get_payment_method(), 'btcpaygf_') === false) {
 					Logger::debug('Order payment method does not contain "btcpaygf_", aborting.');
 					wp_send_json_success(); // return 200 OK to not mess up BTCPay queue
+				}
+
+				if ( $this->shouldDeferSubscriptionInvoiceWebhook( $orders[0], $postData ) ) {
+					wp_send_json_success();
 				}
 
 				$this->processOrderStatus($orders[0], $postData);
@@ -686,44 +1345,98 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 
 		$subscription = $this->getSubscriptionForOrder( $order );
-		$existing = $order->get_meta( 'BTCPay_subscriber_id' );
-		if ( empty( $existing ) && $subscription ) {
-			$existing = $subscription->get_meta( 'BTCPay_subscriber_id' );
-		}
-
-		if ( ! empty( $existing ) ) {
+		$checkout = $this->getPlanCheckoutForOrder( $order );
+		if ( ! $checkout ) {
 			return;
 		}
 
+		$subscriber = $this->storePlanCheckoutSubscriberMetadata( $order, $subscription, $checkout );
+		if ( $subscription && $subscriber && $checkout->isPlanStarted() ) {
+			$this->reconcileWooSubscriptionFromBtcpaySubscriber(
+				$subscription,
+				$subscriber,
+				__( 'BTCPay plan checkout invoice webhook', 'btcpay-greenfield-for-woocommerce' )
+			);
+		}
+	}
+
+	protected function shouldDeferSubscriptionInvoiceWebhook( \WC_Order $order, \stdClass $webhookData ): bool {
+		if ( ! $this->isSubscriptionOrder( $order ) ) {
+			return false;
+		}
+
+		if ( ! in_array( $webhookData->type, [ 'InvoiceProcessing', 'InvoiceSettled' ], true ) ) {
+			return false;
+		}
+
+		$checkout = $this->getPlanCheckoutForOrder( $order );
+		if ( ! $checkout ) {
+			return false;
+		}
+
+		$subscription = $this->getSubscriptionForOrder( $order );
+		$this->storePlanCheckoutSubscriberMetadata( $order, $subscription, $checkout );
+
+		if ( $checkout->isPlanStarted() ) {
+			return false;
+		}
+
+		$noteKey = 'BTCPay_subscription_invoice_deferred_' . $webhookData->type;
+		if ( ! $order->get_meta( $noteKey ) ) {
+			$message = __( 'BTCPay subscription invoice webhook received, but the BTCPay plan checkout has not started. Waiting for BTCPay subscription webhook before activating the WooCommerce subscription.', 'btcpay-greenfield-for-woocommerce' );
+			$order->add_order_note( $message );
+			$order->update_meta_data( $noteKey, time() );
+			$order->save();
+
+			if ( $subscription ) {
+				$this->addSubscriptionNote( $subscription, $message );
+			}
+		}
+
+		return true;
+	}
+
+	protected function getPlanCheckoutForOrder( \WC_Order $order ): ?\BTCPayServer\Result\PlanCheckout {
 		$planCheckoutId = $order->get_meta( 'BTCPay_plan_checkout_id' );
 		if ( empty( $planCheckoutId ) ) {
-			return;
+			return null;
 		}
 
 		try {
 			$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
-			$checkout = $client->getPlanCheckout( $planCheckoutId );
-
-			if ( $checkout->getInvoiceId() && ! $order->get_meta( 'BTCPay_id' ) ) {
-				$order->update_meta_data( 'BTCPay_id', $checkout->getInvoiceId() );
-			}
-
-			$subscriber = $checkout->getSubscriber();
-			if ( $subscriber ) {
-				$customer = $subscriber->getCustomer();
-				$customerId = $customer->getId();
-
-				$order->update_meta_data( 'BTCPay_subscriber_id', $customerId );
-				$order->save();
-
-				if ( $subscription ) {
-					$subscription->update_meta_data( 'BTCPay_subscriber_id', $customerId );
-					$subscription->save();
-				}
-			}
+			return $client->getPlanCheckout( $planCheckoutId );
 		} catch ( \Throwable $e ) {
 			Logger::debug( __METHOD__ . ': failed to read plan checkout: ' . $e->getMessage() );
+			return null;
 		}
+	}
+
+	protected function storePlanCheckoutSubscriberMetadata(
+		\WC_Order $order,
+		?\WC_Subscription $subscription,
+		\BTCPayServer\Result\PlanCheckout $checkout
+	): ?\stdClass {
+		if ( $checkout->getInvoiceId() && ! $order->get_meta( 'BTCPay_id' ) ) {
+			$order->update_meta_data( 'BTCPay_id', $checkout->getInvoiceId() );
+		}
+
+		$subscriberResult = $checkout->getSubscriber();
+		if ( ! $subscriberResult ) {
+			$order->save();
+			return null;
+		}
+
+		$subscriber = json_decode( json_encode( $subscriberResult->getData(), JSON_THROW_ON_ERROR ), false, 512, JSON_THROW_ON_ERROR );
+		if ( ! empty( $subscriber->customer->id ) ) {
+			$order->update_meta_data( 'BTCPay_subscriber_id', (string) $subscriber->customer->id );
+		}
+		$order->save();
+
+		if ( $subscription ) {
+			$this->storeBtcpaySubscriberMetadata( $subscription, $subscriber );
+		}
+
+		return $subscriber;
 	}
 
 	protected function processOrderStatus(\WC_Order $order, \stdClass $webhookData) {
@@ -1105,35 +1818,39 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		Logger::debug( 'Processing subscription payment for order ' . $order->get_id() );
 
 		try {
-			$planData = $this->getBtcpayPlanData( $order, $this->getSubscriptionForOrder( $order ) );
+			$subscription = $this->getSubscriptionForOrder( $order );
+			$planData = $this->getBtcpayPlanData( $order, $subscription );
 			if ( empty( $planData['offering_id'] ) || empty( $planData['plan_id'] ) ) {
 				throw new \Exception( __( 'Subscription offering or plan ID not configured.', 'btcpay-greenfield-for-woocommerce' ) );
 			}
 
-			$planCheckout = $this->createPlanCheckout(
-				$order,
-				$planData['offering_id'],
-				$planData['plan_id'],
-				null,
-				$order->get_billing_email()
-			);
+			$planCheckout = $this->getReusablePlanCheckout( $order );
+			if ( ! $planCheckout ) {
+				$planCheckout = $this->createPlanCheckout(
+					$order,
+					$planData['offering_id'],
+					$planData['plan_id'],
+					null,
+					$order->get_billing_email()
+				);
 
-			$this->storeSubscriptionMetadata(
-				$order,
-				$planData['offering_id'],
-				$planData['plan_id'],
-				$planCheckout,
-				$this->getSubscriptionForOrder( $order )
-			);
+				$this->storeSubscriptionMetadata(
+					$order,
+					$planData['offering_id'],
+					$planData['plan_id'],
+					$planCheckout,
+					$subscription
+				);
+			}
 
-			Logger::debug( 'BTCPay plan checkout created successfully: ' . $planCheckout->getId() );
+			Logger::debug( 'BTCPay plan checkout ready: ' . $planCheckout->getId() );
 
 			$response = [
-				'result' => 'success',
-				'planCheckoutId' => $planCheckout->getId(),
+				'result'            => 'success',
+				'planCheckoutId'    => $planCheckout->getId(),
 				'orderCompleteLink' => $order->get_checkout_order_received_url(),
-				'subscription' => true,
-				'redirect' => $planCheckout->getUrl(),
+				'subscription'      => true,
+				'redirect'          => $planCheckout->getUrl(),
 			];
 
 			if ( $planCheckout->getInvoiceId() ) {
@@ -1141,18 +1858,42 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			}
 
 			if ( $isModal ) {
-				unset( $response['redirect'] );
+				$response['forceRedirect'] = true;
 			}
 
 			return $response;
-
 		} catch ( \Throwable $e ) {
 			Logger::debug( 'Error processing subscription payment: ' . $e->getMessage() );
 			throw new \Exception( __( 'Error processing subscription payment. Please try again.', 'btcpay-greenfield-for-woocommerce' ) );
 		}
 	}
 
-protected function createPlanCheckout(
+	protected function getReusablePlanCheckout( \WC_Order $order ): ?\BTCPayServer\Result\PlanCheckout {
+		$planCheckoutId = $order->get_meta( 'BTCPay_plan_checkout_id' );
+		if ( empty( $planCheckoutId ) ) {
+			return null;
+		}
+
+		try {
+			$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
+			$checkout = $client->getPlanCheckout( $planCheckoutId );
+			if ( ! $checkout->isExpired() && ! $checkout->isPlanStarted() ) {
+				if ( $checkout->getInvoiceId() && ! $order->get_meta( 'BTCPay_id' ) ) {
+					$order->update_meta_data( 'BTCPay_id', $checkout->getInvoiceId() );
+					$order->save();
+				}
+
+				Logger::debug( 'Reusing existing BTCPay plan checkout: ' . $planCheckoutId );
+				return $checkout;
+			}
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to load reusable plan checkout: ' . $e->getMessage() );
+		}
+
+		return null;
+	}
+
+	protected function createPlanCheckout(
 		\WC_Order $order,
 		string $offeringId,
 		string $planId,
@@ -1183,7 +1924,7 @@ protected function createPlanCheckout(
 		);
 	}
 
-protected function buildSubscriptionInvoiceMetadata( \WC_Order $order, ?\WC_Subscription $subscription ): array {
+	protected function buildSubscriptionInvoiceMetadata( \WC_Order $order, ?\WC_Subscription $subscription ): array {
 		$metadata = [
 			'wc_order_id' => (string) $order->get_id(),
 			'wc_order_number' => (string) $order->get_order_number(),
@@ -1196,7 +1937,7 @@ protected function buildSubscriptionInvoiceMetadata( \WC_Order $order, ?\WC_Subs
 		return $metadata;
 	}
 
-protected function getSubscriptionForOrder( \WC_Order $order ): ?\WC_Subscription {
+	protected function getSubscriptionForOrder( \WC_Order $order ): ?\WC_Subscription {
 		if ( function_exists( 'wcs_get_subscriptions_for_renewal_order' ) ) {
 			$subscriptions = wcs_get_subscriptions_for_renewal_order( $order );
 			if ( ! empty( $subscriptions ) ) {
@@ -1214,7 +1955,7 @@ protected function getSubscriptionForOrder( \WC_Order $order ): ?\WC_Subscriptio
 		return null;
 	}
 
-protected function getBtcpayPlanData( \WC_Order $order, ?\WC_Subscription $subscription ): array {
+	protected function getBtcpayPlanData( \WC_Order $order, ?\WC_Subscription $subscription ): array {
 		$offeringId = $order->get_meta( 'BTCPay_offering_id' );
 		$planId = $order->get_meta( 'BTCPay_plan_id' );
 
@@ -1235,7 +1976,7 @@ protected function getBtcpayPlanData( \WC_Order $order, ?\WC_Subscription $subsc
 		];
 	}
 
-protected function getBtcpayPlanDataFromProducts( \WC_Order $order ): array {
+	protected function getBtcpayPlanDataFromProducts( \WC_Order $order ): array {
 		if ( ! class_exists( 'WC_Subscriptions_Product' ) ) {
 			return [];
 		}
@@ -1282,7 +2023,7 @@ protected function getBtcpayPlanDataFromProducts( \WC_Order $order ): array {
 		return $matches[0];
 	}
 
-protected function getBtcpayCustomerSelector( \WC_Order $order, ?\WC_Subscription $subscription ): ?string {
+	protected function getBtcpayCustomerSelector( \WC_Order $order, ?\WC_Subscription $subscription ): ?string {
 		$subscriberId = $order->get_meta( 'BTCPay_subscriber_id' );
 		if ( ! empty( $subscriberId ) ) {
 			return $subscriberId;
@@ -1298,7 +2039,7 @@ protected function getBtcpayCustomerSelector( \WC_Order $order, ?\WC_Subscriptio
 		return $order->get_billing_email() ?: null;
 	}
 
-protected function storeSubscriptionMetadata(
+	protected function storeSubscriptionMetadata(
 		\WC_Order $order,
 		string $offeringId,
 		string $planId,

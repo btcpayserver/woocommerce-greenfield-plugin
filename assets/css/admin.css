@@ -25,3 +25,6 @@ table.btcpay-subscription-mapping select {
 	width: 100%;
 	max-width: 400px;
 }
+.btcpay-subscription-warning {
+	color: #8a6d3b;
+}
