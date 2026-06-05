@@ -419,6 +419,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					__( 'WooCommerce subscription was suspended.', 'btcpay-greenfield-for-woocommerce' )
 				);
 				break;
+			case 'pending-cancel':
+				Logger::debug( __METHOD__ . ': WooCommerce subscription is pending cancellation; leaving BTCPay subscriber unchanged. Subscription ID: ' . $subscription->get_id() );
+				break;
 			case 'cancelled':
 				$this->suspendBtcpaySubscriberForSubscription(
 					$subscription,
@@ -436,7 +439,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				);
 				break;
 			case 'active':
-				if ( in_array( $old_status, [ 'on-hold', 'cancelled', 'expired' ], true ) ) {
+				if ( in_array( $old_status, [ 'on-hold', 'pending-cancel', 'cancelled', 'expired' ], true ) ) {
 					$this->unsuspendBtcpaySubscriberForSubscription( $subscription );
 				}
 				break;
@@ -461,7 +464,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$this->reconcileWooSubscriptionFromBtcpaySubscriber( $subscription, $subscriber, $source );
 
 		$periodEnd = $this->getBtcpaySubscriberExpirationTimestamp( $subscriber );
-		if ( $this->btcpaySubscriberIsActive( $subscriber ) && $periodEnd && $periodEnd > time() && class_exists( 'WC_Subscriptions_Manager' ) ) {
+		if ( ! $subscription->has_status( 'pending-cancel' ) && $this->btcpaySubscriberIsActive( $subscriber ) && $periodEnd && $periodEnd > time() && class_exists( 'WC_Subscriptions_Manager' ) ) {
 			remove_action(
 				'woocommerce_scheduled_subscription_expiration',
 				[ 'WC_Subscriptions_Manager', 'expire_subscription' ],
@@ -726,6 +729,18 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	protected function maybeSendSubscriptionPortalEmailForWebhook( \WC_Subscription $subscription, \stdClass $subscriber, \stdClass $webhookData ): void {
+		if ( $subscription->has_status( 'pending-cancel' ) ) {
+			Logger::debug(
+				sprintf(
+					'%s: skipped subscription portal email because WooCommerce subscription is pending cancellation. Event: %s. Subscription ID: %d.',
+					__METHOD__,
+					(string) ( $webhookData->type ?? '' ),
+					$subscription->get_id()
+				)
+			);
+			return;
+		}
+
 		try {
 			$portalEmail = new SubscriptionPortalEmail( $this->apiHelper );
 			$portalEmail->maybeSendForWebhook(
@@ -817,6 +832,18 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	protected function reconcileWooSubscriptionFromBtcpaySubscriber( \WC_Subscription $subscription, \stdClass $subscriber, string $source ): bool {
 		$this->storeBtcpaySubscriberMetadata( $subscription, $subscriber );
 
+		if ( $subscription->has_status( 'pending-cancel' ) ) {
+			Logger::debug(
+				sprintf(
+					'%s: skipped BTCPay subscriber status reconciliation because WooCommerce subscription is pending cancellation. Source: %s. Subscription ID: %d.',
+					__METHOD__,
+					$source,
+					$subscription->get_id()
+				)
+			);
+			return true;
+		}
+
 		$periodEnd = $this->getBtcpaySubscriberExpirationTimestamp( $subscriber );
 		if ( $periodEnd && $periodEnd > time() ) {
 			$this->updateWooSubscriptionNextPaymentDate( $subscription, $periodEnd );
@@ -903,6 +930,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	protected function processDisabledBtcpaySubscriberWebhook( \WC_Subscription $subscription, \stdClass $webhookData, \stdClass $subscriber ): void {
+		if ( $subscription->has_status( 'pending-cancel' ) ) {
+			$this->storeBtcpaySubscriberMetadata( $subscription, $subscriber );
+			Logger::debug( __METHOD__ . ': skipped BTCPay disabled status update because WooCommerce subscription is pending cancellation. Subscription ID: ' . $subscription->get_id() );
+			return;
+		}
+
 		$reason = $webhookData->reason ?? '';
 		$status = strtolower( (string) $reason ) === 'expired' ? 'expired' : 'on-hold';
 		$message = $status === 'expired'

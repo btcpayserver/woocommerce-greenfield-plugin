@@ -29,6 +29,18 @@ class SubscriptionPortalEmail {
 			return false;
 		}
 
+		if ( $subscription->has_status( 'pending-cancel' ) ) {
+			Logger::debug(
+				sprintf(
+					'%s: skipped subscription portal email because WooCommerce subscription is pending cancellation. Event: %s. Subscription ID: %d.',
+					__METHOD__,
+					(string) ( $webhookData->type ?? '' ),
+					$subscription->get_id()
+				)
+			);
+			return false;
+		}
+
 		$dedupeKey = $this->buildDedupeKey( $context['slug'], $subscriber, $webhookData );
 		$sentMetaKey = self::META_LAST_SENT_PREFIX . $context['slug'];
 		if ( (string) $subscription->get_meta( $sentMetaKey ) === $dedupeKey ) {
