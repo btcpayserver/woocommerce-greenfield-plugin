@@ -105,7 +105,6 @@ class SubscriptionPortalEmail {
 
 	private function getEmailContext( \stdClass $webhookData, \stdClass $subscriber ): ?array {
 		$eventType = (string) ( $webhookData->type ?? '' );
-		$planName = $this->getPlanName( $subscriber );
 		$siteName = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 
 		if ( $eventType === 'PaymentReminder' ) {
@@ -117,10 +116,7 @@ class SubscriptionPortalEmail {
 					$siteName
 				),
 				'heading'    => __( 'Subscription payment reminder', 'btcpay-greenfield-for-woocommerce' ),
-				'intro'      => sprintf(
-					__( 'Your subscription to %s needs credit before the next renewal.', 'btcpay-greenfield-for-woocommerce' ),
-					$planName
-				),
+				'intro_format' => __( 'Your subscription to %s needs credit before the next renewal.', 'btcpay-greenfield-for-woocommerce' ),
 				'action'     => __( 'Add credit in the subscription portal to keep the subscription active.', 'btcpay-greenfield-for-woocommerce' ),
 			];
 		}
@@ -134,10 +130,7 @@ class SubscriptionPortalEmail {
 					$siteName
 				),
 				'heading'    => __( 'Subscription action needed', 'btcpay-greenfield-for-woocommerce' ),
-				'intro'      => sprintf(
-					__( 'Your subscription to %s needs attention before it can continue.', 'btcpay-greenfield-for-woocommerce' ),
-					$planName
-				),
+				'intro_format' => __( 'Your subscription to %s needs attention before it can continue.', 'btcpay-greenfield-for-woocommerce' ),
 				'action'     => __( 'Open the subscription portal to review the subscription and add credit if needed.', 'btcpay-greenfield-for-woocommerce' ),
 			];
 		}
@@ -151,10 +144,7 @@ class SubscriptionPortalEmail {
 					$siteName
 				),
 				'heading'    => __( 'Subscription expired', 'btcpay-greenfield-for-woocommerce' ),
-				'intro'      => sprintf(
-					__( 'Your subscription to %s has expired because the renewal credit was not available.', 'btcpay-greenfield-for-woocommerce' ),
-					$planName
-				),
+				'intro_format' => __( 'Your subscription to %s has expired because the renewal credit was not available.', 'btcpay-greenfield-for-woocommerce' ),
 				'action'     => __( 'Open the subscription portal to add credit and reactivate the subscription.', 'btcpay-greenfield-for-woocommerce' ),
 			];
 		}
@@ -203,6 +193,7 @@ class SubscriptionPortalEmail {
 		}
 
 		$mailer = WC()->mailer();
+		$context = $this->prepareEmailContext( $subscription, $subscriber, $context );
 		$subject = apply_filters(
 			'btcpay_gf_subscription_portal_email_subject',
 			$context['subject'],
@@ -235,8 +226,9 @@ class SubscriptionPortalEmail {
 
 	private function buildEmailBody( \WC_Subscription $subscription, \stdClass $subscriber, string $portalUrl, array $context ): string {
 		$nextPayment = $this->formatTimestamp( $this->getSubscriberDate( $subscriber ) );
-		$buttonText = __( 'Open subscription portal', 'btcpay-greenfield-for-woocommerce' );
-		$productName = $this->getSubscriptionProductName( $subscription ) ?? $this->getPlanName( $subscriber );
+		$buttonText = __( 'Open subscription portal to renew', 'btcpay-greenfield-for-woocommerce' );
+		$subscriptionName = $context['subscription_name'] ?? $this->getSubscriptionDisplayName( $subscription, $subscriber );
+		$siteName = $context['site_name'] ?? wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 		$subscriptionUrl = $this->getSubscriptionAccountUrl( $subscription );
 
 		$body = '<p>' . esc_html( $this->getCustomerGreetingName( $subscription ) ) . '</p>';
@@ -245,23 +237,41 @@ class SubscriptionPortalEmail {
 		if ( $nextPayment ) {
 			$body .= '<p>' . esc_html(
 				sprintf(
-					__( 'Current subscription date for %1$s: %2$s', 'btcpay-greenfield-for-woocommerce' ),
-					$productName,
+					__( 'Current subscription end date for %1$s: %2$s', 'btcpay-greenfield-for-woocommerce' ),
+					$subscriptionName,
 					$nextPayment
 				)
 			) . '</p>';
-		}
-
-		if ( $subscriptionUrl ) {
-			$body .= '<p><a href="' . esc_url( $subscriptionUrl ) . '">' . esc_html__( 'View your WooCommerce subscriptions', 'btcpay-greenfield-for-woocommerce' ) . '</a></p>';
 		}
 
 		$body .= '<p>' . esc_html( $context['action'] ) . '</p>';
 		$body .= '<p><a class="button" href="' . esc_url( $portalUrl ) . '">' . esc_html( $buttonText ) . '</a></p>';
 		$body .= '<p>' . esc_html__( 'If the button does not work, copy and paste this link into your browser:', 'btcpay-greenfield-for-woocommerce' ) . '<br>';
 		$body .= '<a href="' . esc_url( $portalUrl ) . '">' . esc_html( $portalUrl ) . '</a></p>';
+		$body .= '<p>' . esc_html( $this->getExpirationHint( $nextPayment ) ) . '</p>';
+
+		if ( $subscriptionUrl ) {
+			$body .= '<p><a href="' . esc_url( $subscriptionUrl ) . '">' . esc_html(
+				sprintf(
+					__( 'View your %s subscriptions', 'btcpay-greenfield-for-woocommerce' ),
+					$siteName
+				)
+			) . '</a></p>';
+		}
 
 		return $body;
+	}
+
+	private function prepareEmailContext( \WC_Subscription $subscription, \stdClass $subscriber, array $context ): array {
+		$subscriptionName = $this->getSubscriptionDisplayName( $subscription, $subscriber );
+		$context['subscription_name'] = $subscriptionName;
+		$context['site_name'] = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+
+		if ( ! empty( $context['intro_format'] ) ) {
+			$context['intro'] = sprintf( $context['intro_format'], $subscriptionName );
+		}
+
+		return $context;
 	}
 
 	private function getRecipient( \WC_Subscription $subscription, \stdClass $subscriber ): ?string {
@@ -321,6 +331,10 @@ class SubscriptionPortalEmail {
 		return __( 'your subscription', 'btcpay-greenfield-for-woocommerce' );
 	}
 
+	private function getSubscriptionDisplayName( \WC_Subscription $subscription, \stdClass $subscriber ): string {
+		return $this->getSubscriptionProductName( $subscription ) ?? $this->getPlanName( $subscriber );
+	}
+
 	private function getSubscriptionProductName( \WC_Subscription $subscription ): ?string {
 		$productNames = [];
 		foreach ( $subscription->get_items() as $item ) {
@@ -357,6 +371,14 @@ class SubscriptionPortalEmail {
 		}
 
 		return null;
+	}
+
+	private function getExpirationHint( ?string $endDate ): string {
+		if ( $endDate ) {
+			return __( 'If you do not renew this subscription, it will automatically expire on the end date shown above.', 'btcpay-greenfield-for-woocommerce' );
+		}
+
+		return __( 'If you do not renew this subscription, it will automatically expire at the end of the current subscription period.', 'btcpay-greenfield-for-woocommerce' );
 	}
 
 	private function getCustomerGreetingName( \WC_Subscription $subscription ): string {
