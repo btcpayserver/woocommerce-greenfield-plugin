@@ -56,12 +56,33 @@ class SubscriptionPortalEmail {
 
 		$sent = $this->sendEmail( $subscription, $subscriber, $recipient, $portalSession['url'], $context );
 		if ( ! $sent ) {
+			Logger::debug(
+				sprintf(
+					'%s: failed to send subscription portal email. Event: %s. Subscription ID: %d. Recipient: %s.',
+					__METHOD__,
+					(string) ( $webhookData->type ?? '' ),
+					$subscription->get_id(),
+					$recipient
+				)
+			);
 			$this->addSubscriptionNote(
 				$subscription,
 				__( 'Failed to send BTCPay subscription portal email.', 'btcpay-greenfield-for-woocommerce' )
 			);
 			return false;
 		}
+
+		Logger::debug(
+			sprintf(
+				'%s: sent subscription portal email. Event: %s. Subscription ID: %d. Recipient: %s. Email type: %s. Dedupe key: %s.',
+				__METHOD__,
+				(string) ( $webhookData->type ?? '' ),
+				$subscription->get_id(),
+				$recipient,
+				$context['slug'],
+				$dedupeKey
+			)
+		);
 
 		$subscription->update_meta_data( $sentMetaKey, $dedupeKey );
 		$subscription->update_meta_data( self::META_PORTAL_URL_PREFIX . $context['slug'], $portalSession['url'] );
@@ -202,7 +223,6 @@ class SubscriptionPortalEmail {
 		);
 
 		$message = $mailer->wrap_message( $context['heading'], $body );
-		$message = $mailer->style_inline( $message );
 
 		return (bool) $mailer->send(
 			$recipient,
@@ -216,6 +236,8 @@ class SubscriptionPortalEmail {
 	private function buildEmailBody( \WC_Subscription $subscription, \stdClass $subscriber, string $portalUrl, array $context ): string {
 		$nextPayment = $this->formatTimestamp( $this->getSubscriberDate( $subscriber ) );
 		$buttonText = __( 'Open subscription portal', 'btcpay-greenfield-for-woocommerce' );
+		$productName = $this->getSubscriptionProductName( $subscription ) ?? $this->getPlanName( $subscriber );
+		$subscriptionUrl = $this->getSubscriptionAccountUrl( $subscription );
 
 		$body = '<p>' . esc_html( $this->getCustomerGreetingName( $subscription ) ) . '</p>';
 		$body .= '<p>' . esc_html( $context['intro'] ) . '</p>';
@@ -223,10 +245,15 @@ class SubscriptionPortalEmail {
 		if ( $nextPayment ) {
 			$body .= '<p>' . esc_html(
 				sprintf(
-					__( 'Current BTCPay subscription date: %s', 'btcpay-greenfield-for-woocommerce' ),
+					__( 'Current subscription date for %1$s: %2$s', 'btcpay-greenfield-for-woocommerce' ),
+					$productName,
 					$nextPayment
 				)
 			) . '</p>';
+		}
+
+		if ( $subscriptionUrl ) {
+			$body .= '<p><a href="' . esc_url( $subscriptionUrl ) . '">' . esc_html__( 'View your WooCommerce subscriptions', 'btcpay-greenfield-for-woocommerce' ) . '</a></p>';
 		}
 
 		$body .= '<p>' . esc_html( $context['action'] ) . '</p>';
@@ -292,6 +319,44 @@ class SubscriptionPortalEmail {
 		}
 
 		return __( 'your subscription', 'btcpay-greenfield-for-woocommerce' );
+	}
+
+	private function getSubscriptionProductName( \WC_Subscription $subscription ): ?string {
+		$productNames = [];
+		foreach ( $subscription->get_items() as $item ) {
+			$productName = $item->get_name();
+			if ( empty( $productName ) ) {
+				$product = $item->get_product();
+				$productName = $product ? $product->get_name() : '';
+			}
+
+			if ( ! empty( $productName ) ) {
+				$productNames[] = $productName;
+			}
+		}
+
+		$productNames = array_unique( array_filter( array_map( 'strval', $productNames ) ) );
+		if ( empty( $productNames ) ) {
+			return null;
+		}
+
+		return implode( ', ', $productNames );
+	}
+
+	private function getSubscriptionAccountUrl( \WC_Subscription $subscription ): ?string {
+		if ( function_exists( 'wc_get_endpoint_url' ) && function_exists( 'wc_get_page_permalink' ) ) {
+			return wc_get_endpoint_url(
+				get_option( 'woocommerce_myaccount_subscriptions_endpoint', 'subscriptions' ),
+				'',
+				wc_get_page_permalink( 'myaccount' )
+			);
+		}
+
+		if ( method_exists( $subscription, 'get_view_order_url' ) ) {
+			return $subscription->get_view_order_url();
+		}
+
+		return null;
 	}
 
 	private function getCustomerGreetingName( \WC_Subscription $subscription ): string {

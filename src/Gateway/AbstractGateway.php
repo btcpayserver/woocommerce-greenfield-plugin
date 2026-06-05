@@ -661,6 +661,24 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	protected function processSubscriptionWebhook( \stdClass $webhookData ): void {
+		$subscriberId = '';
+		$metadataSubscriptionId = '';
+		if ( ! empty( $webhookData->subscriber ) && is_object( $webhookData->subscriber ) ) {
+			$subscriberId = (string) ( $webhookData->subscriber->customer->id ?? '' );
+			$metadataSubscriptionId = (string) ( $webhookData->subscriber->metadata->wc_subscription_id ?? '' );
+		}
+
+		Logger::debug(
+			sprintf(
+				'%s: BTCPay subscription webhook received. Type: %s. Delivery ID: %s. Subscriber ID: %s. Metadata subscription ID: %s.',
+				__METHOD__,
+				(string) ( $webhookData->type ?? '' ),
+				(string) ( $webhookData->deliveryId ?? '' ),
+				$subscriberId,
+				$metadataSubscriptionId
+			)
+		);
+
 		if ( empty( $webhookData->subscriber ) ) {
 			Logger::debug( __METHOD__ . ': subscription webhook has no subscriber payload. Event: ' . $webhookData->type );
 			return;
