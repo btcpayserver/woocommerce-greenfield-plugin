@@ -22,6 +22,7 @@ use BTCPayServer\WC\Gateway\DefaultGateway;
 use BTCPayServer\WC\Gateway\SeparateGateways;
 use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
+use BTCPayServer\WC\Helper\OrderReturn;
 use BTCPayServer\WC\Helper\SatsMode;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\Logger;
@@ -40,6 +41,7 @@ class BTCPayServerWCPlugin {
 
 	public function __construct() {
 		$this->includes();
+		OrderReturn::register();
 
 		add_action( 'woocommerce_thankyou_btcpaygf_default', ['BTCPayServerWCPlugin', 'orderStatusThankYouPage'], 10, 1);
 		add_action( 'woocommerce_order_details_after_order_table', ['BTCPayServerWCPlugin', 'orderDetailsCheckoutLink'], 10, 1);
@@ -307,7 +309,7 @@ class BTCPayServerWCPlugin {
 			: 0;
 		$order = $orderId ? wc_get_order($orderId) : false;
 
-		if (!$order instanceof \WC_Order || !$this->currentCustomerOwnsOrder($order)) {
+		if (!$order instanceof \WC_Order || !OrderReturn::currentCustomerOwnsOrder($order)) {
 			Logger::debug('Rejected modal checkout request for an order not owned by the current customer.');
 			wp_send_json_error('Order not found, stopped processing.');
 		}
@@ -331,36 +333,19 @@ class BTCPayServerWCPlugin {
 		// Run the process_payment() method only after the order and gateway are authorized.
 		$result = $paymentGateway->process_payment($order->get_id());
 
-		if (isset($result['result']) && $result['result'] === 'success') {
-			wp_send_json_success($result);
+		if (
+			is_array($result)
+			&& ($result['result'] ?? '') === 'success'
+			&& is_string($result['invoiceId'] ?? null)
+			&& is_string($result['orderCompleteLink'] ?? null)
+		) {
+			wp_send_json_success([
+				'invoiceId' => sanitize_text_field($result['invoiceId']),
+				'orderCompleteLink' => esc_url_raw($result['orderCompleteLink']),
+			]);
 		}
 
-		wp_send_json_error($result);
-	}
-
-	/**
-	 * Check whether an order belongs to the current customer or guest session.
-	 */
-	private function currentCustomerOwnsOrder(\WC_Order $order): bool {
-		$customerId = (int) $order->get_customer_id();
-		if ($customerId > 0) {
-			return get_current_user_id() === $customerId;
-		}
-
-		$session = WC()->session;
-		if (!$session) {
-			return false;
-		}
-
-		$orderId = $order->get_id();
-		return in_array(
-			$orderId,
-			[
-				absint($session->get('store_api_draft_order', 0)),
-				absint($session->get('order_awaiting_payment', 0)),
-			],
-			true
-		);
+		wp_send_json_error(__('Unable to start BTCPay checkout. Please try again.', 'btcpay-greenfield-for-woocommerce'));
 	}
 
 	/**

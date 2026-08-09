@@ -11,6 +11,7 @@ use BTCPayServer\Util\PreciseNumber;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
 use BTCPayServer\WC\Helper\Logger;
+use BTCPayServer\WC\Helper\OrderReturn;
 use BTCPayServer\WC\Helper\OrderStates;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
@@ -734,17 +735,13 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		$orderNumber = $order->get_order_number();
 		Logger::debug( 'Got order number: ' . $orderNumber . ' and order ID: ' . $order->get_id() );
 
+		// BTCPay checkout status is public, so never add customer data or order access credentials here.
 		$metadata = [];
-
-		// Send customer data only if option is set.
-		if ( get_option( 'btcpay_gf_send_customer_data' ) === 'yes' ) {
-			$metadata += $this->prepareCustomerMetadata( $order );
-		}
 
 		// Set included tax amount.
 		$metadata['taxIncluded'] = $order->get_cart_tax();
 
-		// POS metadata.
+		// Non-secret operational metadata.
 		$metadata['posData'] = $this->preparePosMetadata( $order );
 
 		// Add orderUrl to make order id clickable and leading to the order edit page.
@@ -752,9 +749,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		// Checkout options.
 		$checkoutOptions = new InvoiceCheckoutOptions();
-		$redirectUrl     = $this->get_return_url( $order );
+		$redirectUrl     = OrderReturn::createUrl( $order );
 		$checkoutOptions->setRedirectURL( $redirectUrl );
-		Logger::debug( 'Setting redirect url to: ' . $redirectUrl );
+		Logger::debug( 'Set a temporary WooCommerce return URL for the BTCPay invoice.' );
 
 		// Transaction speed.
 		$transactionSpeed   = get_option( 'btcpay_gf_transaction_speed', 'default' );
@@ -816,22 +813,6 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Maps customer billing metadata.
-	 */
-	protected function prepareCustomerMetadata( \WC_Order $order ): array {
-		return [
-			'buyerEmail'    => $order->get_billing_email(),
-			'buyerName'     => $order->get_formatted_billing_full_name(),
-			'buyerAddress1' => $order->get_billing_address_1(),
-			'buyerAddress2' => $order->get_billing_address_2(),
-			'buyerCity'     => $order->get_billing_city(),
-			'buyerState'    => $order->get_billing_state(),
-			'buyerZip'      => $order->get_billing_postcode(),
-			'buyerCountry'  => $order->get_billing_country()
-		];
 	}
 
 	/**

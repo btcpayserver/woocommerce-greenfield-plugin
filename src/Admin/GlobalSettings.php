@@ -242,13 +242,6 @@ class GlobalSettings extends \WC_Settings_Page {
 				'desc' => _x( 'Make all supported and enabled payment methods available as their own payment gateway. This opens new possibilities like discounts for specific payment methods. See our <a href="https://docs.btcpayserver.org/FAQ/Integrations/#how-to-configure-additional-token-support-separate-payment-gateways" target="_blank">full guide here</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'id' => 'btcpay_gf_separate_gateways'
 			],
-			'customer_data' => [
-				'title' => __( 'Send customer data to BTCPayServer', 'btcpay-greenfield-for-woocommerce' ),
-				'type' => 'checkbox',
-				'default' => 'no',
-				'desc' => _x( 'If you want customer email, address, etc. sent to BTCPay Server enable this option. By default for privacy and GDPR reasons this is disabled.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
-				'id' => 'btcpay_gf_send_customer_data'
-			],
 			'sats_mode' => [
 				'title' => __( 'Sats-Mode', 'btcpay-greenfield-for-woocommerce' ),
 				'type' => 'checkbox',
