@@ -8,7 +8,8 @@ class UpdateManager {
 
 	private static $updates = [
 		'1.0.3' => 'update-1.0.3.php',
-		'2.4.1' => 'update-2.4.1.php'
+		'2.4.1' => 'update-2.4.1.php',
+		'2.8.1' => 'update-2.8.1.php'
 	];
 
 	/**
