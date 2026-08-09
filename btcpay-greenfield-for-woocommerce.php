@@ -17,6 +17,7 @@
  */
 
 use BTCPayServer\WC\Admin\Notice;
+use BTCPayServer\WC\Gateway\AbstractGateway;
 use BTCPayServer\WC\Gateway\DefaultGateway;
 use BTCPayServer\WC\Gateway\SeparateGateways;
 use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
@@ -286,9 +287,10 @@ class BTCPayServerWCPlugin {
 	public function processAjaxModalBlocksCheckout() {
 
 		Logger::debug('Entering ' . __METHOD__);
-		Logger::debug('$_POST: ' . print_r($_POST, true));
 
-		$nonce = sanitize_text_field($_POST['apiNonce']);
+		$nonce = isset($_POST['apiNonce']) && is_string($_POST['apiNonce'])
+			? sanitize_text_field(wp_unslash($_POST['apiNonce']))
+			: '';
 		if ( ! wp_verify_nonce( $nonce, 'btcpay-nonce' ) ) {
 			wp_die('Unauthorized!', '', ['response' => 401]);
 		}
@@ -297,39 +299,68 @@ class BTCPayServerWCPlugin {
 			wp_die('Modal checkout mode not enabled.', '', ['response' => 400]);
 		}
 
-		$selectedPaymentGateway = sanitize_text_field($_POST['paymentGateway']);
-		$orderId = sanitize_text_field($_POST['orderId']);
-		$order = wc_get_order($orderId);
+		$selectedPaymentGateway = isset($_POST['paymentGateway']) && is_string($_POST['paymentGateway'])
+			? sanitize_text_field(wp_unslash($_POST['paymentGateway']))
+			: '';
+		$orderId = isset($_POST['orderId']) && is_string($_POST['orderId'])
+			? absint(wp_unslash($_POST['orderId']))
+			: 0;
+		$order = $orderId ? wc_get_order($orderId) : false;
 
-		if ($order) {
-
-			$orderPaymentMethod = $order->get_payment_method();
-			if (empty($orderPaymentMethod) || $orderPaymentMethod !== $selectedPaymentGateway) {
-				$order->set_payment_method($selectedPaymentGateway);
-				$order->save();
-			}
-
-			$payment_gateways = \WC_Payment_Gateways::instance();
-
-			if ($payment_gateway = $payment_gateways->payment_gateways()[$selectedPaymentGateway]) {
-
-				// Run the process_payment() method.
-				$result = $payment_gateway->process_payment($order->get_id());
-
-				if (isset($result['result']) && $result['result'] === 'success') {
-					wp_send_json_success($result);
-				} else {
-					wp_send_json_error($result);
-				}
-
-			} else {
-				wp_send_json_error('Payment gateway not found.');
-			}
-		} else {
+		if (!$order instanceof \WC_Order || !$this->currentCustomerOwnsOrder($order)) {
+			Logger::debug('Rejected modal checkout request for an order not owned by the current customer.');
 			wp_send_json_error('Order not found, stopped processing.');
 		}
 
-		wp_die();
+		if (!$order->needs_payment()) {
+			wp_send_json_error('Order does not need payment, stopped processing.');
+		}
+
+		$paymentGateways = \WC_Payment_Gateways::instance()->get_available_payment_gateways();
+		$paymentGateway = $paymentGateways[$selectedPaymentGateway] ?? null;
+		if (!$paymentGateway instanceof AbstractGateway) {
+			wp_send_json_error('Payment gateway not found.');
+		}
+
+		$orderPaymentMethod = $order->get_payment_method();
+		if (empty($orderPaymentMethod) || $orderPaymentMethod !== $selectedPaymentGateway) {
+			$order->set_payment_method($selectedPaymentGateway);
+			$order->save();
+		}
+
+		// Run the process_payment() method only after the order and gateway are authorized.
+		$result = $paymentGateway->process_payment($order->get_id());
+
+		if (isset($result['result']) && $result['result'] === 'success') {
+			wp_send_json_success($result);
+		}
+
+		wp_send_json_error($result);
+	}
+
+	/**
+	 * Check whether an order belongs to the current customer or guest session.
+	 */
+	private function currentCustomerOwnsOrder(\WC_Order $order): bool {
+		$customerId = (int) $order->get_customer_id();
+		if ($customerId > 0) {
+			return get_current_user_id() === $customerId;
+		}
+
+		$session = WC()->session;
+		if (!$session) {
+			return false;
+		}
+
+		$orderId = $order->get_id();
+		return in_array(
+			$orderId,
+			[
+				absint($session->get('store_api_draft_order', 0)),
+				absint($session->get('order_awaiting_payment', 0)),
+			],
+			true
+		);
 	}
 
 	/**
