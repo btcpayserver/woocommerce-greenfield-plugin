@@ -17,6 +17,8 @@ use BTCPayServer\WC\Admin\Notice;
 class GreenfieldApiHelper {
 	const PM_CACHE_KEY = 'btcpay_payment_methods';
 	const PM_CLASS_NAME_PREFIX = 'BTCPay_GF_';
+	private const API_SETUP_TRANSIENT = 'btcpay_gf_pending_api_setup';
+	private const API_SETUP_EXPIRATION = 15 * 60;
 	public $configured = false;
 	public $url;
 	public $apiKey;
@@ -73,6 +75,45 @@ class GreenfieldApiHelper {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Create a short-lived state value for an API setup request.
+	 */
+	public static function createApiSetupState(string $url): string {
+		$state = wp_generate_password(32, false, false);
+		set_transient(
+			self::API_SETUP_TRANSIENT,
+			[
+				'state' => $state,
+				'url' => $url,
+			],
+			self::API_SETUP_EXPIRATION
+		);
+
+		return $state;
+	}
+
+	/**
+	 * Validate and consume a pending API setup request.
+	 */
+	public static function consumeApiSetupState(?string $state): ?string {
+		$pendingSetup = get_transient(self::API_SETUP_TRANSIENT);
+
+		if (
+			!is_array($pendingSetup) ||
+			!isset($pendingSetup['state'], $pendingSetup['url']) ||
+			!is_string($pendingSetup['state']) ||
+			!is_string($pendingSetup['url']) ||
+			$state === null ||
+			!hash_equals($pendingSetup['state'], $state)
+		) {
+			return null;
+		}
+
+		delete_transient(self::API_SETUP_TRANSIENT);
+
+		return $pendingSetup['url'];
 	}
 
 	public static function getServerInfo(): ?ServerInfo {
