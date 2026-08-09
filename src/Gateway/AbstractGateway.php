@@ -106,7 +106,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		if (isset($_POST['action'])) {
 			$action = wc_clean( wp_unslash( $_POST['action'] ) );
-			if ( in_array($action, ['btcpaygf_modal_checkout', 'btcpaygf_modal_blocks_checkout']) ) {
+			if ( $action === 'btcpaygf_modal_checkout' ) {
 				Logger::debug( 'process_payment called via modal checkout.' );
 			}
 		}
@@ -126,6 +126,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				'result' => 'success',
 				'invoiceId' => $existingInvoiceId,
 				'orderCompleteLink' => $order->get_checkout_order_received_url(),
+				'redirect' => '',
 			];
 
 			if (!$isModal) {
@@ -153,6 +154,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				'result' => 'success',
 				'invoiceId' => $invoice->getData()['id'],
 				'orderCompleteLink' => $order->get_checkout_order_received_url(),
+				'redirect' => '',
 			];
 
 			if (!$isModal) {

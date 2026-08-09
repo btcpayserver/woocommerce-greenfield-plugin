@@ -17,7 +17,6 @@
  */
 
 use BTCPayServer\WC\Admin\Notice;
-use BTCPayServer\WC\Gateway\AbstractGateway;
 use BTCPayServer\WC\Gateway\DefaultGateway;
 use BTCPayServer\WC\Gateway\SeparateGateways;
 use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
@@ -49,8 +48,6 @@ class BTCPayServerWCPlugin {
 		add_action( 'wp_ajax_btcpaygf_notifications', [$this, 'processAjaxNotification'] );
 		add_action( 'wp_ajax_nopriv_btcpaygf_modal_checkout', [$this, 'processAjaxModalCheckout'] );
 		add_action( 'admin_enqueue_scripts', [$this, 'enqueueAdminScripts'] );
-		add_action( 'wp_ajax_btcpaygf_modal_blocks_checkout', [$this, 'processAjaxModalBlocksCheckout'] );
-		add_action( 'wp_ajax_nopriv_btcpaygf_modal_blocks_checkout', [$this, 'processAjaxModalBlocksCheckout'] );
 
 		// Run the updates.
 		\BTCPayServer\WC\Helper\UpdateManager::processUpdates();
@@ -281,71 +278,6 @@ class BTCPayServerWCPlugin {
 		} catch (\Throwable $e) {
 			Logger::debug('Error processing modal checkout ajax callback: ' . $e->getMessage());
 		}
-	}
-
-	/**
-	 * Handles the modal AJAX callback on the blocks checkout page.
-	 */
-	public function processAjaxModalBlocksCheckout() {
-
-		Logger::debug('Entering ' . __METHOD__);
-
-		$nonce = isset($_POST['apiNonce']) && is_string($_POST['apiNonce'])
-			? sanitize_text_field(wp_unslash($_POST['apiNonce']))
-			: '';
-		if ( ! wp_verify_nonce( $nonce, 'btcpay-nonce' ) ) {
-			wp_die('Unauthorized!', '', ['response' => 401]);
-		}
-
-		if ( get_option('btcpay_gf_modal_checkout') !== 'yes' ) {
-			wp_die('Modal checkout mode not enabled.', '', ['response' => 400]);
-		}
-
-		$selectedPaymentGateway = isset($_POST['paymentGateway']) && is_string($_POST['paymentGateway'])
-			? sanitize_text_field(wp_unslash($_POST['paymentGateway']))
-			: '';
-		$orderId = isset($_POST['orderId']) && is_string($_POST['orderId'])
-			? absint(wp_unslash($_POST['orderId']))
-			: 0;
-		$order = $orderId ? wc_get_order($orderId) : false;
-
-		if (!$order instanceof \WC_Order || !OrderReturn::currentCustomerOwnsOrder($order)) {
-			Logger::debug('Rejected modal checkout request for an order not owned by the current customer.');
-			wp_send_json_error('Order not found, stopped processing.');
-		}
-
-		if (!$order->needs_payment()) {
-			wp_send_json_error('Order does not need payment, stopped processing.');
-		}
-
-		$paymentGateways = \WC_Payment_Gateways::instance()->get_available_payment_gateways();
-		$paymentGateway = $paymentGateways[$selectedPaymentGateway] ?? null;
-		if (!$paymentGateway instanceof AbstractGateway) {
-			wp_send_json_error('Payment gateway not found.');
-		}
-
-		$orderPaymentMethod = $order->get_payment_method();
-		if (empty($orderPaymentMethod) || $orderPaymentMethod !== $selectedPaymentGateway) {
-			$order->set_payment_method($selectedPaymentGateway);
-			$order->save();
-		}
-
-		// Run the process_payment() method only after the order and gateway are authorized.
-		$result = $paymentGateway->process_payment($order->get_id());
-
-		if (
-			is_array($result)
-			&& ($result['result'] ?? '') === 'success'
-			&& is_string($result['invoiceId'] ?? null)
-			&& is_string($result['orderCompleteLink'] ?? null)
-		) {
-			wp_send_json_success([
-				'invoiceId' => sanitize_text_field($result['invoiceId']),
-				'orderCompleteLink' => esc_url_raw($result['orderCompleteLink']),
-			]);
-		}
-
-		wp_send_json_error(__('Unable to start BTCPay checkout. Please try again.', 'btcpay-greenfield-for-woocommerce'));
 	}
 
 	/**
