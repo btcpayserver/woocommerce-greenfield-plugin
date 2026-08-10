@@ -2,10 +2,10 @@
 Contributors: ndeet, kukks, nicolasdorier
 Donate link: https://btcpayserver.org/donate/
 Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
-Requires at least: 5.9
-Tested up to: 6.9
+Requires at least: 6.2
+Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.8.0
+Stable tag: 2.8.1
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -110,15 +110,24 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
-= 2.8.0 =
-* Feature: On customer order details show link to BTCPay invoice checkout page to see receipt or retry payment in case of interruption
-* Feature: On customer order details show link refunds (setting "Customer visible refunds" needs to be enabled)
-* Feature: Make separate payment gateways work for WooCommerce blocks checkout
-* Feature: Add column to order overview with icons for BTCPay, Bitcoin and LN payments and link to the invoice on BTCPay
+= 2.8.1 =
 
-Note: None of those features introduce breaking changes, you should be safe to upgrade.
+This release improves security and privacy as well as compatibility with WooCommerce 11.0. Please update asap.
+
+* Fix: WooCommerce 11.0 compatibilty for modal checkout
+* Fix: Remove option to send customer data to BTCPay
+* Fix: Don't send additional order data to BTCPay
+* Fix: Improve setup api wizard flow
+* Maintenance: Test WordPress 7.0 compatibilty
 
 == Changelog ==
+
+= 2.8.1 :: 2026-08-10 =
+* Fix: WooCommerce 11.0 compatibilty for modal checkout
+* Fix: Remove option to send customer data to BTCPay
+* Fix: Don't send additional order data to BTCPay
+* Fix: Improve setup api wizard flow
+* Maintenance: Test WordPress 7.0 compatibilty
 
 = 2.8.0 :: 2026-04-20 =
 * Feature: On customer order details show link to BTCPay invoice checkout page to see receipt or retry payment in case of interruption
