@@ -5,7 +5,7 @@ Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.8.1
+Stable tag: 2.8.2
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -110,17 +110,17 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
-= 2.8.1 =
+= 2.8.2 =
 
-This release improves security and privacy as well as compatibility with WooCommerce 11.0. Please update asap.
+This is a security release. Please update asap.
 
-* Fix: WooCommerce 11.0 compatibilty for modal checkout
-* Fix: Remove option to send customer data to BTCPay
-* Fix: Don't send additional order data to BTCPay
-* Fix: Improve setup api wizard flow
-* Maintenance: Test WordPress 7.0 compatibilty
+* Fix: Double check invoice status on webhook updates.
 
 == Changelog ==
+
+= 2.8.2 :: 2026-08-19 =
+
+* Fix: Double check invoice status on webhook updates.
 
 = 2.8.1 :: 2026-08-10 =
 * Fix: WooCommerce 11.0 compatibilty for modal checkout
