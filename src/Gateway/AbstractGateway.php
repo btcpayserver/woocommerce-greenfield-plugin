@@ -7,6 +7,7 @@ namespace BTCPayServer\WC\Gateway;
 use BTCPayServer\Client\Invoice;
 use BTCPayServer\Client\InvoiceCheckoutOptions;
 use BTCPayServer\Client\PullPayment;
+use BTCPayServer\Result\Invoice as InvoiceResult;
 use BTCPayServer\Util\PreciseNumber;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
@@ -605,8 +606,55 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				}
 				break;
 			case 'InvoiceSettled':
+				try {
+					$client = new Invoice($this->apiHelper->url, $this->apiHelper->apiKey);
+					$invoice = $client->getInvoice($this->apiHelper->storeId, $webhookData->invoiceId);
+					$invoiceStatus = $invoice->getStatus();
+					$invoiceAdditionalStatus = $invoice->getData()['additionalStatus'] ?? null;
+				} catch (\Throwable $e) {
+					Logger::debug(
+						'Could not verify settled BTCPay invoice ' . $webhookData->invoiceId . ': ' . $e->getMessage()
+					);
+					$order->add_order_note(
+						sprintf(
+							__('InvoiceSettled webhook received, but BTCPay invoice %s could not be verified. The order was not marked as paid. Please retry the webhook or check the invoice manually.', 'btcpay-greenfield-for-woocommerce'),
+							$webhookData->invoiceId
+						)
+					);
+					break;
+				}
+
+				// PaidOver is an additional invoice status. Only Settled and Settled (PaidOver) may complete an order.
+				// Do not use InvoiceResult::isSettled() here because the client also treats PaidLate as settled.
+				$allowedAdditionalStatuses = [
+					'None',
+					InvoiceResult::ADDITIONAL_STATUS_PAID_OVER
+				];
+				$invoiceIsOverpaid = $invoiceAdditionalStatus === InvoiceResult::ADDITIONAL_STATUS_PAID_OVER;
+
+				if (
+					$invoiceStatus !== InvoiceResult::STATUS_SETTLED ||
+					!in_array($invoiceAdditionalStatus, $allowedAdditionalStatuses, true)
+				) {
+					$additionalStatusForLog = $invoiceAdditionalStatus ?? 'Unknown';
+					Logger::debug(
+						'InvoiceSettled webhook ignored for invoice ' . $webhookData->invoiceId .
+						' because the API returned status ' . $invoiceStatus .
+						' and additional status ' . $additionalStatusForLog . '.'
+					);
+					$order->add_order_note(
+						sprintf(
+							__('InvoiceSettled webhook received, but BTCPay invoice %1$s has status %2$s (%3$s). The order was not marked as paid. Please check the invoice manually.', 'btcpay-greenfield-for-woocommerce'),
+							$webhookData->invoiceId,
+							$invoiceStatus,
+							$additionalStatusForLog
+						)
+					);
+					break;
+				}
+
 				$order->payment_complete();
-				if (isset($webhookData->overPaid) && $webhookData->overPaid) {
+				if ($invoiceIsOverpaid) {
 					$order->add_order_note(__('Invoice payment settled but was overpaid.', 'btcpay-greenfield-for-woocommerce'));
 					$this->updateWCOrderStatus($order, $configuredOrderStates[OrderStates::SETTLED_PAID_OVER]);
 				} else {
