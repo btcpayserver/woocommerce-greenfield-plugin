@@ -56,20 +56,24 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	/**
-	 * Keep legacy custom messages while letting previously saved defaults inherit.
+	 * Keep legacy custom checkout text while letting previously saved defaults inherit.
 	 */
 	public function init_settings() {
 		parent::init_settings();
 
-		if (!array_key_exists('use_default_description', $this->settings)) {
-			$description = $this->settings['description'] ?? '';
-			$useDefault = $description === '' || $description === self::DEFAULT_DESCRIPTION;
-			$this->settings['use_default_description'] = $useDefault ? 'yes' : 'no';
-			if ($useDefault) {
-				// Do not save a copy of the inherited message as a gateway override.
+		if (!isset($this->settings['checkout_text_version'])) {
+			if (
+				!array_key_exists('use_default_description', $this->settings) &&
+				($this->settings['description'] ?? '') === self::DEFAULT_DESCRIPTION
+			) {
+				// Older versions saved the built-in text even when it was not customized.
 				$this->settings['description'] = '';
 			}
+			// Persisted on the next settings save, so explicitly entered stock text stays custom.
+			$this->settings['checkout_text_version'] = 1;
 		}
+		// The text field alone now determines whether the default is overridden.
+		unset($this->settings['use_default_description']);
 	}
 
 	/**
@@ -92,16 +96,10 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				'default'     => $this->getTitle(),
 				'desc_tip'    => true,
 			],
-			'use_default_description' => [
-				'title'       => __( 'Customer Message', 'btcpay-greenfield-for-woocommerce' ),
-				'type'        => 'checkbox',
-				'label'       => __( 'Use default customer message from BTCPay settings', 'btcpay-greenfield-for-woocommerce' ),
-				'default'     => 'yes',
-			],
 			'description' => [
-				'title'       => __( 'Custom Customer Message', 'btcpay-greenfield-for-woocommerce' ),
+				'title'       => __( 'Custom checkout text', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'textarea',
-				'description' => __( 'Only used when the default customer message is disabled above. Leave empty to show no message.', 'btcpay-greenfield-for-woocommerce' ),
+				'description' => __( 'Overrides the default checkout text from BTCPay settings. Leave empty to use the default.', 'btcpay-greenfield-for-woocommerce' ),
 				'default'     => '',
 				'desc_tip'    => false,
 			],
@@ -936,11 +934,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	/**
-	 * Get customer facing gateway description.
+	 * Get customer-facing checkout text, falling back to the global default when empty.
 	 */
 	public function getDescription(): string {
-		if ($this->get_option('use_default_description', 'yes') === 'no') {
-			return (string) $this->get_option('description', '');
+		$description = (string) $this->get_option('description', '');
+		if (trim($description) !== '') {
+			return $description;
 		}
 
 		return (string) get_option(

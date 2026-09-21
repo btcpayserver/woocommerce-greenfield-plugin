@@ -51,11 +51,6 @@ function wp_kses_post($text) { return $text; }
 function wp_parse_args($args, $defaults) { return array_merge($defaults, $args); }
 function esc_attr($text) { return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8'); }
 function esc_textarea($text) { return esc_attr($text); }
-function checked($value, $expected, $echo = true) {
-	$result = (string) $value === (string) $expected ? 'checked="checked"' : '';
-	if ($echo) { echo $result; }
-	return $result;
-}
 function disabled($value, $expected, $echo = true) {
 	$result = (string) $value === (string) $expected ? 'disabled="disabled"' : '';
 	if ($echo) { echo $result; }
@@ -151,28 +146,36 @@ function saveGateway(AbstractGateway $gateway, array $changes = []): void {
 
 $stock = AbstractGateway::DEFAULT_DESCRIPTION;
 $cases = [
-	'built-in fallback' => [null, null, $stock, 'yes'],
-	'new gateway inherits global default' => [null, 'Global message', 'Global message', 'yes'],
-	'empty settings inherit' => [[], 'Global message', 'Global message', 'yes'],
-	'missing legacy description inherits' => [['enabled' => 'yes'], 'Global message', 'Global message', 'yes'],
-	'empty legacy description inherits' => [['description' => ''], 'Global message', 'Global message', 'yes'],
-	'legacy stock description inherits' => [['description' => $stock], 'Global message', 'Global message', 'yes'],
-	'legacy custom description survives' => [['description' => 'Custom message'], 'Global message', 'Custom message', 'no'],
-	'legacy zero is a custom description' => [['description' => '0'], 'Global message', '0', 'no'],
-	'explicit inheritance ignores dormant custom text' => [['use_default_description' => 'yes', 'description' => 'Custom message'], 'Global message', 'Global message', 'yes'],
-	'explicit custom description wins' => [['use_default_description' => 'no', 'description' => 'Custom message'], 'Global message', 'Custom message', 'no'],
-	'explicit stock description stays an override' => [['use_default_description' => 'no', 'description' => $stock], 'Global message', $stock, 'no'],
-	'explicit blank custom description hides message' => [['use_default_description' => 'no', 'description' => ''], 'Global message', '', 'no'],
-	'blank global description hides message' => [null, '', '', 'yes'],
+	'built-in fallback' => [null, null, $stock],
+	'new gateway inherits global default' => [null, 'Global text', 'Global text'],
+	'empty settings inherit' => [[], 'Global text', 'Global text'],
+	'missing legacy description inherits' => [['enabled' => 'yes'], 'Global text', 'Global text'],
+	'empty legacy description inherits' => [['description' => ''], 'Global text', 'Global text'],
+	'whitespace-only description inherits' => [['description' => " \n\t "], 'Global text', 'Global text'],
+	'legacy stock description inherits' => [['description' => $stock], 'Global text', 'Global text'],
+	'legacy custom description survives' => [['description' => 'Custom text'], 'Global text', 'Custom text'],
+	'legacy zero is a custom description' => [['description' => '0'], 'Global text', '0'],
+	'previously checked checkbox cannot suppress custom text' => [['use_default_description' => 'yes', 'description' => 'Custom text'], 'Global text', 'Custom text'],
+	'previously unchecked checkbox keeps custom text' => [['use_default_description' => 'no', 'description' => 'Custom text'], 'Global text', 'Custom text'],
+	'explicit stock description stays an override' => [['use_default_description' => 'no', 'description' => $stock], 'Global text', $stock],
+	'previously checked checkbox keeps explicitly entered stock text' => [['use_default_description' => 'yes', 'description' => $stock], 'Global text', $stock],
+	'previous blank override now inherits' => [['use_default_description' => 'no', 'description' => ''], 'Global text', 'Global text'],
+	'previous checked checkbox and empty text inherit' => [['use_default_description' => 'yes', 'description' => ''], 'Global text', 'Global text'],
+	'blank global description hides text' => [null, '', ''],
+	'migrated stock description stays an override' => [['checkout_text_version' => 1, 'description' => $stock], 'Global text', $stock],
+	'migrated empty description inherits' => [['checkout_text_version' => 1, 'description' => ''], 'Global text', 'Global text'],
+	'custom text is returned without changing its contents' => [['description' => ' Custom text '], 'Global text', ' Custom text '],
 ];
 
 $tests = [];
 foreach (['default', 'separate'] as $kind) {
-	foreach ($cases as $label => [$settings, $global, $expected, $mode]) {
-		$tests[$kind . ': ' . $label] = static function () use ($kind, $settings, $global, $expected, $mode) {
+	foreach ($cases as $label => [$settings, $global, $expected]) {
+		$tests[$kind . ': ' . $label] = static function () use ($kind, $settings, $global, $expected) {
 			$gateway = fixture($kind, $settings, $global);
 			checkCheckoutMessages($gateway, $expected);
-			checkSame($gateway->get_option('use_default_description'), $mode, 'Inheritance checkbox');
+			checkSame(array_key_exists('use_default_description', $gateway->form_fields), false, 'No inheritance checkbox');
+			checkSame(array_key_exists('use_default_description', $gateway->settings), false, 'Old checkbox setting removed in memory');
+			checkSame($gateway->settings['checkout_text_version'], 1, 'Checkout text compatibility marker');
 			checkSame($gateway->form_fields['description']['default'], '', 'Do not prefill inherited text as an override');
 		};
 	}
@@ -182,40 +185,43 @@ foreach (['default', 'separate'] as $kind) {
 		saveGateway($gateway);
 		$stored = get_option($gateway->get_option_key());
 		checkSame($stored['description'], '', 'No saved global snapshot');
-		checkSame($stored['use_default_description'], 'yes', 'Saved inheritance');
+		checkSame($stored['checkout_text_version'], 1, 'Saved compatibility marker');
+		checkSame(array_key_exists('use_default_description', $stored), false, 'Do not save the removed checkbox');
 		update_option('btcpay_gf_default_description', 'Updated global message');
 		checkCheckoutMessages(gatewayFor($kind), 'Updated global message');
 	};
 
-	$tests[$kind . ': gateway form renders the correct inheritance mode'] = static function () use ($kind, $stock) {
+	$tests[$kind . ': gateway form uses a single custom checkout text field'] = static function () use ($kind, $stock) {
 		foreach ([$stock => true, 'Legacy custom message' => false] as $description => $inherits) {
 			$gateway = fixture($kind, ['description' => $description], 'Global message');
-			$checkbox = $gateway->generate_checkbox_html('use_default_description', $gateway->form_fields['use_default_description']);
 			$textarea = $gateway->generate_textarea_html('description', $gateway->form_fields['description']);
-			checkSame(strpos($checkbox, 'checked="checked"') !== false, $inherits, 'Rendered inheritance checkbox');
+			checkSame(array_key_exists('use_default_description', $gateway->form_fields), false, 'Removed checkbox');
+			checkSame($gateway->form_fields['description']['title'], 'Custom checkout text', 'Consistent field label');
+			checkSame(strpos($textarea, 'Leave empty to use the default.') !== false, true, 'Inheritance instructions');
 			checkSame(strpos($textarea, '>Legacy custom message</textarea>') !== false, !$inherits, 'Rendered custom message');
 			checkSame(strpos($textarea, 'Global message'), false, 'Do not render inherited text as the override');
 		}
 	};
 
-	$tests[$kind . ': override, blank message, and return to inheritance'] = static function () use ($kind) {
-		$gateway = fixture($kind, null, 'Global message');
-		saveGateway($gateway, ['use_default_description' => 'no', 'description' => "Customer's custom message"]);
+	$tests[$kind . ': typing overrides and clearing restores inheritance without a checkbox'] = static function () use ($kind) {
+		$gateway = fixture($kind, ['use_default_description' => 'yes', 'description' => ''], 'Global message');
+		saveGateway($gateway, ['description' => "Customer's custom message"]);
+		checkSame(array_key_exists('use_default_description', get_option($gateway->get_option_key())), false, 'Old checkbox removed on save');
 		update_option('btcpay_gf_default_description', 'Updated global message');
 		$gateway = gatewayFor($kind);
 		checkCheckoutMessages($gateway, "Customer's custom message");
 		saveGateway($gateway, ['description' => '']);
 		$gateway = gatewayFor($kind);
-		checkCheckoutMessages($gateway, '');
-		saveGateway($gateway, ['use_default_description' => 'yes']);
-		checkCheckoutMessages(gatewayFor($kind), 'Updated global message');
+		checkCheckoutMessages($gateway, 'Updated global message');
+		update_option('btcpay_gf_default_description', 'Another global message');
+		checkCheckoutMessages(gatewayFor($kind), 'Another global message');
 	};
 
 	$tests[$kind . ': saving legacy defaults keeps inheritance'] = static function () use ($kind, $stock) {
 		$gateway = fixture($kind, ['description' => $stock], 'Global message');
 		checkSame($gateway->get_option('description'), '', 'Legacy stock text is not an override');
 		saveGateway($gateway);
-		checkSame(get_option($gateway->get_option_key())['use_default_description'], 'yes', 'Persisted legacy inheritance');
+		checkSame(get_option($gateway->get_option_key())['description'], '', 'Persisted legacy inheritance');
 		update_option('btcpay_gf_default_description', 'Updated global message');
 		checkCheckoutMessages(gatewayFor($kind), 'Updated global message');
 	};
@@ -223,24 +229,41 @@ foreach (['default', 'separate'] as $kind) {
 	$tests[$kind . ': saving legacy custom text preserves the override'] = static function () use ($kind) {
 		$gateway = fixture($kind, ['description' => 'Legacy custom message'], 'Global message');
 		saveGateway($gateway);
-		checkSame(get_option($gateway->get_option_key())['use_default_description'], 'no', 'Persisted legacy override');
+		checkSame(get_option($gateway->get_option_key())['description'], 'Legacy custom message', 'Persisted legacy override');
 		update_option('btcpay_gf_default_description', 'Updated global message');
 		checkCheckoutMessages(gatewayFor($kind), 'Legacy custom message');
 	};
 
 	$tests[$kind . ': explicitly saving stock text remains an override'] = static function () use ($kind, $stock) {
 		$gateway = fixture($kind, null, 'Global message');
-		saveGateway($gateway, ['use_default_description' => 'no', 'description' => $stock]);
+		saveGateway($gateway, ['description' => $stock]);
+		$gateway = gatewayFor($kind);
+		checkCheckoutMessages($gateway, $stock);
+		saveGateway($gateway);
 		checkCheckoutMessages(gatewayFor($kind), $stock);
 	};
 
-	$tests[$kind . ': inheritance does not erase a dormant override'] = static function () use ($kind) {
-		$gateway = fixture($kind, ['use_default_description' => 'no', 'description' => 'Custom message'], 'Global message');
-		saveGateway($gateway, ['use_default_description' => 'yes']);
-		$gateway = gatewayFor($kind);
-		checkCheckoutMessages($gateway, 'Global message');
-		saveGateway($gateway, ['use_default_description' => 'no']);
-		checkCheckoutMessages(gatewayFor($kind), 'Custom message');
+	$tests[$kind . ': custom text matching the global default remains an override'] = static function () use ($kind) {
+		$gateway = fixture($kind, null, 'Global text');
+		saveGateway($gateway, ['description' => 'Global text']);
+		update_option('btcpay_gf_default_description', 'Updated global text');
+		checkCheckoutMessages(gatewayFor($kind), 'Global text');
+	};
+
+	$tests[$kind . ': whitespace-only input restores inheritance on save'] = static function () use ($kind) {
+		$gateway = fixture($kind, ['description' => 'Custom text'], 'Global text');
+		saveGateway($gateway, ['description' => " \n\t "]);
+		checkSame(get_option($gateway->get_option_key())['description'], '', 'Empty override after validation');
+		checkCheckoutMessages(gatewayFor($kind), 'Global text');
+	};
+
+	$tests[$kind . ': saving existing text ignores the removed checkbox'] = static function () use ($kind) {
+		foreach (['yes', 'no'] as $oldMode) {
+			$gateway = fixture($kind, ['use_default_description' => $oldMode, 'description' => 'Custom text'], 'Global text');
+			saveGateway($gateway);
+			checkCheckoutMessages(gatewayFor($kind), 'Custom text');
+			checkSame(array_key_exists('use_default_description', get_option($gateway->get_option_key())), false, 'Removed obsolete setting');
+		}
 	};
 }
 

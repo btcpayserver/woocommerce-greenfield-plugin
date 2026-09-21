@@ -203,9 +203,9 @@ class GlobalSettings extends \WC_Settings_Page {
 				'id' => 'btcpay_gf'
 			],
 			'default_description' => [
-				'title'       => esc_html_x( 'Default Customer Message', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'title'       => esc_html_x( 'Default checkout text', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'textarea',
-				'desc' => esc_html_x( 'Default message shown at checkout unless overridden in the payment gateway settings.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+				'desc' => esc_html_x( 'Text shown at checkout unless overridden in the payment gateway settings.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 				'default'     => esc_html_x('You will be redirected to BTCPay to complete your purchase.', 'global_settings', 'btcpay-greenfield-for-woocommerce'),
 				'desc_tip'    => true,
 				'id' => 'btcpay_gf_default_description'
