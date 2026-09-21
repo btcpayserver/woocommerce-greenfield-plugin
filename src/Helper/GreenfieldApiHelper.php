@@ -192,7 +192,7 @@ class GreenfieldApiHelper {
 	 * Check webhook signature to be a valid request.
 	 */
 	public function validWebhookRequest(string $signature, string $requestData): bool {
-		if ($this->configured) {
+		if ($this->configured && GreenfieldApiWebhook::isUsableSecret($this->webhook['secret'] ?? null)) {
 			return Webhook::isIncomingWebhookRequestValid($requestData, $signature, $this->webhook['secret']);
 		}
 		return false;
@@ -217,7 +217,7 @@ class GreenfieldApiHelper {
 
 	public static function webhookIsSetup(): bool {
 		if ($config = self::getConfig()) {
-			return !empty($config['webhook']['secret']);
+			return GreenfieldApiWebhook::isUsableSecret($config['webhook']['secret'] ?? null);
 		}
 
 		return false;
@@ -225,7 +225,7 @@ class GreenfieldApiHelper {
 
 	public static function webhookIsSetupManual(): bool {
 		if ($config = self::getConfig()) {
-			return !empty($config['webhook']['secret']) && $config['webhook']['id'] === 'manual';
+			return GreenfieldApiWebhook::isUsableSecret($config['webhook']['secret'] ?? null) && ($config['webhook']['id'] ?? '') === 'manual';
 		}
 
 		return false;

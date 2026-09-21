@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BTCPayServer\WC\Helper;
 
 use BTCPayServer\Client\Webhook;
+use BTCPayServer\Exception\RequestException;
 use BTCPayServer\Result\Webhook as WebhookResult;
 
 class GreenfieldApiWebhook {
@@ -18,15 +19,24 @@ class GreenfieldApiWebhook {
 	];
 
 	/**
+	 * Accept existing secrets without imposing new length requirements on working installations.
+	 */
+	public static function isUsableSecret($secret): bool {
+		return is_string($secret) && trim($secret) !== '' && strcasecmp(trim($secret), 'manual') !== 0;
+	}
+
+	/**
 	 * Get locally stored webhook data and check if it exists on the store.
+	 *
+	 * @throws \Throwable If the lookup fails for a reason other than a missing webhook.
 	 */
 	public static function webhookExists(string $apiUrl, string $apiKey, string $storeId, $manualWebhookSecret = null): bool {
 
-		if ( $storedWebhook = get_option( 'btcpay_gf_webhook' ) ) {
+		$storedWebhook = get_option('btcpay_gf_webhook', []);
+		if (is_array($storedWebhook) && !empty($storedWebhook['id']) && self::isUsableSecret($storedWebhook['secret'] ?? null)) {
 			// Handle case of manually entered webhook (secret). We can't query webhooks endpoint at all without permission.
-			if ($storedWebhook['id'] === 'manual' && $storedWebhook['secret'] === $manualWebhookSecret) {
-				Logger::debug('Detected existing and manually set webhook.');
-				return true;
+			if ($storedWebhook['id'] === 'manual') {
+				return $manualWebhookSecret === null || $storedWebhook['secret'] === $manualWebhookSecret;
 			}
 
 			// Check automatically created webhook.
@@ -43,6 +53,10 @@ class GreenfieldApiWebhook {
 				}
 			} catch (\Throwable $e) {
 				Logger::debug('Error fetching existing Webhook from BTCPay Server. Message: ' . $e->getMessage());
+				// A timeout, permission error or server error does not mean the webhook is missing.
+				if (!$e instanceof RequestException || $e->getCode() !== 404) {
+					throw $e;
+				}
 			}
 		}
 
@@ -62,15 +76,21 @@ class GreenfieldApiWebhook {
 				null
 			);
 
+			if (!self::isUsableSecret($webhook->getData()['secret'] ?? null)) {
+				self::deleteWebhook($apiUrl, $apiKey, $storeId, $webhook->getId());
+				throw new \RuntimeException('Received an invalid webhook secret, aborting registration.');
+			}
+
 			// Store in option table.
-			update_option(
-				'btcpay_gf_webhook',
-				[
-					'id' => $webhook->getData()['id'],
-					'secret' => $webhook->getData()['secret'],
-					'url' => $webhook->getData()['url']
-				]
-			);
+			$webhookConfig = [
+				'id' => $webhook->getId(),
+				'secret' => $webhook->getData()['secret'],
+				'url' => $webhook->getUrl()
+			];
+			if (!update_option('btcpay_gf_webhook', $webhookConfig) && get_option('btcpay_gf_webhook') !== $webhookConfig) {
+				self::deleteWebhook($apiUrl, $apiKey, $storeId, $webhook->getId());
+				throw new \RuntimeException('Could not store the new webhook configuration.');
+			}
 
 			return $webhook;
 		} catch (\Throwable $e) {
@@ -78,6 +98,26 @@ class GreenfieldApiWebhook {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Delete a webhook from BTCPay Server.
+	 */
+	public static function deleteWebhook(
+		string $apiUrl,
+		string $apiKey,
+		string $storeId,
+		string $webhookId
+	): bool {
+		try {
+			$whClient = new Webhook($apiUrl, $apiKey);
+			$whClient->deleteWebhook($storeId, $webhookId);
+			Logger::debug('Deleted webhook from BTCPay Server: ' . $webhookId);
+			return true;
+		} catch (\Throwable $e) {
+			Logger::debug('Failed to delete webhook from BTCPay Server: ' . $e->getMessage());
+			return false;
+		}
 	}
 
 	/**
@@ -91,6 +131,10 @@ class GreenfieldApiWebhook {
 		bool $automaticRedelivery,
 		?array $events
 	): ?WebhookResult {
+		if (!self::isUsableSecret($secret)) {
+			Logger::debug('Invalid webhook secret, aborting webhook update.');
+			return null;
+		}
 
 		if ($config = GreenfieldApiHelper::getConfig()) {
 			try {
