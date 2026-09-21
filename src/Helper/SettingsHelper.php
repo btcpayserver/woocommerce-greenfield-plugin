@@ -16,11 +16,11 @@ class SettingsHelper {
 				'desc_tip'    => true,
 			],
 			'description' => [
-				'title'       => __('Customer Message', 'btcpay-greenfield-for-woocommerce'),
+				'title'       => __('Custom checkout text', 'btcpay-greenfield-for-woocommerce'),
 				'type'        => 'textarea',
-				'description' => __('Message to explain how the customer will be paying for the purchase.', 'btcpay-greenfield-for-woocommerce'),
-				'default'     => 'You will be redirected to BTCPay to complete your purchase.',
-				'desc_tip'    => true,
+				'description' => __('Overrides the default checkout text from BTCPay settings. Leave empty to use the default.', 'btcpay-greenfield-for-woocommerce'),
+				'default'     => '',
+				'desc_tip'    => false,
 			],
 		];
 

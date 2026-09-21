@@ -23,7 +23,7 @@ jQuery(function ($) {
 				}
 				$('.btcpay-gf-icon-image').attr('src', url).show();
 				$('.btcpay-gf-icon-remove').show();
-				$('.btcpay-gf-icon-value').val(attachment.id);
+				$('.btcpay-gf-icon-value').val(attachment.id).trigger('change');
 				button.hide();
 			}).open();
 	});
@@ -32,7 +32,7 @@ jQuery(function ($) {
 	$('.btcpay-gf-icon-remove').click(function (e) {
 		e.preventDefault();
 
-		$('.btcpay-gf-icon-value').val('');
+		$('.btcpay-gf-icon-value').val('').trigger('change');
 		$('.btcpay-gf-icon-image').hide();
 		$(this).hide();
 		$('.btcpay-gf-icon-button').show();

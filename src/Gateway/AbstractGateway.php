@@ -17,6 +17,7 @@ use BTCPayServer\WC\Helper\OrderStates;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
 	const ICON_MEDIA_OPTION = 'icon_media_id';
+	const DEFAULT_DESCRIPTION = 'You will be redirected to BTCPay to complete your purchase.';
 	public $tokenType;
 	public $primaryPaymentMethod;
 	protected $apiHelper;
@@ -55,6 +56,27 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	/**
+	 * Keep legacy custom checkout text while letting previously saved defaults inherit.
+	 */
+	public function init_settings() {
+		parent::init_settings();
+
+		if (!isset($this->settings['checkout_text_version'])) {
+			if (
+				!array_key_exists('use_default_description', $this->settings) &&
+				($this->settings['description'] ?? '') === self::DEFAULT_DESCRIPTION
+			) {
+				// Older versions saved the built-in text even when it was not customized.
+				$this->settings['description'] = '';
+			}
+			// Persisted on the next settings save, so explicitly entered stock text stays custom.
+			$this->settings['checkout_text_version'] = 1;
+		}
+		// The text field alone now determines whether the default is overridden.
+		unset($this->settings['use_default_description']);
+	}
+
+	/**
 	 * Initialise Gateway Settings Form Fields
 	 */
 	public function init_form_fields() {
@@ -75,11 +97,11 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				'desc_tip'    => true,
 			],
 			'description' => [
-				'title'       => __( 'Customer Message', 'btcpay-greenfield-for-woocommerce' ),
+				'title'       => __( 'Custom checkout text', 'btcpay-greenfield-for-woocommerce' ),
 				'type'        => 'textarea',
-				'description' => __( 'Message to explain how the customer will be paying for the purchase.', 'btcpay-greenfield-for-woocommerce' ),
-				'default'     => $this->getDescription(),
-				'desc_tip'    => true,
+				'description' => __( 'Overrides the default checkout text from BTCPay settings. Leave empty to use the default.', 'btcpay-greenfield-for-woocommerce' ),
+				'default'     => '',
+				'desc_tip'    => false,
 			],
 			'icon_upload' => [
 				'type'        => 'icon_upload',
@@ -912,10 +934,18 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	}
 
 	/**
-	 * Get customer facing gateway description.
+	 * Get customer-facing checkout text, falling back to the global default when empty.
 	 */
 	public function getDescription(): string {
-		return $this->get_option('description', 'You will be redirected to BTCPay to complete your purchase.');
+		$description = (string) $this->get_option('description', '');
+		if (trim($description) !== '') {
+			return $description;
+		}
+
+		return (string) get_option(
+			'btcpay_gf_default_description',
+			_x('You will be redirected to BTCPay to complete your purchase.', 'global_settings', 'btcpay-greenfield-for-woocommerce')
+		);
 	}
 
 	/**

@@ -56,7 +56,7 @@ final class SeparateGatewayBlocks extends AbstractPaymentMethodType {
 	public function get_payment_method_data(): array {
 		return [
 			'title' => $this->get_setting( 'title' ),
-			'description' => $this->get_setting( 'description' ),
+			'description' => $this->gateway ? $this->gateway->getDescription() : '',
 			'supports' => $this->gateway
 				? array_filter( $this->gateway->supports, [ $this->gateway, 'supports' ] )
 				: [ 'products' ],

@@ -35,13 +35,6 @@ class DefaultGateway extends AbstractGateway {
 	/**
 	 * @inheritDoc
 	 */
-	public function getDescription(): string {
-		return $this->get_option('description', 'You will be redirected to BTCPay to complete your purchase.');
-	}
-
-	/**
-	 * @inheritDoc
-	 */
 	public function init_form_fields(): void {
 		parent::init_form_fields();
 		$this->form_fields += [
