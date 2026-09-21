@@ -77,7 +77,7 @@ final class DefaultGatewayBlocks extends AbstractPaymentMethodType {
 	public function get_payment_method_data(): array {
 		return [
 			'title' => $this->get_setting( 'title' ),
-			'description' => $this->get_setting( 'description' ),
+			'description' => $this->gateway->getDescription(),
 			'supports' => array_filter( $this->gateway->supports, [ $this->gateway, 'supports' ] ),
 			'icon' => $this->gateway->getIcon()
 		];
