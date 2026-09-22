@@ -552,6 +552,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			// Check if the order status is either 'processing' or 'completed'
 			if ($order->has_status(array('processing', 'completed'))) {
 				$note = sprintf(
+					/* translators: %s: BTCPay webhook event type. */
 					__('Webhook (%s) received from BTCPay, but the order is already processing or completed, skipping to update order status. Please manually check if everything is alright.', 'btcpay-greenfield-for-woocommerce'),
 					$webhookData->type
 				);
@@ -639,6 +640,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					);
 					$order->add_order_note(
 						sprintf(
+							/* translators: %s: BTCPay invoice ID. */
 							__('InvoiceSettled webhook received, but BTCPay invoice %s could not be verified. The order was not marked as paid. Please retry the webhook or check the invoice manually.', 'btcpay-greenfield-for-woocommerce'),
 							$webhookData->invoiceId
 						)
@@ -666,6 +668,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					);
 					$order->add_order_note(
 						sprintf(
+							/* translators: 1: BTCPay invoice ID, 2: Invoice status, 3: Additional invoice status. */
 							__('InvoiceSettled webhook received, but BTCPay invoice %1$s has status %2$s (%3$s). The order was not marked as paid. Please check the invoice manually.', 'btcpay-greenfield-for-woocommerce'),
 							$webhookData->invoiceId,
 							$invoiceStatus,

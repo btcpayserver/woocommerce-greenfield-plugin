@@ -23,6 +23,25 @@ git clone git@github.com:btcpayserver/woocommerce-greenfield-plugin.git
 composer install
 ```
 
+Build JavaScript assets and the translation template with Node.js 24 (24.15.0 or newer within 24.x), npm 11+, and WP-CLI installed:
+
+```sh
+npm ci
+npm run build
+```
+
+The development dependencies keep React on version 18 to match WordPress and the build tools' peer requirements. React is supplied by WordPress at runtime, not bundled with the plugin. The webpack CLI is managed by `@wordpress/scripts`.
+
+The release workflow runs this build before packaging. The installable ZIP includes the generated `assets/js/` files and Composer's `vendor/` directory; GitHub's automatic source archives do not.
+
+For DDEV, select Node.js 24 from the WordPress project root and restart the web container before building:
+
+```sh
+ddev config --nodejs-version=v24
+ddev restart
+ddev exec node --version
+```
+
 ### Contributing
 Feel free to open an issue to discuss a feature or provide a PR for any improvements or if you want to tackle a feature listed in the issues.
 

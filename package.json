@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "author": "BTCPay Server Team",
   "license": "MIT",
+  "engines": {
+    "node": "^24.15.0",
+    "npm": ">=11"
+  },
   "devDependencies": {
-    "@woocommerce/dependency-extraction-webpack-plugin": "^4.0.0",
-    "@wordpress/scripts": "^31.7.0",
-    "copy-webpack-plugin": "^12.0.2",
-    "cross-env": "^7.0.3",
-    "webpack-cli": "^5.1.4"
+    "@woocommerce/dependency-extraction-webpack-plugin": "^5.1.0",
+    "@wordpress/scripts": "^35.0.0",
+    "copy-webpack-plugin": "^14.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "scripts": {
     "start": "wp-scripts start",

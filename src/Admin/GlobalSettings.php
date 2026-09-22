@@ -123,7 +123,12 @@ class GlobalSettings extends \WC_Settings_Page {
 					'btcpay-greenfield-for-woocommerce'
 				),
 				'type' => 'title',
-				'desc' => sprintf( _x( 'This plugin version is %s and your PHP version is %s. Check out our <a href="https://docs.btcpayserver.org/WooCommerce/" target="_blank">installation instructions</a>. If you need assistance, please come on our <a href="https://chat.btcpayserver.org" target="_blank">chat</a>. Thank you for using BTCPay!', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), BTCPAYSERVER_VERSION, PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ),
+				'desc' => sprintf(
+					/* translators: 1: BTCPay plugin version, 2: Current PHP major and minor version. */
+					_x( 'This plugin version is %1$s and your PHP version is %2$s. Check out our <a href="https://docs.btcpayserver.org/WooCommerce/" target="_blank">installation instructions</a>. If you need assistance, please come on our <a href="https://chat.btcpayserver.org" target="_blank">chat</a>. Thank you for using BTCPay!', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+					BTCPAYSERVER_VERSION,
+					PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION
+				),
 				'id' => 'btcpay_gf_connection'
 			],
 			'url' => [
@@ -268,7 +273,11 @@ class GlobalSettings extends \WC_Settings_Page {
 				'title' => __( 'Debug Log', 'btcpay-greenfield-for-woocommerce' ),
 				'type' => 'checkbox',
 				'default' => 'no',
-				'desc' => sprintf( _x( 'Enable logging <a href="%s" class="button">View Logs</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ), Logger::getLogFileUrl()),
+				'desc' => sprintf(
+					/* translators: %s: URL of the WooCommerce log viewer. */
+					_x( 'Enable logging <a href="%s" class="button">View Logs</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+					Logger::getLogFileUrl()
+				),
 				'id' => 'btcpay_gf_debug'
 			],
 			'sectionend' => [
@@ -305,6 +314,7 @@ class GlobalSettings extends \WC_Settings_Page {
 
 				if ( ! $apiAuth->hasRequiredPermissions() ) {
 					$messagePermissionsError = sprintf(
+						/* translators: %s: Comma-separated list of required BTCPay API permissions. */
 						__( 'The provided API key does not match the required permissions. Please make sure the following permissions are are given: %s', 'btcpay-greenfield-for-woocommerce' ),
 						implode( ', ', GreenfieldApiAuthorization::REQUIRED_PERMISSIONS )
 					);
@@ -357,6 +367,7 @@ class GlobalSettings extends \WC_Settings_Page {
 						}
 					} catch (\Throwable $e) {
 						$messagePaymentMethodsCallError = sprintf(
+							/* translators: %s: Error message from the BTCPay API request. */
 							__('Exception loading wallet information (payment methods) from BTCPay Server: %s.', 'btcpay-greenfield-for-woocommerce'),
 							$e->getMessage()
 						);
@@ -366,6 +377,7 @@ class GlobalSettings extends \WC_Settings_Page {
 				}
 			} catch ( \Throwable $e ) {
 				$messageException = sprintf(
+					/* translators: %s: Error message from the BTCPay API request. */
 					__( 'Error fetching data for this API key from server. Please check if the key is valid. Error: %s', 'btcpay-greenfield-for-woocommerce' ),
 					$e->getMessage()
 				);

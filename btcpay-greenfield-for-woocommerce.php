@@ -137,6 +137,7 @@ class BTCPayServerWCPlugin {
 	public function notConfiguredNotification(): void {
 		if (!\BTCPayServer\WC\Helper\GreenfieldApiHelper::getConfig()) {
 			$message = sprintf(
+				/* translators: 1: Opening link to the plugin settings, 2: Closing link tag. */
 				esc_html__(
 					'Plugin not configured yet, please %1$sconfigure the plugin here%2$s',
 					'btcpay-greenfield-for-woocommerce'
@@ -155,7 +156,11 @@ class BTCPayServerWCPlugin {
 	public function dependenciesNotification() {
 		// Check PHP version.
 		if ( version_compare( PHP_VERSION, '8.0', '<' ) ) {
-			$versionMessage = sprintf( __( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 8.0+.', 'btcpay-greenfield-for-woocommerce' ), PHP_VERSION );
+			$versionMessage = sprintf(
+				/* translators: %s: Current PHP version. */
+				__( 'Your PHP version is %s but BTCPay Greenfield Payment plugin requires version 8.0+.', 'btcpay-greenfield-for-woocommerce' ),
+				PHP_VERSION
+			);
 			Notice::addNotice('error', $versionMessage);
 		}
 
@@ -188,6 +193,7 @@ class BTCPayServerWCPlugin {
 	public function submitReviewNotification() {
 		if (!get_option('btcpay_gf_review_dismissed_forever') && !get_transient('btcpay_gf_review_dismissed')) {
 			$reviewMessage = sprintf(
+				/* translators: 1: Opening review link, 2: Closing link tag, 3: Opening "Remind me later" button, 4: Closing button tag, 5: Opening "Stop reminding me forever" button, 6: Closing button tag. */
 				__( 'Thank you for using BTCPay for WooCommerce! If you like the plugin, we would love if you %1$sleave us a review%2$s. %3$sRemind me later%4$s %5$sStop reminding me forever!%6$s', 'btcpay-greenfield-for-woocommerce' ),
 				'<a href="https://wordpress.org/support/plugin/btcpay-greenfield-for-woocommerce/reviews/?filter=5#new-post" target="_blank">',
 				'</a>',

@@ -97,6 +97,9 @@ Depending on your business model and store settings, you may want to fine tune [
 
 == Frequently Asked Questions ==
 
+Q: Why are there no fees?
+A: We don't process your payments so we can't charge any fees. You need to run your own BTCPay Server (or use a 3rd party host). BTCPay Server enables you to process the payments yourself without any middlemen. For more information look at our website [btcpayserver.org](https://btcpayserver.org).
+
 You'll find extensive documentation and answers to many of your questions on [BTCPay for WooCommerce V2 docs](https://docs.btcpayserver.org/WooCommerce) and on [BTCPay for WooCommerce integrations FAQ](https://docs.btcpayserver.org/FAQ/Integrations/#woocommerce-faq).
 
 == Screenshots ==
