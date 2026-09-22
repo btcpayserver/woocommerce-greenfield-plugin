@@ -6,9 +6,13 @@ jobs:
   tag:
     name: New release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install Composer dependencies
         uses: php-actions/composer@v6
@@ -19,39 +23,62 @@ jobs:
 
       - name: Install WP-CLI
         run: |
-          curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          curl -fsSLO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
           chmod +x wp-cli.phar
           sudo mv wp-cli.phar /usr/local/bin/wp
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
+          check-latest: true
+          package-manager-cache: false
 
       - name: Set Execute Permissions for build_i18n.sh
         run: chmod +x bin/build_i18n.sh
 
       - name: Build assets and translation files
         run: |
-          npm install
+          npm ci
+          npm run check-engines
           npm run build
 
-      - name: WordPress Plugin Deploy
-        id: deploy
+      - name: Verify built release files
+        run: |
+          test -s vendor/autoload.php
+          test -s assets/js/frontend/blocks.js
+          test -s assets/js/frontend/blocks.asset.php
+          test -s assets/js/frontend/modalCheckout.js
+          test -s assets/js/frontend/blocksModalCheckout.js
+          test -s assets/js/backend/gatewayIconMedia.js
+          test -s languages/btcpay-greenfield-for-woocommerce.pot
+
+      # Include generated assets and vendor files, even though Git ignores them.
+      - name: Package built plugin ZIP
+        id: package
+        env:
+          PLUGIN_SLUG: btcpay-greenfield-for-woocommerce
+        run: |
+          package_dir="$(mktemp -d)"
+          mkdir "$package_dir/$PLUGIN_SLUG"
+          rsync -a --exclude-from=.distignore ./ "$package_dir/$PLUGIN_SLUG/"
+          (cd "$package_dir" && zip -qr "$GITHUB_WORKSPACE/$PLUGIN_SLUG.zip" "$PLUGIN_SLUG")
+          echo "zip-path=$GITHUB_WORKSPACE/$PLUGIN_SLUG.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to WordPress.org
         uses: 10up/action-wordpress-plugin-deploy@stable
-        with:
-          generate-zip: true
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: btcpay-greenfield-for-woocommerce
 
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
+      - name: Upload built plugin ZIP to GitHub release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ steps.deploy.outputs.zip-path }}
-          asset_name: btcpay-greenfield-for-woocommerce.zip
-          asset_content_type: application/zip
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_ZIP: ${{ steps.package.outputs.zip-path }}
+        run: |
+          test -s "$RELEASE_ZIP"
+          unzip -tq "$RELEASE_ZIP"
+          gh release upload "$RELEASE_TAG" "$RELEASE_ZIP"
