@@ -14,7 +14,8 @@ final class OrderReturn {
 	private const QUERY_ARG = 'btcpaygf-return';
 	private const REFERENCE_HASH_META_KEY = '_btcpay_return_reference_hash';
 	private const REFERENCE_EXPIRY_META_KEY = '_btcpay_return_reference_expires';
-	private const REFERENCE_LIFETIME = 5 * 60 * 60;
+	private const GUEST_ORDERS_SESSION_KEY = 'btcpaygf_return_orders';
+	private const REFERENCE_LIFETIME = 24 * 60 * 60;
 
 	/**
 	 * Register the frontend return handler before canonical redirects run.
@@ -32,6 +33,7 @@ final class OrderReturn {
 		$order->update_meta_data( self::REFERENCE_HASH_META_KEY, hash( 'sha256', $reference ) );
 		$order->update_meta_data( self::REFERENCE_EXPIRY_META_KEY, time() + self::REFERENCE_LIFETIME );
 		$order->save();
+		self::rememberGuestOrder( $order );
 
 		return add_query_arg( self::QUERY_ARG, $reference, home_url( '/' ) );
 	}
@@ -51,7 +53,7 @@ final class OrderReturn {
 			: '';
 
 		if ( ! preg_match( '/\A[a-f0-9]{64}\z/D', $reference ) ) {
-			self::notFound();
+			self::unavailable();
 		}
 
 		$referenceHash = hash( 'sha256', $reference );
@@ -68,17 +70,26 @@ final class OrderReturn {
 		if (
 			! $order instanceof \WC_Order
 			|| ! hash_equals( (string) $order->get_meta( self::REFERENCE_HASH_META_KEY ), $referenceHash )
-			|| (int) $order->get_meta( self::REFERENCE_EXPIRY_META_KEY ) <= time()
 			|| strpos( $order->get_payment_method(), 'btcpaygf_' ) !== 0
-			|| ! self::currentCustomerOwnsOrder( $order )
 		) {
-			self::notFound();
+			self::unavailable();
 		}
 
-		// Consume the reference only after authorization so probes cannot invalidate it.
-		$order->delete_meta_data( self::REFERENCE_HASH_META_KEY );
-		$order->delete_meta_data( self::REFERENCE_EXPIRY_META_KEY );
-		$order->save();
+		if ( (int) $order->get_meta( self::REFERENCE_EXPIRY_META_KEY ) <= time() ) {
+			// Expiry is enforced on every request; remove expired metadata when revisited.
+			$order->delete_meta_data( self::REFERENCE_HASH_META_KEY );
+			$order->delete_meta_data( self::REFERENCE_EXPIRY_META_KEY );
+			$order->save();
+			self::unavailable();
+		}
+
+		if ( ! self::currentCustomerOwnsOrder( $order ) ) {
+			self::unavailable();
+		}
+
+		// Keep guest access after WooCommerce clears the checkout session markers.
+		// This also covers unexpired references created before the plugin update.
+		self::rememberGuestOrder( $order );
 
 		wp_safe_redirect( $order->get_checkout_order_received_url() );
 		exit;
@@ -99,8 +110,9 @@ final class OrderReturn {
 		}
 
 		$orderId = $order->get_id();
+		$guestOrders = (array) $session->get( self::GUEST_ORDERS_SESSION_KEY, [] );
 
-		return in_array(
+		return (int) ( $guestOrders[ $orderId ] ?? 0 ) > time() || in_array(
 			$orderId,
 			[
 				absint( $session->get( 'store_api_draft_order', 0 ) ),
@@ -111,13 +123,42 @@ final class OrderReturn {
 	}
 
 	/**
-	 * Return the same response for invalid, expired, and unauthorized references.
+	 * Remember only verified guest orders, until their original reference expiry.
 	 */
-	private static function notFound(): void {
+	private static function rememberGuestOrder( \WC_Order $order ): void {
+		if ( (int) $order->get_customer_id() !== 0 || ! self::currentCustomerOwnsOrder( $order ) ) {
+			return;
+		}
+
+		$session = WC()->session;
+		$guestOrders = array_filter(
+			(array) $session->get( self::GUEST_ORDERS_SESSION_KEY, [] ),
+			static fn( $expires ) => (int) $expires > time()
+		);
+		$guestOrders[ $order->get_id() ] = (int) $order->get_meta( self::REFERENCE_EXPIRY_META_KEY );
+		$session->set( self::GUEST_ORDERS_SESSION_KEY, $guestOrders );
+	}
+
+	/**
+	 * Give the same fallback for invalid, expired, and unauthorized references.
+	 */
+	private static function unavailable(): void {
+		if ( is_user_logged_in() ) {
+			wp_safe_redirect( wc_get_account_endpoint_url( 'orders' ) );
+			exit;
+		}
+
+		$title = esc_html__( 'Order information', 'btcpay-greenfield-for-woocommerce' );
 		wp_die(
-			esc_html__( 'Not found.', 'btcpay-greenfield-for-woocommerce' ),
-			'',
-			[ 'response' => 404 ]
+			'<h1>' . $title . '</h1><p>'
+			. esc_html__( 'This link has expired or cannot be opened in this browser. If you have an account, please log in to view your orders. If you checked out as a guest, please refer to your order confirmation email or contact the store for help.', 'btcpay-greenfield-for-woocommerce' )
+			. '</p>',
+			$title,
+			[
+				'response'  => 200,
+				'link_url'  => wc_get_page_permalink( 'myaccount' ),
+				'link_text' => esc_html__( 'Log in to your account', 'btcpay-greenfield-for-woocommerce' ),
+			]
 		);
 		exit;
 	}
