@@ -33,6 +33,8 @@ Amount changes, payment method changes, finite subscriptions, lifetime plans and
 
 Checkout saves the store, offering, plan and checkout IDs on the WooCommerce objects. It reuses an existing checkout until expiry, including a checkout whose plan has already started. An API failure while reading that checkout stops the retry instead of creating another one. The return link uses the same temporary, customer-authorized `OrderReturn` flow as regular invoices; WooCommerce order keys are not sent to BTCPay.
 
+Subscriptions created by the earlier `subs` implementation have no saved store ID. On their next webhook, status action or checkout retry, the integration reads the original saved plan checkout and verifies its store, offering, plan and customer against the local records before adding the missing binding. Renewal cursors and reminder deduplication keys are retained. Conflicting identities or checkouts without a verifiable subscriber require manual reconciliation; the webhook payload alone cannot establish the binding. Temporary checkout lookup failures remain retryable.
+
 The registered subscription events are:
 
 ```
@@ -68,6 +70,8 @@ Filters:
 - `btcpay_gf_subscription_portal_email_body`: HTML body, context, Woo subscription, subscriber payload, portal URL.
 
 These are WooCommerce-styled emails sent through its mailer, without a separate configurable WooCommerce email class.
+
+With debug logging enabled, mail success and failure include the event, subscription ID and reminder type. Logs do not include recipient addresses or portal access URLs.
 
 ## API review — 2026-09-30
 

@@ -171,6 +171,97 @@ $tests['first webhook binds only to the locally-created checkout'] = function ()
 	expect($gateway->call('subscriberMatchesSubscription', $subscription, $subscriber), true, 'Original checkout binding');
 	expect($subscription->get_meta('BTCPay_subscriber_id'), 'customer', 'Customer persisted');
 };
+$tests['legacy subscriptions recover their store binding from the original checkout'] = function () {
+	[$gateway, $order, $subscription, $plan, $subscriber, $checkout] = fixture();
+	unset($order->meta['BTCPay_store_id'], $subscription->meta['BTCPay_store_id']);
+	$order->meta['BTCPay_plan_checkout_id'] = 'checkout';
+	$subscription->meta['BTCPay_subscriber_id'] = 'customer';
+	$subscription->meta['BTCPay_last_renewal_period_end'] = 123;
+	$subscription->meta['BTCPay_subscription_portal_email_payment_reminder'] = 'already-sent';
+	$gateway->http->responses = [[200, $checkout]];
+	expect($gateway->call('subscriberMatchesSubscription', $subscription, $subscriber), true, 'Legacy binding verified');
+	expect($order->get_meta('BTCPay_store_id'), 'store', 'Parent store migrated');
+	expect($subscription->get_meta('BTCPay_store_id'), 'store', 'Subscription store migrated');
+	expect($subscription->get_meta('BTCPay_last_renewal_period_end'), 123, 'Renewal cursor retained');
+	expect($subscription->get_meta('BTCPay_subscription_portal_email_payment_reminder'), 'already-sent', 'Mail deduplication retained');
+	expect(count($gateway->http->requests), 1, 'Original checkout verified once');
+};
+$tests['legacy status actions recover a verified customer without relying on email'] = function () {
+	[$gateway, $order, $subscription, $plan, $subscriber, $checkout] = fixture();
+	unset($order->meta['BTCPay_store_id'], $subscription->meta['BTCPay_store_id']);
+	$order->meta['BTCPay_plan_checkout_id'] = 'checkout';
+	$gateway->http->responses = [[200, $checkout]];
+	expect($gateway->call('getBtcpaySubscriberControlData', $subscription), ['offering_id' => 'off', 'customer_selector' => 'customer'], 'Verified legacy control data');
+};
+$tests['legacy webhook continues renewal processing after verifying its checkout'] = function () {
+	[$gateway, $order, $subscription, $plan, $subscriber, $checkout] = fixture();
+	unset($order->meta['BTCPay_store_id'], $subscription->meta['BTCPay_store_id']);
+	$order->meta['BTCPay_plan_checkout_id'] = 'checkout';
+	$order->paid = true;
+	$subscription->status = 'active';
+	$subscription->meta['BTCPay_subscriber_id'] = 'customer';
+	$subscription->meta['BTCPay_last_renewal_period_end'] = $subscriber->periodEnd - 86400;
+	$gateway->http->responses = [[200, $checkout], [200, $subscriber]];
+	$event = (object) ['type' => 'SubscriberActivated', 'storeId' => 'store', 'subscriber' => $subscriber];
+	$gateway->call('processSubscriptionWebhook', $event);
+	expect($GLOBALS['renewal_count'], 1, 'Legacy renewal recorded');
+	expect($subscription->get_meta('BTCPay_last_renewal_period_end'), $subscriber->periodEnd, 'Cursor advanced');
+	$gateway->http->responses = [[200, $subscriber]];
+	$gateway->call('processSubscriptionWebhook', $event);
+	expect($GLOBALS['renewal_count'], 1, 'Redelivery does not duplicate renewal');
+};
+$tests['legacy checkout retry verifies and reuses the saved checkout'] = function () {
+	[$gateway, $order, $subscription, $plan, $subscriber, $checkout] = fixture();
+	unset($order->meta['BTCPay_store_id'], $subscription->meta['BTCPay_store_id']);
+	$order->meta['BTCPay_plan_checkout_id'] = 'checkout';
+	$gateway->http->responses = [[200, $checkout]];
+	expect($gateway->call('getReusablePlanCheckout', $order)->getId(), 'checkout', 'Legacy checkout reused');
+	expect($subscription->get_meta('BTCPay_store_id'), 'store', 'Binding recovered');
+	expect(count($gateway->http->requests), 1, 'No duplicate checkout request');
+};
+$tests['legacy binding refuses foreign or incomplete checkout identities'] = function () {
+	$changes = [
+		fn(&$c) => $c['subscriber']['offering']['storeId'] = 'other',
+		fn(&$c) => $c['subscriber']['offering']['id'] = 'other',
+		fn(&$c) => $c['subscriber']['plan']['id'] = 'other',
+		fn(&$c) => $c['subscriber']['customer']['id'] = 'other',
+		fn(&$c) => $c['subscriber'] = null,
+		fn(&$c) => $c['id'] = 'other',
+	];
+	foreach ($changes as $change) {
+		[$gateway, $order, $subscription, $plan, $subscriber, $checkout] = fixture();
+		unset($order->meta['BTCPay_store_id'], $subscription->meta['BTCPay_store_id']);
+		$order->meta['BTCPay_plan_checkout_id'] = 'checkout';
+		$subscription->meta['BTCPay_subscriber_id'] = 'customer';
+		$change($checkout);
+		$gateway->http->responses = [[200, $checkout]];
+		expect($gateway->call('subscriberMatchesSubscription', $subscription, $subscriber), false, 'Unverified binding refused');
+		expect($subscription->get_meta('BTCPay_store_id'), '', 'Subscription unchanged');
+		expect($order->get_meta('BTCPay_store_id'), '', 'Parent unchanged');
+	}
+};
+$tests['legacy binding never overwrites conflicting local associations'] = function () {
+	foreach (['BTCPay_store_id', 'BTCPay_offering_id', 'BTCPay_plan_id', 'BTCPay_subscriber_id'] as $key) {
+		[$gateway, $order, $subscription, $plan, $subscriber, $checkout] = fixture();
+		unset($order->meta['BTCPay_store_id'], $subscription->meta['BTCPay_store_id']);
+		$order->meta['BTCPay_plan_checkout_id'] = 'checkout';
+		$order->meta[$key] = 'other';
+		$gateway->http->responses = [[200, $checkout]];
+		expect($gateway->call('subscriberMatchesSubscription', $subscription, $subscriber), false, 'Conflicting parent binding refused');
+		expect($subscription->get_meta('BTCPay_store_id'), '', 'Subscription unchanged');
+		expect($order->get_meta($key), 'other', 'Conflicting metadata retained');
+	}
+};
+$tests['legacy binding verification failures remain retryable'] = function () {
+	[$gateway, $order, $subscription, $plan, $subscriber, $checkout] = fixture();
+	unset($order->meta['BTCPay_store_id'], $subscription->meta['BTCPay_store_id']);
+	$order->meta['BTCPay_plan_checkout_id'] = 'checkout';
+	$gateway->http->responses = [[503, ['code' => 'unavailable', 'message' => 'Retry']]];
+	$event = (object) ['type' => 'SubscriberActivated', 'storeId' => 'store', 'subscriber' => $subscriber];
+	expectThrows(fn() => $gateway->call('processSubscriptionWebhook', $event), 'Unverified legacy event must be retried');
+	expect($subscription->get_meta('BTCPay_store_id'), '', 'Failed verification must not bind');
+	expect($GLOBALS['wpdb']->locked, false, 'Failed migration releases lock');
+};
 $tests['grace and trial dates never create paid renewals'] = function () {
 	[$gateway, $order, $subscription, $plan, $subscriber] = fixture();
 	$subscription->meta['BTCPay_last_renewal_period_end'] = 10;

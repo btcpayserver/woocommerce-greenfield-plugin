@@ -252,13 +252,70 @@ trait SubscriptionGateway {
 	}
 
 	protected function getBtcpaySubscriberControlData( \WC_Subscription $subscription ): array {
-		if ( $subscription->get_meta( 'BTCPay_store_id' ) !== $this->apiHelper->storeId ) {
+		try {
+			if ( ! $this->ensureBtcpaySubscriptionStore( $subscription ) ) {
+				return [];
+			}
+		} catch ( \Throwable $e ) {
+			Logger::debug( __METHOD__ . ': failed to verify legacy subscription checkout: ' . $e->getMessage() );
 			return [];
 		}
 		return [
 			'offering_id'       => $this->getBtcpaySubscriptionOfferingId( $subscription ),
 			'customer_selector' => $this->getBtcpaySubscriptionCustomerSelector( $subscription ),
 		];
+	}
+
+	/** Recover pre-store-binding subscriptions only through their saved checkout. */
+	protected function ensureBtcpaySubscriptionStore( \WC_Subscription $subscription, ?\BTCPayServer\Result\PlanCheckout $checkout = null ): bool {
+		$storeId = (string) $this->apiHelper->storeId;
+		$savedStoreId = (string) $subscription->get_meta( 'BTCPay_store_id' );
+		if ( $storeId === '' ) {
+			return false;
+		}
+		if ( $savedStoreId !== '' && ( $savedStoreId !== $storeId || $checkout === null ) ) {
+			return $savedStoreId === $storeId;
+		}
+		$order = wc_get_order( $subscription->get_parent_id() );
+		if ( ! $order || ! $this->subscriptionUsesThisGateway( $subscription ) || $order->get_payment_method() !== $subscription->get_payment_method() ) {
+			return false;
+		}
+		$checkoutId = (string) $order->get_meta( 'BTCPay_plan_checkout_id' );
+		$orderStoreId = (string) $order->get_meta( 'BTCPay_store_id' );
+		if ( $checkoutId === '' || ( $orderStoreId !== '' && $orderStoreId !== $storeId ) ) {
+			return false;
+		}
+		foreach ( [ 'BTCPay_offering_id', 'BTCPay_plan_id' ] as $key ) {
+			if ( $subscription->get_meta( $key ) === '' || $subscription->get_meta( $key ) !== $order->get_meta( $key ) ) {
+				return false;
+			}
+		}
+
+		// Use the API response to the locally saved checkout ID, never the webhook payload.
+		// Let lookup failures propagate so webhook deliveries can be retried.
+		$checkout = $checkout ?? $this->subscriptionsClient()->getPlanCheckout( $checkoutId );
+		$subscriber = $checkout->getSubscriber();
+		$data = $subscriber ? $subscriber->getData() : [];
+		$customerId = (string) ( $data['customer']['id'] ?? '' );
+		if ( $checkout->getId() !== $checkoutId || $customerId === ''
+			|| ( $data['offering']['storeId'] ?? null ) !== $storeId
+			|| ( $data['offering']['id'] ?? null ) !== $subscription->get_meta( 'BTCPay_offering_id' )
+			|| ( $data['plan']['id'] ?? null ) !== $subscription->get_meta( 'BTCPay_plan_id' ) ) {
+			return false;
+		}
+		foreach ( [ $order, $subscription ] as $object ) {
+			$knownId = (string) $object->get_meta( 'BTCPay_subscriber_id' );
+			if ( $knownId !== '' && ! hash_equals( $knownId, $customerId ) ) {
+				return false;
+			}
+		}
+		foreach ( [ $order, $subscription ] as $object ) {
+			$object->update_meta_data( 'BTCPay_store_id', $storeId );
+			$object->update_meta_data( 'BTCPay_subscriber_id', $customerId );
+			$object->save();
+		}
+		Logger::debug( __METHOD__ . ': verified legacy subscription store binding. Subscription ID: ' . $subscription->get_id() );
+		return true;
 	}
 
 	protected function getBtcpaySubscriptionOfferingId( \WC_Subscription $subscription ): ?string {
@@ -333,7 +390,7 @@ trait SubscriptionGateway {
 	}
 
 	protected function subscriberMatchesSubscription( \WC_Subscription $subscription, \stdClass $subscriber ): bool {
-		if ( $subscription->get_meta( 'BTCPay_store_id' ) !== $this->apiHelper->storeId
+		if ( ! $this->ensureBtcpaySubscriptionStore( $subscription )
 			|| ( $subscriber->offering->storeId ?? null ) !== $this->apiHelper->storeId
 			|| ( $subscriber->offering->id ?? null ) !== $subscription->get_meta( 'BTCPay_offering_id' )
 			|| ( $subscriber->plan->id ?? null ) !== $subscription->get_meta( 'BTCPay_plan_id' ) ) {
@@ -415,6 +472,14 @@ trait SubscriptionGateway {
 	protected function reconcileWooSubscriptionFromBtcpaySubscriber( \WC_Subscription $subscription, \stdClass $subscriber, string $source ): bool {
 		$this->storeBtcpaySubscriberMetadata( $subscription, $subscriber );
 		if ( $subscription->has_status( [ 'pending-cancel', 'cancelled' ] ) ) {
+			Logger::debug(
+				sprintf(
+					'%s: skipped BTCPay subscriber status reconciliation because WooCommerce subscription is pending cancellation or cancelled. Source: %s. Subscription ID: %d.',
+					__METHOD__,
+					$source,
+					$subscription->get_id()
+				)
+			);
 			return true;
 		}
 		if ( $this->btcpaySubscriberIsActive( $subscriber ) ) {
@@ -728,10 +793,17 @@ trait SubscriptionGateway {
 		if ( $id === '' ) {
 			return null;
 		}
-		if ( $order->get_meta( 'BTCPay_store_id' ) !== $this->apiHelper->storeId ) {
+		$storeId = (string) $order->get_meta( 'BTCPay_store_id' );
+		if ( $storeId !== '' && $storeId !== $this->apiHelper->storeId ) {
 			throw new \RuntimeException( 'The saved checkout belongs to a different BTCPay store.' );
 		}
 		$checkout = $this->subscriptionsClient()->getPlanCheckout( $id );
+		if ( $storeId === '' ) {
+			$subscription = $this->getSubscriptionForOrder( $order );
+			if ( ! $subscription || ! $this->ensureBtcpaySubscriptionStore( $subscription, $checkout ) ) {
+				throw new \RuntimeException( 'Could not verify the store binding of the legacy BTCPay checkout.' );
+			}
+		}
 		return $checkout->isPlanStarted() || ! $checkout->isExpired() ? $checkout : null;
 	}
 

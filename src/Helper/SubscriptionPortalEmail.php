@@ -33,7 +33,7 @@ class SubscriptionPortalEmail {
 		if ( $subscription->has_status( [ 'pending-cancel', 'cancelled' ] ) ) {
 			Logger::debug(
 				sprintf(
-					'%s: skipped subscription portal email because WooCommerce subscription is pending cancellation. Event: %s. Subscription ID: %d.',
+					'%s: skipped subscription portal email because WooCommerce subscription is pending cancellation or cancelled. Event: %s. Subscription ID: %d.',
 					__METHOD__,
 					(string) ( $webhookData->type ?? '' ),
 					$subscription->get_id()
@@ -69,6 +69,15 @@ class SubscriptionPortalEmail {
 
 		$sent = $this->sendEmail( $subscription, $subscriber, $recipient, $portalSession['url'], $context );
 		if ( ! $sent ) {
+			Logger::debug(
+				sprintf(
+					'%s: failed to send subscription portal email. Event: %s. Subscription ID: %d. Email type: %s.',
+					__METHOD__,
+					(string) ( $webhookData->type ?? '' ),
+					$subscription->get_id(),
+					$context['slug']
+				)
+			);
 			throw new \RuntimeException( 'Failed to send BTCPay subscription portal email.' );
 		}
 
@@ -77,6 +86,17 @@ class SubscriptionPortalEmail {
 			$subscription->update_meta_data( self::META_PORTAL_EXPIRATION_PREFIX . $context['slug'], (string) $portalSession['expiration'] );
 		}
 		$subscription->save();
+
+		Logger::debug(
+			sprintf(
+				'%s: sent subscription portal email. Event: %s. Subscription ID: %d. Email type: %s. Dedupe key: %s.',
+				__METHOD__,
+				(string) ( $webhookData->type ?? '' ),
+				$subscription->get_id(),
+				$context['slug'],
+				$dedupeKey
+			)
+		);
 
 		$this->addSubscriptionNote(
 			$subscription,
