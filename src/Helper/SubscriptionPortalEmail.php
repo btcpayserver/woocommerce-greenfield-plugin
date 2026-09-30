@@ -9,13 +9,14 @@ use BTCPayServer\Client\Subscriptions;
 class SubscriptionPortalEmail {
 	private const DEFAULT_PORTAL_DURATION_MINUTES = 10080;
 	private const META_LAST_SENT_PREFIX = 'BTCPay_subscription_portal_email_';
-	private const META_PORTAL_URL_PREFIX = 'BTCPay_subscription_portal_url_';
 	private const META_PORTAL_EXPIRATION_PREFIX = 'BTCPay_subscription_portal_expires_';
 
 	private GreenfieldApiHelper $apiHelper;
+	private Subscriptions $client;
 
-	public function __construct( GreenfieldApiHelper $apiHelper ) {
+	public function __construct( GreenfieldApiHelper $apiHelper, ?Subscriptions $client = null ) {
 		$this->apiHelper = $apiHelper;
+		$this->client = $client ?? new Subscriptions( $apiHelper->url, $apiHelper->apiKey );
 	}
 
 	public function maybeSendForWebhook(
@@ -29,7 +30,7 @@ class SubscriptionPortalEmail {
 			return false;
 		}
 
-		if ( $subscription->has_status( 'pending-cancel' ) ) {
+		if ( $subscription->has_status( [ 'pending-cancel', 'cancelled' ] ) ) {
 			Logger::debug(
 				sprintf(
 					'%s: skipped subscription portal email because WooCommerce subscription is pending cancellation. Event: %s. Subscription ID: %d.',
@@ -68,36 +69,10 @@ class SubscriptionPortalEmail {
 
 		$sent = $this->sendEmail( $subscription, $subscriber, $recipient, $portalSession['url'], $context );
 		if ( ! $sent ) {
-			Logger::debug(
-				sprintf(
-					'%s: failed to send subscription portal email. Event: %s. Subscription ID: %d. Recipient: %s.',
-					__METHOD__,
-					(string) ( $webhookData->type ?? '' ),
-					$subscription->get_id(),
-					$recipient
-				)
-			);
-			$this->addSubscriptionNote(
-				$subscription,
-				__( 'Failed to send BTCPay subscription portal email.', 'btcpay-greenfield-for-woocommerce' )
-			);
-			return false;
+			throw new \RuntimeException( 'Failed to send BTCPay subscription portal email.' );
 		}
 
-		Logger::debug(
-			sprintf(
-				'%s: sent subscription portal email. Event: %s. Subscription ID: %d. Recipient: %s. Email type: %s. Dedupe key: %s.',
-				__METHOD__,
-				(string) ( $webhookData->type ?? '' ),
-				$subscription->get_id(),
-				$recipient,
-				$context['slug'],
-				$dedupeKey
-			)
-		);
-
 		$subscription->update_meta_data( $sentMetaKey, $dedupeKey );
-		$subscription->update_meta_data( self::META_PORTAL_URL_PREFIX . $context['slug'], $portalSession['url'] );
 		if ( ! empty( $portalSession['expiration'] ) ) {
 			$subscription->update_meta_data( self::META_PORTAL_EXPIRATION_PREFIX . $context['slug'], (string) $portalSession['expiration'] );
 		}
@@ -106,6 +81,7 @@ class SubscriptionPortalEmail {
 		$this->addSubscriptionNote(
 			$subscription,
 			sprintf(
+				/* translators: 1: Reminder type, 2: Recipient email address. */
 				__( 'Sent BTCPay subscription %1$s email to %2$s with a fresh portal session link.', 'btcpay-greenfield-for-woocommerce' ),
 				$context['note_label'],
 				$recipient
@@ -119,15 +95,23 @@ class SubscriptionPortalEmail {
 		$eventType = (string) ( $webhookData->type ?? '' );
 		$siteName = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 
-		if ( $eventType === 'PaymentReminder' ) {
+		// Ignore delayed reminders for a previous period or a suspended subscription.
+		$eventSubscriber = $webhookData->subscriber ?? null;
+		if ( ! empty( $subscriber->isSuspended ) || ( $eventSubscriber instanceof \stdClass && $this->getSubscriberDate( $eventSubscriber ) !== $this->getSubscriberDate( $subscriber ) ) ) {
+			return null;
+		}
+
+		if ( $eventType === 'PaymentReminder' && ! empty( $subscriber->isActive ) ) {
 			return [
 				'slug'       => 'payment_reminder',
 				'note_label' => __( 'payment reminder', 'btcpay-greenfield-for-woocommerce' ),
 				'subject'    => sprintf(
+					/* translators: %s: Store name. */
 					__( 'Payment reminder for your %s subscription', 'btcpay-greenfield-for-woocommerce' ),
 					$siteName
 				),
 				'heading'    => __( 'Subscription payment reminder', 'btcpay-greenfield-for-woocommerce' ),
+				/* translators: %s: Subscription product name. */
 				'intro_format' => __( 'Your subscription to %s needs credit before the next renewal.', 'btcpay-greenfield-for-woocommerce' ),
 				'action'     => __( 'Add credit in the subscription portal to keep the subscription active.', 'btcpay-greenfield-for-woocommerce' ),
 			];
@@ -138,24 +122,28 @@ class SubscriptionPortalEmail {
 				'slug'       => 'need_upgrade',
 				'note_label' => __( 'needs attention', 'btcpay-greenfield-for-woocommerce' ),
 				'subject'    => sprintf(
+					/* translators: %s: Store name. */
 					__( 'Action needed for your %s subscription', 'btcpay-greenfield-for-woocommerce' ),
 					$siteName
 				),
 				'heading'    => __( 'Subscription action needed', 'btcpay-greenfield-for-woocommerce' ),
+				/* translators: %s: Subscription product name. */
 				'intro_format' => __( 'Your subscription to %s needs attention before it can continue.', 'btcpay-greenfield-for-woocommerce' ),
 				'action'     => __( 'Open the subscription portal to review the subscription and add credit if needed.', 'btcpay-greenfield-for-woocommerce' ),
 			];
 		}
 
-		if ( $eventType === 'SubscriberDisabled' && strtolower( (string) ( $webhookData->reason ?? '' ) ) === 'expired' ) {
+		if ( $eventType === 'SubscriberDisabled' && strtolower( (string) ( $webhookData->reason ?? '' ) ) === 'expired' && ( $subscriber->phase ?? '' ) === 'Expired' && empty( $subscriber->isActive ) ) {
 			return [
 				'slug'       => 'expired',
 				'note_label' => __( 'expired subscription', 'btcpay-greenfield-for-woocommerce' ),
 				'subject'    => sprintf(
+					/* translators: %s: Store name. */
 					__( 'Your %s subscription has expired', 'btcpay-greenfield-for-woocommerce' ),
 					$siteName
 				),
 				'heading'    => __( 'Subscription expired', 'btcpay-greenfield-for-woocommerce' ),
+				/* translators: %s: Subscription product name. */
 				'intro_format' => __( 'Your subscription to %s has expired because the renewal credit was not available.', 'btcpay-greenfield-for-woocommerce' ),
 				'action'     => __( 'Open the subscription portal to add credit and reactivate the subscription.', 'btcpay-greenfield-for-woocommerce' ),
 			];
@@ -179,8 +167,7 @@ class SubscriptionPortalEmail {
 			$subscriberData
 		);
 
-		$client = new Subscriptions( $this->apiHelper->url, $this->apiHelper->apiKey );
-		$session = $client->createPortalSession(
+		$session = $this->client->createPortalSession(
 			$this->apiHelper->storeId,
 			(string) $offeringId,
 			(string) $customerSelector,
@@ -249,6 +236,7 @@ class SubscriptionPortalEmail {
 		if ( $nextPayment ) {
 			$body .= '<p>' . esc_html(
 				sprintf(
+					/* translators: 1: Subscription product name, 2: End date. */
 					__( 'Current subscription end date for %1$s: %2$s', 'btcpay-greenfield-for-woocommerce' ),
 					$subscriptionName,
 					$nextPayment
@@ -265,6 +253,7 @@ class SubscriptionPortalEmail {
 		if ( $subscriptionUrl ) {
 			$body .= '<p><a href="' . esc_url( $subscriptionUrl ) . '">' . esc_html(
 				sprintf(
+					/* translators: %s: Store name. */
 					__( 'View your %s subscriptions', 'btcpay-greenfield-for-woocommerce' ),
 					$siteName
 				)
@@ -318,13 +307,8 @@ class SubscriptionPortalEmail {
 	}
 
 	private function getSubscriberDate( \stdClass $subscriber ): ?int {
-		foreach ( [ 'periodEnd', 'trialEnd', 'gracePeriodEnd' ] as $field ) {
-			if ( ! empty( $subscriber->{$field} ) ) {
-				return (int) $subscriber->{$field};
-			}
-		}
-
-		return null;
+		$field = [ 'Trial' => 'trialEnd', 'Grace' => 'gracePeriodEnd' ][ $subscriber->phase ?? '' ] ?? 'periodEnd';
+		return ! empty( $subscriber->{$field} ) ? (int) $subscriber->{$field} : null;
 	}
 
 	private function formatTimestamp( ?int $timestamp ): ?string {
@@ -397,6 +381,7 @@ class SubscriptionPortalEmail {
 		$name = trim( $subscription->get_formatted_billing_full_name() );
 		if ( ! empty( $name ) ) {
 			return sprintf(
+				/* translators: %s: Customer name. */
 				__( 'Hello %s,', 'btcpay-greenfield-for-woocommerce' ),
 				$name
 			);

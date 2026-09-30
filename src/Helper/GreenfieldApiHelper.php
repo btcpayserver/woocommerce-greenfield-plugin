@@ -231,8 +231,6 @@ class GreenfieldApiHelper {
 		return false;
 	}
 
-
-
 	/**
 	 * Checks if a given invoice id has status of fully paid (settled) or paid late.
 	 */
@@ -280,21 +278,6 @@ class GreenfieldApiHelper {
 		return false;
 	}
 
-	public function apiKeyHasCreditSubscribersPermission(): bool {
-		if ($this->configured) {
-			$client = new ApiKey($this->url, $this->apiKey);
-			try {
-				$apiKey = $client->getCurrent();
-				$apiAuth = new GreenfieldApiAuthorization( $apiKey->getData() );
-				return $apiAuth->hasCreditSubscribersPermission();
-			} catch (\Throwable $e) {
-				Logger::debug('Exception while checking credit subscribers permission: ' . $e->getMessage());
-			}
-		}
-
-		return false;
-	}
-
 	public function apiKeyHasViewOfferingsPermission(): bool {
 		if ($this->configured) {
 			$client = new ApiKey($this->url, $this->apiKey);
@@ -304,21 +287,6 @@ class GreenfieldApiHelper {
 				return $apiAuth->hasViewOfferingsPermission();
 			} catch (\Throwable $e) {
 				Logger::debug('Exception while checking view offerings permission: ' . $e->getMessage());
-			}
-		}
-
-		return false;
-	}
-
-	public function apiKeyHasModifyOfferingsPermission(): bool {
-		if ($this->configured) {
-			$client = new ApiKey($this->url, $this->apiKey);
-			try {
-				$apiKey = $client->getCurrent();
-				$apiAuth = new GreenfieldApiAuthorization( $apiKey->getData() );
-				return $apiAuth->hasModifyOfferingsPermission();
-			} catch (\Throwable $e) {
-				Logger::debug('Exception while checking modify offerings permission: ' . $e->getMessage());
 			}
 		}
 

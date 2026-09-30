@@ -1,168 +1,113 @@
-# BTCPay Greenfield for WooCommerce - Subscription Support
+# Subscription support
 
-## Overview
+This integration maps a WooCommerce Subscriptions product to an existing BTCPay offering and plan. BTCPay owns the billing periods and credit balance. WooCommerce records verified activations and renewals and sends portal reminders.
 
-Subscription support maps WooCommerce subscription products to existing BTCPay subscription offerings/plans, sends customers through BTCPay plan checkout, and keeps WooCommerce subscription state in sync from BTCPay subscriber webhooks and WooCommerce status changes.
+## Setup
 
-BTCPay remains the source of truth for subscriber periods, credit balance, reminders, and subscription phase changes. WooCommerce records the order/subscription state, mirrors admin cancellation/suspension to BTCPay, and sends subscriber-facing reminder/recovery emails when a BTCPay webhook requires a portal link.
+1. Install WooCommerce Subscriptions and use the default BTCPay payment gateway.
+2. Update BTCPay Server to a current security release. The API review below used 2.4.4.
+3. Run `composer install` for a source checkout. The minimum Greenfield PHP client is **2.9.1**; 2.8.1 has no subscription client.
+4. Regenerate the API key with the normal checkout permissions plus `btcpay.store.canviewofferings` and `btcpay.store.canmanagesubscribers`, scoped to the selected store. The integration does not need permission to modify offerings or grant subscriber credit.
+5. Save the global BTCPay settings. Automatically managed webhooks are extended to include the subscription events. For manually managed webhooks, add the events listed below yourself.
+6. Under **WooCommerce → Settings → BTCPay Settings → Subscription Products**, map the product to an existing plan.
+7. Disable duplicate BTCPay subscription reminder email rules if WooCommerce will send those emails. Leave webhook delivery and automatic redelivery enabled.
 
-## Supported Flows
+## Supported purchases
 
-### Product Mapping
+- Exactly one simple subscription product, quantity one, using the default BTCPay gateway. Variable subscriptions and mixed carts are rejected.
+- An active, renewable BTCPay plan with an ongoing monthly, quarterly or yearly schedule that matches WooCommerce.
+- Matching currency, initial order total and recurring subscription total. Tax, shipping, signup fees and discounts must not make WooCommerce charge a different amount from the BTCPay plan.
+- Matching trials expressed in days or weeks. The first paid period after a trial creates a renewal order.
+- Redirect checkout for both classic and Blocks checkout, including when modal mode is enabled. Ordinary purchases retain modal checkout.
 
-Merchants configure mappings under WooCommerce > Settings > BTCPay Settings > Subscription Products:
+Amount changes, payment method changes, finite subscriptions, lifetime plans and separate BTCPay gateways are not supported for subscription purchases. Configure plans before taking orders; changing a plan or the connected BTCPay store requires manual reconciliation of existing subscriptions.
 
-- BTCPay offerings/plans are loaded from the Greenfield Subscriptions API.
-- WooCommerce subscription products can be mapped one-to-one to BTCPay plans.
-- The mapping UI warns when the WooCommerce product and BTCPay plan differ on currency, price, billing period/interval, or trial length.
-- One WooCommerce subscription product can only be mapped once.
+## Code layout
 
-### Customer Checkout
+- `src/Gateway/SubscriptionGateway.php`: checkout, identity verification, lifecycle synchronization and renewal recording. The main gateway uses this trait and dispatches subscription events to it.
+- `src/Helper/SubscriptionPortalEmail.php`: reminder content, expiring portal sessions and successful-delivery deduplication.
+- `src/Helper/SubscriptionLock.php`: database advisory locks for concurrent checkout retries and webhook deliveries. Locks are released when the database connection closes, including after a worker failure.
+- `src/Admin/GlobalSettings.php`: product mappings and configuration warnings.
 
-When an order contains a mapped subscription product, the gateway:
+## Checkout and webhook behavior
 
-- Resolves the BTCPay offering/plan from order/subscription metadata or the saved product mapping.
-- Creates a BTCPay plan checkout.
-- Reuses an existing non-expired, not-yet-started plan checkout for the order instead of creating duplicates.
-- Stores BTCPay metadata on the order and subscription.
-- Redirects the customer to BTCPay checkout.
+Checkout saves the store, offering, plan and checkout IDs on the WooCommerce objects. It reuses an existing checkout until expiry, including a checkout whose plan has already started. An API failure while reading that checkout stops the retry instead of creating another one. The return link uses the same temporary, customer-authorized `OrderReturn` flow as regular invoices; WooCommerce order keys are not sent to BTCPay.
 
-BTCPay subscriptions currently use redirect checkout. If modal checkout is enabled and subscription mappings exist, the admin settings page shows a warning. Regular non-subscription purchases can still use modal checkout.
+The registered subscription events are:
 
-### Webhooks and Renewal Recording
+```
+SubscriberCreated
+SubscriberCredited
+SubscriberCharged
+SubscriberActivated
+SubscriberPhaseChanged
+SubscriberDisabled
+PaymentReminder
+PlanStarted
+SubscriberNeedUpgrade
+```
 
-The registered webhook includes invoice events plus BTCPay subscription events:
+A webhook must pass signature verification and belong to the configured store. Subscriber metadata locates a candidate WooCommerce subscription; its saved store, offering, plan and customer must match. The first customer association is verified against the checkout created for that order. Billing email is not used as a fallback identity.
 
-- `SubscriberCreated`
-- `SubscriberCredited`
-- `SubscriberCharged`
-- `SubscriberActivated`
-- `SubscriberPhaseChanged`
-- `SubscriberDisabled`
-- `PaymentReminder`
-- `PlanStarted`
-- `SubscriberNeedUpgrade`
+Before changing status, the integration reads the current subscriber from BTCPay. A delayed disabled event cannot expire an active subscriber. Failed verification, renewal creation and mail delivery return a retryable HTTP error. Subscription invoice events do not complete orders independently of plan activation, and unrelated credit top-ups are not assigned to the last renewal order.
 
-Subscription webhooks locate the WooCommerce subscription through BTCPay subscriber metadata, order metadata, or stored subscriber id. The gateway stores subscriber metadata, updates WooCommerce next payment dates from BTCPay period/trial/grace dates, and records WooCommerce renewal orders when BTCPay advances the subscriber period.
+The gateway declares `gateway_scheduled_payments`, which tells WooCommerce that BTCPay manages billing. WooCommerce must not independently create a renewal and suspend the subscriber. Only an advance of a normal paid period creates a paid renewal; trial and grace dates do not. Renewal records have a subscription/period key, and duplicate deliveries resume or reuse the existing record. A renewal funded by existing credit need not have a new invoice ID.
 
-`PaymentReminder` is treated as a pre-renewal signal from BTCPay. BTCPay only sends it when the subscriber is missing credit for the upcoming renewal, so WooCommerce should not generate a separate checkout for that case. Instead, WooCommerce creates a subscriber portal session where the subscriber can add credit to the existing BTCPay subscription.
+WooCommerce cancellation and suspension are mirrored to BTCPay, and explicit reactivation unsuspends the subscriber. Pending cancellation remains pending until WooCommerce ends the prepaid term. Delayed webhooks do not reactivate cancelled subscriptions. API failures during a manual status change are recorded in subscription notes and require retrying the action after connectivity is restored.
 
-### Portal Reminder Emails
+## Portal reminders
 
-BTCPay subscription email rules do not currently expose a built-in subscriber portal URL placeholder. For WooCommerce-backed subscriptions, BTCPay email rules for subscription reminders should be disabled and the webhook events should remain enabled.
+WooCommerce creates a fresh portal session for `PaymentReminder`, `SubscriberNeedUpgrade`, and an expired `SubscriberDisabled` event. It ignores cancelled/suspended subscriptions, reminders for an older period and expired events when the subscriber has recovered.
 
-Operational setup:
+The portal lifetime defaults to seven days. Successful delivery is deduplicated by event, reason, phase and period date. The subscription stores the deduplication key and portal expiration, but does not retain the portal access URL.
 
-- Keep the BTCPay Greenfield webhook enabled for subscription events.
-- Disable BTCPay subscription email rules that would email the subscriber directly, especially `PaymentReminder`.
-- Let the WooCommerce plugin send the subscriber-facing email because it can create a fresh portal session and include the returned URL.
+Filters:
 
-The gateway sends WooCommerce-styled emails with a fresh BTCPay subscriber portal link for:
+- `btcpay_gf_subscription_portal_session_duration_minutes`: duration, subscriber payload, subscriber control data.
+- `btcpay_gf_subscription_portal_email_subject`: subject, context, Woo subscription, subscriber payload, portal URL.
+- `btcpay_gf_subscription_portal_email_body`: HTML body, context, Woo subscription, subscriber payload, portal URL.
 
-- `PaymentReminder`
-- `SubscriberNeedUpgrade`
-- `SubscriberDisabled` when the BTCPay reason is `Expired`
+These are WooCommerce-styled emails sent through its mailer, without a separate configurable WooCommerce email class.
 
-The gateway does not send a portal payment email for `SubscriberDisabled` with reason `Suspension`, because that usually reflects admin/customer cancellation or manual suspension rather than a recoverable payment issue.
+## API review — 2026-09-30
 
-For each email, the gateway creates a new BTCPay subscriber portal session through `POST /api/v1/subscriber-portal`. The request uses:
+The [current subscription controller](https://github.com/btcpayserver/btcpayserver/blob/ae3abbb/BTCPayServer/Plugins/Subscriptions/Controllers/GreenfieldOfferingController.cs) retains the routes used here:
 
-- `storeId` from the configured BTCPay store.
-- `offeringId` from the subscriber payload or stored subscription metadata.
-- `customerSelector` from the BTCPay customer id when available, falling back to the stored selector.
-- `durationMinutes` defaulting to `10080` minutes, which is seven days.
+| Operation | Route | Permission |
+| --- | --- | --- |
+| Read offerings/plans | `GET /api/v1/stores/{storeId}/offerings[/…]` | View offerings |
+| Read subscriber | `GET /api/v1/stores/{storeId}/offerings/{offeringId}/subscribers/{customerSelector}` | View offerings |
+| Suspend/reactivate | `POST …/subscribers/{customerSelector}/suspend` or `/unsuspend` | View offerings + manage subscribers |
+| Create plan checkout | `POST /api/v1/plan-checkout` | View offerings + manage subscribers for the store |
+| Read plan checkout | `GET /api/v1/plan-checkout/{checkoutId}` | Checkout identifier |
+| Create portal session | `POST /api/v1/subscriber-portal` | Manage subscribers for the store |
 
-The email includes the returned portal URL so the subscriber can add credit or recover the subscription. The recipient is the WooCommerce subscription billing email, with a fallback to the BTCPay subscriber customer identity `Email`/`email`.
+The [PHP client 2.9.1](https://github.com/btcpayserver/btcpayserver-greenfield-php/releases/tag/v2.9.1) implements these requests. No additional PHP library patch was identified for the routes used by this integration. The required upgrade is from the previously installed 2.8.1 to at least 2.9.1.
 
-The portal email content is intentionally minimal:
+The [2.4.2 security release](https://github.com/btcpayserver/btcpayserver/releases/tag/v2.4.2) restricts Basic authentication; the PHP client uses `Authorization: token …`. The master branch's POST-based API-key callback and protected order return handling are retained. Updating this plugin or its PHP dependency does not replace updating BTCPay Server itself.
 
-- The email explains why action is needed.
-- It shows the current BTCPay subscription date when BTCPay provides `periodEnd`, `trialEnd`, or `gracePeriodEnd`.
-- It includes a button and plaintext fallback link for the subscriber portal URL.
+Read-only checks against the configured test host returned server version **2.4.4**, successful API-key introspection, invoice listing, invoice details, invoice payment methods and webhook listing, and **403** for offerings. Its current key lacks the two subscription permissions. WooCommerce Subscriptions was not installed in the local WordPress instance, so authenticated subscription mutations and a complete purchase/renewal cycle were not exercised there.
 
-Available filters:
+## Validation
 
-- `btcpay_gf_subscription_portal_session_duration_minutes` changes the portal session lifetime. Arguments: default minutes, subscriber payload, subscriber control data.
-- `btcpay_gf_subscription_portal_email_subject` changes the email subject. Arguments: subject, context, Woo subscription, subscriber payload, portal URL.
-- `btcpay_gf_subscription_portal_email_body` changes the email HTML body before WooCommerce wraps/styles it. Arguments: body, context, Woo subscription, subscriber payload, portal URL.
+Run the isolated regression suite and build:
 
-Duplicate webhook deliveries are guarded per subscription, event type, phase/reason, and BTCPay period/trial/grace date.
+```sh
+composer install
+composer test
+npm ci
+npm run build
+```
 
-The duplicate guard stores one key per email kind:
+The suite uses the real PHP client with an in-memory HTTP transport and minimal WooCommerce doubles. It makes no network requests, sends no mail and writes no database records. It covers request payloads, protected return links, supported baskets, checkout reuse, association checks, current-state verification, renewal/trial/grace handling, duplicate deliveries and reminder failures. The 24 regression tests pass on PHP 8.3 and 8.4. The JavaScript and translation build, PHP syntax checks and Composer security audit pass; the audit reports no known advisories. A local WordPress smoke check confirms that ordinary checkout still exposes only products/refunds without WooCommerce Subscriptions. A real two-connection database check confirms lock contention and release. These tests do not replace WooCommerce Subscriptions integration testing.
 
-- `payment_reminder`
-- `need_upgrade`
-- `expired`
+Before merging, test with WooCommerce Subscriptions and a disposable BTCPay store:
 
-### Expiration Handling
+1. Purchase a matching plan through classic and Blocks checkout, with modal mode on and off. Repeat checkout and verify it reuses the plan checkout.
+2. Complete the payment and verify one paid parent order, the expected subscriber association and the next payment date. Repeat with a trial.
+3. Add credit through a reminder portal link, advance the billing period and verify exactly one renewal order. Redeliver the events, including a delayed disabled event.
+4. Simulate insufficient credit, grace and expiry. Verify that grace creates no paid renewal, recovery sends the correct portal link and suspension sends no recovery email.
+5. Cancel, suspend and reactivate from WooCommerce. Verify BTCPay state and the end of a pending cancellation.
+6. Repeat with HPOS enabled and disabled. Simulate an API or mail failure and verify redelivery recovers without duplicate renewals.
 
-WooCommerce remains responsible for scheduled expiration checks. Before WooCommerce expires a BTCPay-backed subscription, the gateway refreshes the BTCPay subscriber:
-
-- If BTCPay reports the subscriber is active with a future period end, WooCommerce expiry is skipped and the date is updated.
-- If BTCPay reports the subscriber is suspended, WooCommerce is moved to on-hold.
-- If BTCPay reports the subscriber is expired or no active BTCPay state is found, WooCommerce can expire the subscription.
-
-When BTCPay emits `SubscriberDisabled` with reason `Expired`, the gateway also sends the expired subscription portal email described above. This is a recovery email, not a new WooCommerce checkout. The subscriber should add credit through the BTCPay portal.
-
-### Cancellation, Suspension, and Reactivation
-
-WooCommerce status changes are mirrored to BTCPay:
-
-- WooCommerce `on-hold` suspends the BTCPay subscriber.
-- WooCommerce `cancelled` suspends the BTCPay subscriber.
-- WooCommerce `expired` reconciles with BTCPay first, then suspends when no active BTCPay renewal exists.
-- WooCommerce reactivation from on-hold/cancelled/expired unsuspends the BTCPay subscriber.
-
-The gateway intentionally does not delete BTCPay subscribers when WooCommerce cancels or expires a subscription.
-
-### Payment Method Changes
-
-Changing a subscription away from or through BTCPay is not declared as supported. BTCPay subscriptions are tied to BTCPay subscriber state, so the gateway supports subscription cancellation, suspension, and reactivation, but not amount changes, date changes, payment method changes, or WooCommerce gateway-scheduled renewal payments.
-
-## Stored Metadata
-
-Orders and subscriptions may store:
-
-- `BTCPay_offering_id`
-- `BTCPay_plan_id`
-- `BTCPay_plan_checkout_id`
-- `BTCPay_id`
-- `BTCPay_subscriber_id`
-- `BTCPay_subscriber_periodEnd`
-- `BTCPay_subscriber_trialEnd`
-- `BTCPay_subscriber_gracePeriodEnd`
-- `BTCPay_subscriber_phase`
-- `BTCPay_subscriber_isActive`
-- `BTCPay_subscriber_isSuspended`
-- `BTCPay_last_renewal_period_end`
-- `BTCPay_subscription_portal_email_*`
-- `BTCPay_subscription_portal_url_*`
-- `BTCPay_subscription_portal_expires_*`
-
-Portal email metadata is stored on the WooCommerce subscription for diagnostics and duplicate protection. The latest portal URL is not intended to be permanent because BTCPay portal sessions expire.
-
-## Testing Notes
-
-For end-to-end reminder testing:
-
-- Disable BTCPay subscription email rules for the relevant subscription events.
-- Confirm the WooCommerce BTCPay webhook includes `PaymentReminder`, `SubscriberDisabled`, and `SubscriberNeedUpgrade`.
-- Use a test subscriber with insufficient credit before renewal.
-- Trigger BTCPay's reminder timing, for example with BTCPay's subscription test-account time controls when available.
-- Confirm the WooCommerce subscription receives an order note saying the portal email was sent.
-- Confirm the received email contains a fresh `/subscriber-portal/ps_...` URL.
-- Redeliver the same webhook and confirm a duplicate email is not sent for the same event/date key.
-
-For expiry testing:
-
-- Let or move the BTCPay subscriber to expired.
-- Confirm WooCommerce moves the subscription to expired through the webhook/expiry reconciliation.
-- Confirm the expired subscription email contains a fresh portal URL.
-- Confirm admin/customer suspension does not send a portal recovery email.
-
-## Current Constraints
-
-- Only one mapped BTCPay subscription product is supported per order.
-- Variable subscription products are not supported by the current mapping UI.
-- The plugin sends simple WooCommerce-styled portal emails directly through the WooCommerce mailer. It does not currently register a separate configurable WooCommerce email class.
-- End-to-end behavior should be verified against a live BTCPay Server subscription app and WooCommerce Subscriptions install because renewal timing depends on BTCPay webhook timing and WooCommerce scheduled actions.
+Keep webhooks enabled: after a prolonged delivery outage, current subscriber state alone cannot reconstruct every historical credit-funded billing period. Reconcile missing historical renewals manually.

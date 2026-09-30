@@ -225,6 +225,9 @@ class BTCPayServerWCPlugin {
 			}
 
 			$permissions = array_merge(GreenfieldApiAuthorization::REQUIRED_PERMISSIONS, GreenfieldApiAuthorization::OPTIONAL_PERMISSIONS);
+			if ( ! class_exists( 'WC_Subscriptions' ) ) {
+				$permissions = array_values( array_diff( $permissions, [ 'btcpay.store.canviewofferings', 'btcpay.store.canmanagesubscribers' ] ) );
+			}
 
 			try {
 				$state = GreenfieldApiHelper::createApiSetupState($host);

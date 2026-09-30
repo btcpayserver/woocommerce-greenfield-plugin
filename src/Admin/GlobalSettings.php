@@ -604,6 +604,7 @@ class GlobalSettings extends \WC_Settings_Page {
 			echo '<table class="btcpay-subscription-mapping widefat striped">';
 			echo '<thead><tr>';
 			echo '<th colspan="2"><strong>' . esc_html( sprintf(
+				/* translators: %s: BTCPay offering name. */
 				__( 'Offering: %s', 'btcpay-greenfield-for-woocommerce' ),
 				$offeringLabel
 			) ) . '</strong></th>';
@@ -674,13 +675,17 @@ class GlobalSettings extends \WC_Settings_Page {
 
 	private function saveSubscriptionProducts(): void
 	{
-		if ( ! isset( $_POST['btcpay_gf_subscription_mappings_nonce'] )
-			|| ! wp_verify_nonce( $_POST['btcpay_gf_subscription_mappings_nonce'], 'btcpay_gf_subscription_mappings' )
+		if ( ! current_user_can( 'manage_woocommerce' ) || ! isset( $_POST['btcpay_gf_subscription_mappings_nonce'] )
+			|| ! is_string( $_POST['btcpay_gf_subscription_mappings_nonce'] )
+			|| ! wp_verify_nonce( wp_unslash( $_POST['btcpay_gf_subscription_mappings_nonce'] ), 'btcpay_gf_subscription_mappings' )
 		) {
 			return;
 		}
 
-		$rawMappings = $_POST['btcpay_mapping'] ?? [];
+		$rawMappings = wp_unslash( $_POST['btcpay_mapping'] ?? [] );
+		if ( ! is_array( $rawMappings ) ) {
+			return;
+		}
 		$mappings = [];
 		$usedProductIds = [];
 
@@ -692,8 +697,9 @@ class GlobalSettings extends \WC_Settings_Page {
 
 			foreach ( $plans as $planId => $productId ) {
 				$planId = sanitize_text_field( $planId );
-				$productId = absint( $productId );
-				if ( ! $productId ) {
+				$productId = is_scalar( $productId ) ? absint( $productId ) : 0;
+				$product = $productId ? wc_get_product( $productId ) : null;
+				if ( ! $product || ! $product->is_type( 'subscription' ) ) {
 					continue;
 				}
 
@@ -716,7 +722,7 @@ class GlobalSettings extends \WC_Settings_Page {
 
 	private function getOfferingsWithPlans(): array
 	{
-		$cacheKey = 'btcpay_gf_offerings';
+		$cacheKey = 'btcpay_gf_offerings_' . md5( $this->apiHelper->url . ':' . $this->apiHelper->storeId );
 		$cached = get_transient( $cacheKey );
 		if ( $cached !== false ) {
 			return $cached;
@@ -748,6 +754,7 @@ class GlobalSettings extends \WC_Settings_Page {
 		} catch ( \Throwable $e ) {
 			Logger::debug( 'Error fetching offerings: ' . $e->getMessage() );
 			Notice::addNotice( 'error', sprintf(
+				/* translators: %s: API error message. */
 				__( 'Could not fetch offerings from BTCPay Server: %s', 'btcpay-greenfield-for-woocommerce' ),
 				$e->getMessage()
 			) );
@@ -801,6 +808,7 @@ class GlobalSettings extends \WC_Settings_Page {
 			&& strtoupper( (string) $product['currency'] ) !== strtoupper( (string) $plan['currency'] )
 		) {
 			$warnings[] = sprintf(
+				/* translators: 1: WooCommerce currency, 2: BTCPay currency. */
 				__( 'Currency mismatch: WooCommerce uses %1$s, BTCPay uses %2$s.', 'btcpay-greenfield-for-woocommerce' ),
 				$product['currency'],
 				strtoupper( (string) $plan['currency'] )
@@ -808,9 +816,10 @@ class GlobalSettings extends \WC_Settings_Page {
 		}
 
 		if ( isset( $product['price'], $plan['price'] )
-			&& (string) wc_format_decimal( $product['price'] ) !== (string) wc_format_decimal( $plan['price'] )
+			&& bccomp( (string) $product['price'], (string) $plan['price'], 8 ) !== 0
 		) {
 			$warnings[] = sprintf(
+				/* translators: 1: WooCommerce price, 2: BTCPay price. */
 				__( 'Price mismatch: WooCommerce uses %1$s, BTCPay uses %2$s.', 'btcpay-greenfield-for-woocommerce' ),
 				$product['price'],
 				$plan['price']
@@ -826,6 +835,7 @@ class GlobalSettings extends \WC_Settings_Page {
 			)
 		) {
 			$warnings[] = sprintf(
+				/* translators: 1: WooCommerce schedule, 2: BTCPay schedule. */
 				__( 'Billing schedule mismatch: WooCommerce uses %1$s, BTCPay uses %2$s.', 'btcpay-greenfield-for-woocommerce' ),
 				$this->formatWooBillingSchedule( $product ),
 				$this->formatBtcpayBillingSchedule( $plan['recurring_type'] ?? '' )
@@ -836,6 +846,7 @@ class GlobalSettings extends \WC_Settings_Page {
 		$btcpayTrialDays = (int) ( $plan['trial_days'] ?? 0 );
 		if ( $wooTrialDays !== $btcpayTrialDays ) {
 			$warnings[] = sprintf(
+				/* translators: 1: WooCommerce trial days, 2: BTCPay trial days. */
 				__( 'Trial mismatch: WooCommerce uses %1$d days, BTCPay uses %2$d days.', 'btcpay-greenfield-for-woocommerce' ),
 				$wooTrialDays,
 				$btcpayTrialDays
@@ -873,12 +884,14 @@ class GlobalSettings extends \WC_Settings_Page {
 		$interval = max( 1, (int) ( $product['interval'] ?? 1 ) );
 		if ( $interval === 1 ) {
 			return sprintf(
+				/* translators: %s: Billing period, such as month. */
 				__( 'every %s', 'btcpay-greenfield-for-woocommerce' ),
 				$period
 			);
 		}
 
 		return sprintf(
+			/* translators: 1: Billing interval, 2: Billing period, such as month. */
 			__( 'every %1$d %2$ss', 'btcpay-greenfield-for-woocommerce' ),
 			$interval,
 			$period
