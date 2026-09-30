@@ -32,6 +32,7 @@ BTCPay Server for WooCommerce is a revolutionary, self-hosted, open-source payme
 * **Reporting and accounting** - CSV exports
 * **Advanced invoice management** and refunding integrated in the WooCommerce UI
 * **Real-time exchange price tracking** for correct payment amounts
+* **WooCommerce Subscriptions integration**: Map a simple subscription product to a matching BTCPay plan, record renewals and send subscription portal reminders.
 * **Versatile plugin system**:
     * Extend functionality according to your needs
     * Accept payments in altcoins through various plugins
@@ -101,6 +102,14 @@ Q: Why are there no fees?
 A: We don't process your payments so we can't charge any fees. You need to run your own BTCPay Server (or use a 3rd party host). BTCPay Server enables you to process the payments yourself without any middlemen. For more information look at our website [btcpayserver.org](https://btcpayserver.org).
 
 You'll find extensive documentation and answers to many of your questions on [BTCPay for WooCommerce V2 docs](https://docs.btcpayserver.org/WooCommerce) and on [BTCPay for WooCommerce integrations FAQ](https://docs.btcpayserver.org/FAQ/Integrations/#woocommerce-faq).
+
+= How do subscription payments work? =
+
+Install WooCommerce Subscriptions and use the default BTCPay gateway. Under WooCommerce > Settings > BTCPay Settings > Subscription Products, map a simple subscription product to an existing BTCPay offering and plan. Your API key needs the store-scoped View Offerings and Manage Subscribers permissions. Save the global BTCPay settings to update an automatically managed webhook; manually managed webhooks need the subscription events added on BTCPay Server.
+
+BTCPay manages the subscription credit balance and billing periods. Customers add credit through BTCPay checkout or a subscription portal link; WooCommerce records activations and renewals. Subscription purchases use redirect checkout, including when modal checkout is enabled.
+
+The integration supports one simple subscription product per order, quantity one, with matching prices, currency, trial and billing schedule. Variable subscriptions, mixed carts, separate BTCPay gateways and subscription payment method changes are not supported. See the [subscription setup and testing notes](https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/SUBSCRIPTION_SUPPORT.md) for details.
 
 == Screenshots ==
 

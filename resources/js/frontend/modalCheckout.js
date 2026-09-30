@@ -35,7 +35,7 @@ jQuery(function ($) {
 			//console.log('Received response when processing order: ');
 			//console.log(response);
 
-			if (response.invoiceId) {
+			if (response.invoiceId || (response.subscription && response.redirect)) {
 				responseData = response;
 			} else {
 				unblockElement('.woocommerce-checkout-payment');
@@ -168,6 +168,11 @@ jQuery(function ($) {
 
 		let responseData = processOrder();
 		if (responseData) {
+			if (responseData.subscription && responseData.redirect) {
+				window.location = responseData.redirect;
+				return false;
+			}
+
 			//console.log('Got invoice, opening modal.');
 			blockElement('.woocommerce-checkout-payment');
 			showBTCPayModal(responseData);

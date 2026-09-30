@@ -16,6 +16,8 @@ use BTCPayServer\WC\Helper\OrderReturn;
 use BTCPayServer\WC\Helper\OrderStates;
 
 abstract class AbstractGateway extends \WC_Payment_Gateway {
+	use SubscriptionGateway;
+
 	const ICON_MEDIA_OPTION = 'icon_media_id';
 	const DEFAULT_DESCRIPTION = 'You will be redirected to BTCPay to complete your purchase.';
 	public $tokenType;
@@ -51,8 +53,10 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Supported features.
 		$this->supports = [
 			'products',
-			'refunds'
+			'refunds',
 		];
+
+		$this->initSubscriptionSupport();
 	}
 
 	/**
@@ -140,6 +144,12 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$isModal = true;
 		}
 
+		// Subscription plans have their own checkout and billing lifecycle.
+		if ( $this->isSubscriptionOrder( $order ) ) {
+			Logger::debug( 'Processing subscription order' );
+			return $this->processSubscriptionPayment( $order, $isModal );
+		}
+
 		// Check for existing invoice and redirect instead.
 		if ( $this->validInvoiceExists( $orderId ) ) {
 			$existingInvoiceId = $order->get_meta( 'BTCPay_id' );
@@ -161,6 +171,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 		// Create an invoice.
 		Logger::debug( 'Creating invoice on BTCPay Server' );
+
 		if ( $invoice = $this->createInvoice( $order ) ) {
 
 			// Todo: update order status and BTCPay meta data.
@@ -492,6 +503,16 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			try {
 				$postData = json_decode($rawPostData, false, 512, JSON_THROW_ON_ERROR);
 
+				if ( ! isset( $postData->type ) ) {
+					Logger::debug('No BTCPay webhook type provided, aborting.');
+					wp_die('No BTCPay webhook type provided, aborting.');
+				}
+
+				if ( $this->isSubscriptionWebhookEvent( $postData->type ) ) {
+					$this->processSubscriptionWebhook( $postData );
+					wp_send_json_success();
+				}
+
 				if (!isset($postData->invoiceId)) {
 					Logger::debug('No BTCPay invoiceId provided, aborting.');
 					wp_die('No BTCPay invoiceId provided, aborting.');
@@ -505,10 +526,15 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 				// Abort if no orders found.
 				if (count($orders) === 0) {
-					Logger::debug('Could not load order by BTCPay invoiceId: ' . $postData->invoiceId);
-					// Note: we return status 200 here for wp_die() which seems counter intuative but needs to be done
-					// to not clog up the BTCPay servers webhook processing queue until it is fixed there.
-					wp_die('No order found for this invoiceId.', '', ['response' => 200]);
+					$orderFromMetadata = $this->getOrderByInvoiceMetadata( $postData->invoiceId );
+					if ( $orderFromMetadata ) {
+						$orders = [ $orderFromMetadata ];
+					} else {
+						Logger::debug('Could not load order by BTCPay invoiceId: ' . $postData->invoiceId);
+						// Note: we return status 200 here for wp_die() which seems counter intuative but needs to be done
+						// to not clog up the BTCPay servers webhook processing queue until it is fixed there.
+						wp_die('No order found for this invoiceId.', '', ['response' => 200]);
+					}
 				}
 
 				// Abort on multiple orders found.
@@ -524,11 +550,16 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					wp_send_json_success(); // return 200 OK to not mess up BTCPay queue
 				}
 
+				if ( $this->shouldDeferSubscriptionInvoiceWebhook( $orders[0], $postData ) ) {
+					wp_send_json_success();
+				}
+
 				$this->processOrderStatus($orders[0], $postData);
 
 			} catch (\Throwable $e) {
-				Logger::debug('Error decoding webook payload: ' . $e->getMessage());
-				Logger::debug($rawPostData);
+				Logger::debug('Error processing BTCPay webhook: ' . $e->getMessage());
+				// Return a retryable response without logging customer data from the payload.
+				wp_send_json_error( 'BTCPay webhook processing failed. Please retry.', 503 );
 			}
 		}
 	}
