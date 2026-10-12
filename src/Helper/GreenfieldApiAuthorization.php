@@ -51,26 +51,25 @@ class GreenfieldApiAuthorization {
 
 	public function hasSingleStore(): bool
 	{
+		if (!is_array($this->permissions) || $this->permissions === []) {
+			return false;
+		}
+
 		$storeId = null;
 		foreach ($this->permissions as $perms) {
-			if (2 !== count($exploded = explode(':', $perms))) {
+			if (!is_string($perms)) {
 				return false;
 			}
 
-			if (null === ($receivedStoreId = $exploded[1])) {
+			$exploded = explode(':', $perms);
+			if (count($exploded) !== 2 || $exploded[1] === '') {
 				return false;
 			}
 
-			if ($storeId === $receivedStoreId) {
-				continue;
+			$storeId = $storeId ?? $exploded[1];
+			if ($storeId !== $exploded[1]) {
+				return false;
 			}
-
-			if (null === $storeId) {
-				$storeId = $receivedStoreId;
-				continue;
-			}
-
-			return false;
 		}
 
 		return true;

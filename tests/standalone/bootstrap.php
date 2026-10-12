@@ -15,6 +15,7 @@ namespace {
 		public static array $notices = [];
 		public static array $errors = [];
 		public static array $logs = [];
+		public static array $transients = [];
 		public static int $saves = 0;
 		public static bool $failOptionWrite = false;
 	}
@@ -36,7 +37,7 @@ namespace {
 		return true;
 	}
 	function delete_option($key) { unset(WebhookTestState::$options[$key]); return true; }
-	function delete_transient($key) { return true; }
+	function delete_transient($key) { unset(WebhookTestState::$transients[$key]); return true; }
 	function wp_unslash($value) {
 		if (is_array($value)) {
 			return array_map('wp_unslash', $value);
@@ -55,7 +56,9 @@ namespace {
 			public function api_request_url($name) { return 'https://shop.example/wc-api/' . $name . '/'; }
 		};
 	}
-	define('BTCPAYSERVER_VERSION', 'test');
+	if (!defined('BTCPAYSERVER_VERSION')) {
+		define('BTCPAYSERVER_VERSION', 'test');
+	}
 
 	set_error_handler(static function ($level, $message, $file, $line) {
 		if (error_reporting() & $level) {
@@ -98,17 +101,24 @@ namespace BTCPayServer\Http {
 		public static int $deleteStatus = 200;
 		public static bool $lookupTimeout = false;
 		public static bool $webhookPermission = true;
+		public static ?array $apiKeyData = null;
+		public static int $apiKeyStatus = 200;
+		public static bool $apiKeyTimeout = false;
 
 		public function request(string $method, string $url, array $headers = [], string $body = ''): ResponseInterface {
 			self::$requests[] = ['method' => $method, 'url' => $url, 'body' => $body];
 			$status = 200;
 			$data = [];
 			if ($method === 'GET' && str_ends_with($url, '/api-keys/current')) {
+				if (self::$apiKeyTimeout) {
+					throw new \RuntimeException('Simulated connection timeout.');
+				}
+				$status = self::$apiKeyStatus;
 				$permissions = GreenfieldApiAuthorization::REQUIRED_PERMISSIONS;
 				if (self::$webhookPermission) {
 					$permissions = array_merge($permissions, GreenfieldApiAuthorization::OPTIONAL_PERMISSIONS);
 				}
-				$data = ['permissions' => array_map(static fn($p) => $p . ':' . $_POST['btcpay_gf_store_id'], $permissions)];
+				$data = self::$apiKeyData ?? ['permissions' => array_map(static fn($p) => $p . ':store-a', $permissions)];
 			} elseif ($method === 'GET' && str_ends_with($url, '/server/info')) {
 				$data = ['fullySynched' => true, 'version' => '2.3.5'];
 			} elseif ($method === 'GET' && str_contains($url, '/webhooks/')) {
