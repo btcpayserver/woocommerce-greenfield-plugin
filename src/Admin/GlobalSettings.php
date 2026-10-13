@@ -105,13 +105,13 @@ class GlobalSettings extends \WC_Settings_Page {
 
 		// Todo: check why $this->apiHelper->webhookIsSetup() is cached, also others above.
 		if ($storedWebhookSecret !== '') {
-			$whStatus = '<p class="btcpay-connection-success">' . _x('Webhook setup automatically.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . ' ID: ' . $whId . '</p>';
+			$whStatus = '<p class="btcpay-connection-success">' . _x('Webhook setup automatically.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . ' ID: ' . esc_html($whId) . '</p>';
 		} else {
 			$whStatus = '<p class="btcpay-connection-error">' . _x('No webhook setup, yet.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</p>';
 		}
 
 		if ($this->apiHelper->webhookIsSetupManual()) {
-			$whStatus = '<p class="btcpay-connection-success">' . _x('Webhook setup manually with webhook secret.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . ' ID: ' . $whId . '</p>';
+			$whStatus = '<p class="btcpay-connection-success">' . _x('Webhook setup manually with webhook secret.', 'global_settings', 'btcpay-greenfield-for-woocommerce') . ' ID: ' . esc_html($whId) . '</p>';
 		}
 
 		return [
