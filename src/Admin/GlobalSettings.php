@@ -65,6 +65,9 @@ class GlobalSettings extends \WC_Settings_Page {
 	public function output(): void
 	{
 		echo '<h1>' . _x('BTCPay Server Payments settings', 'global_settings', 'btcpay-greenfield-for-woocommerce') . '</h1>';
+		if (strtolower((string) wp_parse_url((string) get_option('btcpay_gf_url', ''), PHP_URL_SCHEME)) === 'http') {
+			echo '<div class="notice notice-warning"><p>' . esc_html__('Your BTCPay Server connection uses HTTP and is insecure. It should not be used in a production environment. Use HTTPS instead.', 'btcpay-greenfield-for-woocommerce') . '</p></div>';
+		}
 		$settings = $this->get_settings_for_default_section();
 		\WC_Admin_Settings::output_fields($settings);
 	}
