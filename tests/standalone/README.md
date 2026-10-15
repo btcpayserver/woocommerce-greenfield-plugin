@@ -9,6 +9,16 @@ and signature validation with in-memory WordPress functions and an HTTP transpor
 that never connects to a server. They require PHP 8.0+ and no PHPUnit or WordPress
 test database. They do not exercise the browser or WooCommerce's settings renderer.
 
+API setup checks:
+
+```sh
+php tests/standalone/api-setup.php
+```
+
+These exercise the actual wizard and callback with mocked WordPress and HTTP
+boundaries, covering server-reported key scope, setup state, and preservation of
+the existing connection on failure. The wizard check uses a PHP subprocess.
+
 Order return checks:
 
 ```sh

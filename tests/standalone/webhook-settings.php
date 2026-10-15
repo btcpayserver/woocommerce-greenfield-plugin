@@ -6,6 +6,7 @@ require __DIR__ . '/bootstrap.php';
 
 use BTCPayServer\Http\CurlClient;
 use BTCPayServer\WC\Admin\GlobalSettings;
+use BTCPayServer\WC\Helper\GreenfieldApiAuthorization;
 use BTCPayServer\WC\Helper\GreenfieldApiHelper;
 use BTCPayServer\WC\Helper\GreenfieldApiWebhook;
 
@@ -35,6 +36,9 @@ function fixture(): GlobalSettings {
 	CurlClient::$lookupStatus = CurlClient::$createStatus = CurlClient::$deleteStatus = 200;
 	CurlClient::$lookupTimeout = false;
 	CurlClient::$webhookPermission = true;
+	CurlClient::$apiKeyData = null;
+	CurlClient::$apiKeyStatus = 200;
+	CurlClient::$apiKeyTimeout = false;
 	$_POST = [
 		'btcpay_gf_url' => 'https://btcpay.example',
 		'btcpay_gf_api_key' => 'test-key',
@@ -66,6 +70,47 @@ function checkPreserved(array $before): void {
 }
 
 $tests = [];
+foreach ([
+	'missing permissions' => [],
+	'insufficient permissions' => ['btcpay.store.canviewstoresettings:store-a'],
+	'unscoped permissions' => GreenfieldApiAuthorization::REQUIRED_PERMISSIONS,
+	'empty store scope' => array_map(static fn($p) => $p . ':', GreenfieldApiAuthorization::REQUIRED_PERMISSIONS),
+	'multiple stores' => ['btcpay.store.canviewinvoices:store-a', 'btcpay.store.cancreateinvoice:store-b'],
+	'malformed permissions' => [123],
+	'non-array permissions' => 'invalid',
+] as $name => $permissions) {
+	$tests['API key with ' . $name . ' preserves settings'] = static function ($settings) use ($permissions) {
+		$before = WebhookTestState::$options;
+		CurlClient::$apiKeyData = ['permissions' => $permissions];
+		$settings->save();
+		checkPreserved($before);
+		checkRequests([]);
+	};
+}
+$tests['store ID must match the actual API key scope'] = static function ($settings) {
+	$before = WebhookTestState::$options;
+	CurlClient::$apiKeyData = ['permissions' => array_map(static fn($p) => $p . ':store-a', GreenfieldApiAuthorization::REQUIRED_PERMISSIONS)];
+	$_POST['btcpay_gf_store_id'] = 'store-b';
+	$settings->save();
+	checkPreserved($before);
+	checkRequests([]);
+};
+foreach ([403, 500] as $status) {
+	$tests['API key lookup error ' . $status . ' preserves settings'] = static function ($settings) use ($status) {
+		$before = WebhookTestState::$options;
+		CurlClient::$apiKeyStatus = $status;
+		$settings->save();
+		checkPreserved($before);
+		checkRequests([]);
+	};
+}
+$tests['API key lookup timeout preserves settings'] = static function ($settings) {
+	$before = WebhookTestState::$options;
+	CurlClient::$apiKeyTimeout = true;
+	$settings->save();
+	checkPreserved($before);
+	checkRequests([]);
+};
 $tests['unchanged automatic secret remains automatic'] = static function ($settings) {
 	$before = get_option('btcpay_gf_webhook');
 	$settings->save();
@@ -150,6 +195,9 @@ $tests['failed local persistence removes only the new webhook'] = static functio
 foreach (['btcpay_gf_url' => 'https://other.example', 'btcpay_gf_store_id' => 'store-b'] as $key => $value) {
 	$tests['rotation does not delete from a changed ' . $key] = static function ($settings) use ($key, $value) {
 		$_POST[$key] = $value;
+		if ($key === 'btcpay_gf_store_id') {
+			CurlClient::$apiKeyData = ['permissions' => array_map(static fn($p) => $p . ':' . $value, GreenfieldApiAuthorization::REQUIRED_PERMISSIONS)];
+		}
 		$_POST['btcpay_gf_whsecret'] = '';
 		$settings->save();
 		check(CurlClient::$createdWebhook, get_option('btcpay_gf_webhook'), 'Webhook for new connection');
@@ -158,6 +206,7 @@ foreach (['btcpay_gf_url' => 'https://other.example', 'btcpay_gf_store_id' => 's
 }
 $tests['changing stores with the prefilled secret remains automatic'] = static function ($settings) {
 	$_POST['btcpay_gf_store_id'] = 'store-b';
+	CurlClient::$apiKeyData = ['permissions' => array_map(static fn($p) => $p . ':store-b', GreenfieldApiAuthorization::REQUIRED_PERMISSIONS)];
 	CurlClient::$lookupStatus = 404;
 	$settings->save();
 	check(CurlClient::$createdWebhook, get_option('btcpay_gf_webhook'), 'Create webhook on new store');
