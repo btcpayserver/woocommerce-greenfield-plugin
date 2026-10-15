@@ -316,6 +316,11 @@ class BTCPayServerWCPlugin {
 			wp_die( 'Unauthorized!', '', [ 'response' => 401 ] );
 		}
 
+		// Only users who can manage options (administrators) may dismiss notices.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Unauthorized!', '', [ 'response' => 403 ] );
+		}
+
 		// Handle dismissal of the debug log reminder notice.
 		if ( isset($_POST['notice']) && $_POST['notice'] === 'debug' ) {
 			set_transient('btcpay_gf_debug_dismissed', true, DAY_IN_SECONDS * 7);
