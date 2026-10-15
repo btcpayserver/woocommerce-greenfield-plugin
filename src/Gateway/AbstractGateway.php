@@ -210,7 +210,24 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			return new \WP_Error('1', $errAmount);
 		}
 
+		// Abort if the amount is not a positive number.
+		if (!is_numeric($amount) || (float) $amount <= 0) {
+			$errAmount = __METHOD__ . ': refund amount must be a number greater than zero, aborting.';
+			Logger::debug($errAmount);
+			return new \WP_Error('1', $errAmount);
+		}
+
 		$order = wc_get_order($order_id);
+
+		// Defense-in-depth: make sure the refund does not exceed the refundable order total.
+		// WC core already validates this in wc_create_refund() and the current refund is already
+		// reflected in the refunded total when process_refund is called, so this should never trigger.
+		if ((float) $order->get_total() - $order->get_total_refunded() < 0) {
+			$errOverRefund = __METHOD__ . ': refund would exceed the refundable order total, aborting.';
+			Logger::debug($errOverRefund);
+			return new \WP_Error('1', $errOverRefund);
+		}
+
 		$refundAmount = PreciseNumber::parseString($amount);
 		$currency = $order->get_currency();
 		$originalCurrency = $order->get_currency();
@@ -851,9 +868,26 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Promotion type set 1 token per each quantity.
 		if ($this->getTokenType() === 'promotion') {
 			$currency = $this->primaryPaymentMethod ?? null;
-			$amount = PreciseNumber::parseInt( $this->getOrderTotalItemsQuantity($order));
+			$totalItemsQuantity = $this->getOrderTotalItemsQuantity($order);
+
+			// Abort if the total item quantity is not positive, we can't create an invoice otherwise.
+			if ($totalItemsQuantity <= 0) {
+				$message = __METHOD__ . ': total item quantity of the order is not greater than zero, aborting invoice creation.';
+				Logger::debug($message, true);
+				throw new \Exception( __( "Can't process order. Please contact us if the problem persists.", 'btcpay-greenfield-for-woocommerce' ) );
+			}
+
+			$amount = PreciseNumber::parseInt( $totalItemsQuantity );
 		} else { // Defaults.
 			$currency = $order->get_currency();
+
+			// Abort if the order total is not positive, we can't create an invoice otherwise.
+			if ((float) $order->get_total() <= 0) {
+				$message = __METHOD__ . ': order total is not greater than zero, aborting invoice creation.';
+				Logger::debug($message, true);
+				throw new \Exception( __( "Can't process order. Please contact us if the problem persists.", 'btcpay-greenfield-for-woocommerce' ) );
+			}
+
 			$amount = PreciseNumber::parseString( $order->get_total() ); // unlike method signature suggests, it returns string.
 		}
 
