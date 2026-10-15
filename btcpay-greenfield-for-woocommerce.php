@@ -68,6 +68,7 @@ class BTCPayServerWCPlugin {
 			$this->legacyPluginNotification();
 			$this->notConfiguredNotification();
 			$this->submitReviewNotification();
+			$this->debugNotification();
 		}
 	}
 
@@ -263,7 +264,6 @@ class BTCPayServerWCPlugin {
 	public function processAjaxModalCheckout() {
 
 		Logger::debug('Entering ' . __METHOD__);
-		Logger::debug('$_POST: ' . print_r($_POST, true));
 
 		$nonce = sanitize_text_field($_POST['apiNonce']);
 		if ( ! wp_verify_nonce( $nonce, 'btcpay-nonce' ) ) {
@@ -273,6 +273,9 @@ class BTCPayServerWCPlugin {
 		if ( get_option('btcpay_gf_modal_checkout') !== 'yes' ) {
 			wp_die('Modal checkout mode not enabled.', '', ['response' => 400]);
 		}
+
+		// Log the request data after validation and with sensitive values redacted.
+		Logger::debug('$_POST (redacted): ' . Logger::redactArray($_POST));
 
 		wc_maybe_define_constant( 'WOOCOMMERCE_CHECKOUT', true );
 
@@ -284,11 +287,39 @@ class BTCPayServerWCPlugin {
 	}
 
 	/**
+	 * Shows a warning notice on the admin dashboard while debug logging is enabled.
+	 *
+	 * Debug logs may contain sensitive customer data, so remind merchants to turn
+	 * debugging off again. Dismissal is stored for 7 days, after that the reminder
+	 * reappears as long as debug logging is still enabled.
+	 */
+	public function debugNotification() {
+		if ( get_option('btcpay_gf_debug') === 'yes' && ! get_transient('btcpay_gf_debug_dismissed') ) {
+			$debugMessage = sprintf(
+				/* translators: 1: Opening link to the plugin settings, 2: Closing link tag, 3: Opening "Remind me in 7 days" button, 4: Closing button tag. */
+				__( 'Debug logging is currently enabled. Debug logs may contain sensitive customer data, so please remember to disable it after debugging. You can turn it off in the %1$splugin settings%2$s. %3$sRemind me in 7 days%4$s', 'btcpay-greenfield-for-woocommerce' ),
+				'<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=btcpay_settings')) . '">',
+				'</a>',
+				'<button class="btcpay-debug-dismiss">',
+				'</button>'
+			);
+
+			Notice::addNotice('warning', $debugMessage, false, 'btcpay-debug-notice');
+		}
+	}
+
+	/**
 	 * Handles the AJAX callback to dismiss review notification.
 	 */
 	public function processAjaxNotification() {
 		if ( ! check_ajax_referer( 'btcpaygf-notifications-nonce', 'nonce' ) ) {
 			wp_die( 'Unauthorized!', '', [ 'response' => 401 ] );
+		}
+
+		// Handle dismissal of the debug log reminder notice.
+		if ( isset($_POST['notice']) && $_POST['notice'] === 'debug' ) {
+			set_transient('btcpay_gf_debug_dismissed', true, DAY_IN_SECONDS * 7);
+			wp_send_json_success();
 		}
 
 		$dismissForever = filter_var($_POST['dismiss_forever'], FILTER_VALIDATE_BOOL);

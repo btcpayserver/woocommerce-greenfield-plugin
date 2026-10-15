@@ -28,4 +28,19 @@ jQuery(document).ready(function($) {
 			}
 		});
 	});
+	jQuery(document).on('click', '.btcpay-debug-notice button.btcpay-debug-dismiss', function(e) {
+		e.preventDefault();
+		$.ajax({
+			url: BTCPayNotifications.ajax_url,
+			type: 'post',
+			data: {
+				action: 'btcpaygf_notifications',
+				nonce: BTCPayNotifications.nonce,
+				notice: 'debug'
+			},
+			success: function(data) {
+				jQuery('.btcpay-debug-notice').remove();
+			}
+		});
+	});
 });

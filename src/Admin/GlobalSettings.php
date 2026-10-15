@@ -278,7 +278,7 @@ class GlobalSettings extends \WC_Settings_Page {
 				'default' => 'no',
 				'desc' => sprintf(
 					/* translators: %s: URL of the WooCommerce log viewer. */
-					_x( 'Enable logging <a href="%s" class="button">View Logs</a>', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
+					_x( 'Enable logging <a href="%s" class="button">View Logs</a> Debug logs may contain sensitive customer data, so remember to disable debugging after you are done.', 'global_settings', 'btcpay-greenfield-for-woocommerce' ),
 					Logger::getLogFileUrl()
 				),
 				'id' => 'btcpay_gf_debug'
