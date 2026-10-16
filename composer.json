@@ -9,11 +9,14 @@
   },
   "authors": [
     {
-      "name": "Andreas Tasch",
-      "email": "andy.tasch@gmail.com"
+      "name": "BTCPay Server Team",
+      "email": "integrations@btcpayserver.org"
     }
   ],
   "require": {
-    "btcpayserver/btcpayserver-greenfield-php": "^2.0.0"
+    "btcpayserver/btcpayserver-greenfield-php": "^2.9.1"
+  },
+  "scripts": {
+    "test": "php tests/subscriptions.php"
   }
 }

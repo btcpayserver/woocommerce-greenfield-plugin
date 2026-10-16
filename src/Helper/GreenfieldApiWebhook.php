@@ -15,8 +15,22 @@ class GreenfieldApiWebhook {
 		'InvoiceProcessing',
 		'InvoiceExpired',
 		'InvoiceSettled',
-		'InvoiceInvalid'
+		'InvoiceInvalid',
+		'SubscriberCreated',
+		'SubscriberCredited',
+		'SubscriberCharged',
+		'SubscriberActivated',
+		'SubscriberPhaseChanged',
+		'SubscriberDisabled',
+		'PaymentReminder',
+		'PlanStarted',
+		'SubscriberNeedUpgrade',
 	];
+
+	public static function getEvents(): array {
+		// Keep ordinary checkout compatible with servers without subscription support.
+		return class_exists( 'WC_Subscriptions' ) ? self::WEBHOOK_EVENTS : array_slice( self::WEBHOOK_EVENTS, 0, 6 );
+	}
 
 	/**
 	 * Accept existing secrets without imposing new length requirements on working installations.
@@ -46,8 +60,22 @@ class GreenfieldApiWebhook {
 				// Check for the url here as it could have been changed on BTCPay Server making the webhook not work for WooCommerce anymore.
 				if (
 					$existingWebhook->getData()['id'] === $storedWebhook['id'] &&
-					strpos( $existingWebhook->getData()['url'], $storedWebhook['url'] ) !== false
+					$existingWebhook->getData()['url'] === $storedWebhook['url']
 				) {
+					$data = $existingWebhook->getData();
+					$events = $data['authorizedEvents']['specificEvents'] ?? [];
+					if ( empty( $data['authorizedEvents']['everything'] ) && array_diff( self::getEvents(), $events ) ) {
+						// Extend an existing webhook on settings save without rotating its secret.
+						$whClient->updateWebhook(
+							$storeId,
+							$data['url'],
+							$data['id'],
+							array_values( array_unique( array_merge( $events, self::getEvents() ) ) ),
+							$data['enabled'],
+							$data['automaticRedelivery'],
+							$storedWebhook['secret']
+						);
+					}
 					Logger::debug('Detected existing automatically set webhook.');
 					return true;
 				}
@@ -72,7 +100,7 @@ class GreenfieldApiWebhook {
 			$webhook = $whClient->createWebhook(
 				$storeId,
 				WC()->api_request_url( 'btcpaygf_default' ),
-				self::WEBHOOK_EVENTS,
+				self::getEvents(),
 				null
 			);
 
@@ -143,7 +171,7 @@ class GreenfieldApiWebhook {
 					$config['store_id'],
 					$webhookUrl,
 					$webhookId,
-					$events ?? self::WEBHOOK_EVENTS,
+					$events ?? self::getEvents(),
 					$enabled,
 					$automaticRedelivery,
 					$secret
