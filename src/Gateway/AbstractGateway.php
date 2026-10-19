@@ -541,7 +541,22 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					wp_send_json_success(); // return 200 OK to not mess up BTCPay queue
 				}
 
-				$this->processOrderStatus($orders[0], $postData);
+				// Idempotency: skip deliveries that were already processed. BTCPay keeps the
+				// originalDeliveryId stable when redelivering an event, so this catches both
+				// replayed requests and BTCPay's own (automatic) redeliveries.
+				$deliveryId = $postData->originalDeliveryId ?? $postData->deliveryId ?? null;
+				if ($deliveryId && $this->isDeliveryProcessed($orders[0], $deliveryId)) {
+					Logger::debug('Webhook delivery ' . $deliveryId . ' was already processed, skipping.');
+					wp_send_json_success(); // return 200 OK to not mess up BTCPay queue
+				}
+
+				$handled = $this->processOrderStatus($orders[0], $postData);
+
+				// Remember the delivery so it won't be processed again. Only deliveries that
+				// were fully handled are remembered, so deferred events can still be retried.
+				if ($deliveryId && $handled) {
+					$this->markDeliveryProcessed($orders[0], $deliveryId);
+				}
 
 			} catch (\Throwable $e) {
 				Logger::debug('Error decoding webook payload: ' . $e->getMessage());
@@ -550,10 +565,17 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		}
 	}
 
-	protected function processOrderStatus(\WC_Order $order, \stdClass $webhookData) {
+	/**
+	 * Updates the order status according to the received webhook event.
+	 *
+	 * @return bool True if the event was fully handled and can be remembered as processed,
+	 *              false if it was deferred (e.g. BTCPay invoice could not be verified yet)
+	 *              and should be allowed to be retried.
+	 */
+	protected function processOrderStatus(\WC_Order $order, \stdClass $webhookData): bool {
 		if (!in_array($webhookData->type, GreenfieldApiWebhook::WEBHOOK_EVENTS)) {
 			Logger::debug('Webhook event received but ignored: ' . $webhookData->type);
-			return;
+			return true;
 		}
 
 		Logger::debug('Updating order status with webhook event received for processing: ' . $webhookData->type);
@@ -574,8 +596,25 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 					$webhookData->type
 				);
 				$order->add_order_note($note);
-				return;
+				return true;
 			}
+		}
+
+		// Never let events describing earlier lifecycle stages move orders out of final
+		// statuses. This protects completed/refunded orders from webhook replays and
+		// out-of-order deliveries un-completing them.
+		// Note: transitions from cancelled/failed need to stay possible (late payments after
+		// expiration, see InvoicePaymentSettled below), so those are not guarded here.
+		if (in_array($webhookData->type, ['InvoiceReceivedPayment', 'InvoiceProcessing', 'InvoiceExpired', 'InvoiceInvalid'], true)
+			&& $order->has_status(['completed', 'refunded'])
+		) {
+			$note = sprintf(
+				/* translators: %s: BTCPay webhook event type. */
+				__('Webhook (%s) received from BTCPay, but the order is already completed or refunded, skipping to update order status. Please manually check if everything is alright.', 'btcpay-greenfield-for-woocommerce'),
+				$webhookData->type
+			);
+			$order->add_order_note($note);
+			return true;
 		}
 
 		switch ($webhookData->type) {
@@ -662,7 +701,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 							$webhookData->invoiceId
 						)
 					);
-					break;
+					return false;
 				}
 
 				// PaidOver is an additional invoice status. Only Settled and Settled (PaidOver) may complete an order.
@@ -692,7 +731,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 							$additionalStatusForLog
 						)
 					);
-					break;
+					return false;
 				}
 
 				$order->payment_complete();
@@ -708,6 +747,35 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				$this->updateWCOrderPayments($order);
 				break;
 		}
+
+		return true;
+	}
+
+	/**
+	 * Checks if a webhook delivery was already processed for this order.
+	 */
+	protected function isDeliveryProcessed(\WC_Order $order, string $deliveryId): bool {
+		$processed = $order->get_meta('BTCPay_processed_deliveries');
+		return is_array($processed) && in_array($deliveryId, $processed, true);
+	}
+
+	/**
+	 * Remembers a processed webhook delivery on the order, so redeliveries and replays of
+	 * the same event are skipped. The list is bounded, oldest entries are dropped first.
+	 */
+	protected function markDeliveryProcessed(\WC_Order $order, string $deliveryId): void {
+		$processed = $order->get_meta('BTCPay_processed_deliveries');
+		if (!is_array($processed)) {
+			$processed = [];
+		}
+
+		$processed[] = $deliveryId;
+		if (count($processed) > 20) {
+			$processed = array_slice($processed, -20);
+		}
+
+		$order->update_meta_data('BTCPay_processed_deliveries', $processed);
+		$order->save();
 	}
 
 	/**
