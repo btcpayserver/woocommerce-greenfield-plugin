@@ -544,7 +544,14 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				// Idempotency: skip deliveries that were already processed. BTCPay keeps the
 				// originalDeliveryId stable when redelivering an event, so this catches both
 				// replayed requests and BTCPay's own (automatic) redeliveries.
+				// Normalize defensively: only a non-empty string is a usable delivery ID.
+				// With strict_types a truthy non-string (e.g. int) would throw a TypeError
+				// in the helpers below and silently drop the event, while falsy junk
+				// like '' or '0' would silently disable idempotency.
 				$deliveryId = $postData->originalDeliveryId ?? $postData->deliveryId ?? null;
+				if (!is_string($deliveryId) || $deliveryId === '') {
+					$deliveryId = null;
+				}
 				if ($deliveryId && $this->isDeliveryProcessed($orders[0], $deliveryId)) {
 					Logger::debug('Webhook delivery ' . $deliveryId . ' was already processed, skipping.');
 					wp_send_json_success(); // return 200 OK to not mess up BTCPay queue
