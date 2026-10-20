@@ -5,7 +5,7 @@ Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.8.5
+Stable tag: 2.8.6
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -113,11 +113,26 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
+= 2.8.6 =
+
+Security hardening and webhook reliability fixes, including retries when settled invoice verification fails.
+
 = 2.8.5 =
 
 * Improvement: Allow order return link to be valid 24h, handle expired links gracefully.
 
 == Changelog ==
+
+= 2.8.6 :: 2026-10-20 =
+
+* Fix: Return HTTP 503 when settled invoice verification fails so BTCPay can retry the webhook. (#95)
+* Fix: Ignore duplicate webhook deliveries and protect completed or refunded orders from earlier invoice events. (#94)
+* Security: Restrict changes to the review reminder setting to authorized administrators. (#92)
+* Fix: Reject non-positive invoice and refund amounts. (#91)
+* Security: Redact sensitive checkout data from debug logs and warn administrators when debug logging is enabled. (#90)
+* Security: Validate API key permissions and prevent submitted callback data from overriding the setup configuration. (#87)
+* Improvement: Warn when the configured BTCPay Server URL uses HTTP instead of HTTPS. (#89)
+* Security: Escape webhook IDs when displaying them in the settings. (#88)
 
 = 2.8.5 :: 2026-09-28 =
 
