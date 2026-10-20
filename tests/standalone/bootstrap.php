@@ -46,6 +46,7 @@ namespace {
 	}
 	function sanitize_text_field($value) { return is_string($value) ? trim(preg_replace('/%[a-f0-9]{2}/i', '', strip_tags($value))) : ''; }
 	function esc_url_raw($value) { return $value; }
+	function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
 	function __($value, ...$args) { return $value; }
 	function _x($value, ...$args) { return $value; }
 	function esc_html_x($value, ...$args) { return $value; }
@@ -104,6 +105,9 @@ namespace BTCPayServer\Http {
 		public static ?array $apiKeyData = null;
 		public static int $apiKeyStatus = 200;
 		public static bool $apiKeyTimeout = false;
+		public static ?array $invoiceData = null;
+		public static int $invoiceStatus = 200;
+		public static bool $invoiceTimeout = false;
 
 		public function request(string $method, string $url, array $headers = [], string $body = ''): ResponseInterface {
 			self::$requests[] = ['method' => $method, 'url' => $url, 'body' => $body];
@@ -132,6 +136,12 @@ namespace BTCPayServer\Http {
 				$data = self::$createdWebhook;
 			} elseif ($method === 'DELETE' && str_contains($url, '/webhooks/')) {
 				$status = self::$deleteStatus;
+			} elseif ($method === 'GET' && preg_match('~/invoices/[^/]+$~', $url) && self::$invoiceData !== null) {
+				if (self::$invoiceTimeout) {
+					throw new \RuntimeException('Simulated connection timeout.');
+				}
+				$status = self::$invoiceStatus;
+				$data = self::$invoiceData;
 			} elseif ($method !== 'GET' || !str_ends_with($url, '/payment-methods')) {
 				self::$unexpectedRequests[] = [$method, $url];
 				throw new \LogicException('Unexpected HTTP request.');

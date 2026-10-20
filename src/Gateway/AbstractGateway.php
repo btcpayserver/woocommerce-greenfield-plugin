@@ -708,7 +708,9 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 							$webhookData->invoiceId
 						)
 					);
-					return false;
+					// Request redelivery only on verification errors. Unmatched orders and
+					// verified, non-settled invoices must still receive HTTP 200.
+					wp_die('Could not verify the settled invoice.', '', ['response' => 503]);
 				}
 
 				// PaidOver is an additional invoice status. Only Settled and Settled (PaidOver) may complete an order.
