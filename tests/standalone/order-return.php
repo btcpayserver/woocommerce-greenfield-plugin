@@ -83,7 +83,13 @@ namespace {
 	function home_url($path) { return OrderReturnTestState::$homeUrl . $path; }
 	function is_ssl() { return OrderReturnTestState::$isSsl; }
 	function wp_parse_url($url, $component = -1) { return parse_url($url, $component); }
+	$GLOBALS['returnTestFilters'] = [];
+	function add_filter($tag, $callback) { $GLOBALS['returnTestFilters'][$tag][] = $callback; }
+	function remove_filter($tag, $callback) {
+		$GLOBALS['returnTestFilters'][$tag] = array_values(array_filter($GLOBALS['returnTestFilters'][$tag] ?? [], static fn($item) => $item !== $callback));
+	}
 	function apply_filters($tag, $value, ...$args) {
+		foreach ($GLOBALS['returnTestFilters'][$tag] ?? [] as $callback) { $value = $callback($value, ...$args); }
 		if ($tag === 'btcpay_gf_return_url' && OrderReturnTestState::$filteredReturnUrl !== null) {
 			return OrderReturnTestState::$filteredReturnUrl;
 		}
@@ -98,7 +104,12 @@ namespace {
 			static fn($order) => $order->get_meta($args['meta_key']) === $args['meta_value']
 		)), 0, $args['limit']);
 	}
-	function wp_safe_redirect($url) { throw new OrderReturnResponse(['redirect' => $url]); }
+	function wp_safe_redirect($url) {
+		$host = parse_url($url, PHP_URL_HOST);
+		$allowed = apply_filters('allowed_redirect_hosts', ['shop.example'], $host);
+		check(true, in_array($host, $allowed, true), 'Redirect host allowed');
+		throw new OrderReturnResponse(['redirect' => $url]);
+	}
 	function wp_die($message, $title, $args) { throw new OrderReturnResponse(['message' => $message, 'title' => $title, 'args' => $args]); }
 
 	set_error_handler(static function ($level, $message, $file, $line) {
@@ -333,7 +344,7 @@ namespace {
 		check('https://shop.example/', substr($url, 0, strpos($url, '?')), 'Canonical host');
 	};
 	$tests['return link falls back to the configured host for unusable Host headers'] = static function () {
-		foreach (['', 'bad host', 'evil.com/foo'] as $host) {
+		foreach (['', 'bad host', 'evil.com/foo', 'shop.example<script>', "shop.example\r\nX-Test: value", 'user@shop.example', 'shop.example?x=1', 'shop.example#fragment'] as $host) {
 			$order = fixture(7);
 			$_SERVER['HTTP_HOST'] = $host;
 			$url = OrderReturn::createUrl($order);
@@ -401,6 +412,26 @@ namespace {
 		check(['shop.example'], OrderReturn::allowCurrentHostRedirect(['shop.example']), 'No duplicate host');
 		$_SERVER['HTTP_HOST'] = '';
 		check(['shop.example'], OrderReturn::allowCurrentHostRedirect(['shop.example']), 'Empty host ignored');
+	};
+
+	$tests['alternative domains preserve origin and URL components'] = static function () {
+		foreach (['checkout.example.org', 'SHOP.EXAMPLE.NET:8443', '127.0.0.1:8080', '[::1]:8080'] as $host) {
+			$order = fixture(7);
+			$_SERVER['HTTP_HOST'] = $host;
+			OrderReturnTestState::$homeUrl = 'https://shop.example/store';
+			$origin = 'https://' . strtolower($host);
+			check($origin . '/store/', explode('?', OrderReturn::createUrl($order))[0], 'Alternative domain base');
+			check($origin . '/store/received/?key=abc#details', OrderReturn::withCurrentHost('https://shop.example/store/received/?key=abc#details'), 'URL components preserved');
+			check(['redirect' => $origin . '/order-received/42/?key=private-order-key'], visit(explode('=', OrderReturn::createUrl($order))[1]), 'Alternative domain redirect');
+			check(['shop.example'], apply_filters('allowed_redirect_hosts', ['shop.example']), 'Redirect allowance removed');
+		}
+	};
+	$tests['missing or non-string Host falls back to configured URL'] = static function () {
+		foreach ([null, ['shop.example']] as $host) {
+			$order = fixture(7);
+			$_SERVER['HTTP_HOST'] = $host;
+			check('https://shop.example/', explode('?', OrderReturn::createUrl($order))[0], 'Missing host fallback');
+		}
 	};
 
 	$failures = 0;

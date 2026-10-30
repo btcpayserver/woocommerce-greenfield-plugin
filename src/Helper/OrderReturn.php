@@ -22,10 +22,6 @@ final class OrderReturn {
 	 */
 	public static function register(): void {
 		add_action( 'template_redirect', [ self::class, 'handle' ], 0 );
-		// The return handler may redirect to the host the customer is currently
-		// using (for example a Tor .onion address), which is not the configured
-		// home host. Allow it for wp_safe_redirect().
-		add_filter( 'allowed_redirect_hosts', [ self::class, 'allowCurrentHostRedirect' ] );
 	}
 
 	/**
@@ -64,49 +60,15 @@ final class OrderReturn {
 		 * Filters the base URL used for the temporary BTCPay return link.
 		 *
 		 * The default keeps the host the customer is currently browsing, so
-		 * stores reachable over both clearnet and Tor .onion addresses return
+		 * stores reachable over multiple domains (including Tor .onion) return
 		 * shoppers to the same host and keep their WooCommerce session.
 		 *
 		 * @param string    $baseUrl Store URL on the current request host.
 		 * @param \WC_Order $order   Order being returned to.
 		 */
-		$baseUrl = apply_filters( 'btcpay_gf_return_url', self::getStoreUrl(), $order );
+		$baseUrl = apply_filters( 'btcpay_gf_return_url', self::withCurrentHost( home_url( '/' ) ), $order );
 
 		return add_query_arg( self::QUERY_ARG, $reference, $baseUrl );
-	}
-
-	/**
-	 * Return the store URL on the host the customer is currently browsing.
-	 *
-	 * Stores reachable both on clearnet and on a Tor .onion address must send
-	 * the customer back to the host they came from. The WooCommerce session
-	 * cookie is scoped to that host, so using the configured clearnet URL would
-	 * make the return link fail authorization for onion shoppers.
-	 */
-	private static function getStoreUrl(): string {
-		$homeUrl     = home_url( '/' );
-		$currentHost = self::getCurrentHost();
-
-		if ( $currentHost === '' ) {
-			return $homeUrl;
-		}
-
-		$homeParts     = wp_parse_url( $homeUrl );
-		$homeHost      = isset( $homeParts['host'] ) ? strtolower( $homeParts['host'] ) : '';
-		$homePort      = isset( $homeParts['port'] ) ? ':' . $homeParts['port'] : '';
-		$canonicalHost = $homeHost . $homePort;
-
-		// Already on the configured host: keep the canonical URL and its scheme.
-		if ( $canonicalHost !== '' && strcasecmp( $currentHost, $canonicalHost ) === 0 ) {
-			return $homeUrl;
-		}
-
-		// Keep the configured path (supports subdirectory installs) but use the
-		// host and scheme the customer is currently browsing.
-		$path   = isset( $homeParts['path'] ) && $homeParts['path'] !== '' ? $homeParts['path'] : '/';
-		$scheme = is_ssl() ? 'https' : 'http';
-
-		return $scheme . '://' . $currentHost . $path;
 	}
 
 	/**
@@ -117,7 +79,7 @@ final class OrderReturn {
 			return '';
 		}
 
-		$host = strtolower( trim( sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) ) );
+		$host = strtolower( $_SERVER['HTTP_HOST'] );
 
 		// DNS name, IPv4 or bracketed IPv6, optionally with a port. Reject
 		// malformed values so a bad Host header falls back to the home URL.
@@ -161,6 +123,18 @@ final class OrderReturn {
 		}
 
 		return $rewritten;
+	}
+
+	/**
+	 * Allow the current host only while sending this plugin's return redirect.
+	 */
+	private static function redirect( string $url ): void {
+		add_filter( 'allowed_redirect_hosts', [ self::class, 'allowCurrentHostRedirect' ] );
+		try {
+			wp_safe_redirect( self::withCurrentHost( $url ) );
+		} finally {
+			remove_filter( 'allowed_redirect_hosts', [ self::class, 'allowCurrentHostRedirect' ] );
+		}
 	}
 
 	/**
@@ -216,7 +190,7 @@ final class OrderReturn {
 		// This also covers unexpired references created before the plugin update.
 		self::rememberGuestOrder( $order );
 
-		wp_safe_redirect( self::withCurrentHost( $order->get_checkout_order_received_url() ) );
+		self::redirect( $order->get_checkout_order_received_url() );
 		exit;
 	}
 
@@ -269,7 +243,7 @@ final class OrderReturn {
 	 */
 	private static function unavailable(): void {
 		if ( is_user_logged_in() ) {
-			wp_safe_redirect( self::withCurrentHost( wc_get_account_endpoint_url( 'orders' ) ) );
+			self::redirect( wc_get_account_endpoint_url( 'orders' ) );
 			exit;
 		}
 

@@ -115,7 +115,7 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 = 2.8.7 =
 
-Bug fix for order return links on Tor/onion stores.
+Bug fix for order return links on stores served over multiple domains, including Tor/onion addresses.
 
 = 2.8.6 =
 
@@ -129,7 +129,7 @@ Security hardening and webhook reliability fixes, including retries when settled
 
 = 2.8.7 :: 2026-10-30 =
 
-* Fix: Keep the checkout return link on the host the customer is browsing, so Tor/onion shoppers keep their WooCommerce session and reach the order confirmation. (#96)
+* Fix: Keep the checkout return link on the host the customer is browsing, so shoppers on alternative domains (including Tor/onion) keep their WooCommerce session and reach the order confirmation. (#96)
 
 = 2.8.6 :: 2026-10-20 =
 
