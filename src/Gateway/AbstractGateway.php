@@ -148,7 +148,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$response =  [
 				'result' => 'success',
 				'invoiceId' => $existingInvoiceId,
-				'orderCompleteLink' => $order->get_checkout_order_received_url(),
+				'orderCompleteLink' => OrderReturn::withCurrentHost( $order->get_checkout_order_received_url() ),
 				'redirect' => '',
 			];
 
@@ -176,7 +176,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 			$response = [
 				'result' => 'success',
 				'invoiceId' => $invoice->getData()['id'],
-				'orderCompleteLink' => $order->get_checkout_order_received_url(),
+				'orderCompleteLink' => OrderReturn::withCurrentHost( $order->get_checkout_order_received_url() ),
 				'redirect' => '',
 			];
 

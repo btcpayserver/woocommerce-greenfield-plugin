@@ -25,6 +25,27 @@ final class OrderReturn {
 	}
 
 	/**
+	 * Allow redirects to the host of the current request.
+	 *
+	 * @param string[] $hosts Allowed redirect hosts.
+	 * @return string[]
+	 */
+	public static function allowCurrentHostRedirect( array $hosts ): array {
+		$host = self::getCurrentHost();
+		if ( $host === '' ) {
+			return $hosts;
+		}
+
+		$parts    = wp_parse_url( 'http://' . $host );
+		$hostName = isset( $parts['host'] ) ? $parts['host'] : '';
+		if ( $hostName !== '' && ! in_array( $hostName, $hosts, true ) ) {
+			$hosts[] = $hostName;
+		}
+
+		return $hosts;
+	}
+
+	/**
 	 * Create a temporary BTCPay redirect URL for an order.
 	 */
 	public static function createUrl( \WC_Order $order ): string {
@@ -35,7 +56,85 @@ final class OrderReturn {
 		$order->save();
 		self::rememberGuestOrder( $order );
 
-		return add_query_arg( self::QUERY_ARG, $reference, home_url( '/' ) );
+		/**
+		 * Filters the base URL used for the temporary BTCPay return link.
+		 *
+		 * The default keeps the host the customer is currently browsing, so
+		 * stores reachable over multiple domains (including Tor .onion) return
+		 * shoppers to the same host and keep their WooCommerce session.
+		 *
+		 * @param string    $baseUrl Store URL on the current request host.
+		 * @param \WC_Order $order   Order being returned to.
+		 */
+		$baseUrl = apply_filters( 'btcpay_gf_return_url', self::withCurrentHost( home_url( '/' ) ), $order );
+
+		return add_query_arg( self::QUERY_ARG, $reference, $baseUrl );
+	}
+
+	/**
+	 * Return the host of the current request, or an empty string if unusable.
+	 */
+	private static function getCurrentHost(): string {
+		if ( ! isset( $_SERVER['HTTP_HOST'] ) || ! is_string( $_SERVER['HTTP_HOST'] ) ) {
+			return '';
+		}
+
+		$host = strtolower( $_SERVER['HTTP_HOST'] );
+
+		// DNS name, IPv4 or bracketed IPv6, optionally with a port. Reject
+		// malformed values so a bad Host header falls back to the home URL.
+		if ( ! preg_match( '/\A(?:[a-z0-9_](?:[a-z0-9_.-]*[a-z0-9_])?\.?|\[[0-9a-f:.]+\])(?::\d{1,5})?\z/i', $host ) ) {
+			return '';
+		}
+
+		return $host;
+	}
+
+	/**
+	 * Rewrite a WooCommerce-generated URL to the host of the current request.
+	 */
+	public static function withCurrentHost( string $url ): string {
+		$currentHost = self::getCurrentHost();
+		if ( $currentHost === '' ) {
+			return $url;
+		}
+
+		$homeParts = wp_parse_url( home_url( '/' ) );
+		$homeHost  = isset( $homeParts['host'] ) ? strtolower( $homeParts['host'] ) : '';
+		$homePort  = isset( $homeParts['port'] ) ? ':' . $homeParts['port'] : '';
+		if ( $homeHost !== '' && strcasecmp( $currentHost, $homeHost . $homePort ) === 0 ) {
+			return $url;
+		}
+
+		$parts = wp_parse_url( $url );
+		if ( ! is_array( $parts ) || empty( $parts['host'] ) ) {
+			return $url;
+		}
+
+		$rewritten = ( is_ssl() ? 'https' : 'http' ) . '://' . $currentHost;
+		if ( isset( $parts['path'] ) ) {
+			$rewritten .= $parts['path'];
+		}
+		if ( isset( $parts['query'] ) ) {
+			$rewritten .= '?' . $parts['query'];
+		}
+		if ( isset( $parts['fragment'] ) ) {
+			$rewritten .= '#' . $parts['fragment'];
+		}
+
+		return $rewritten;
+	}
+
+	/**
+	 * Allow the current host only while sending this plugin's return redirect.
+	 */
+	private static function redirect( string $url ): void {
+		add_filter( 'allowed_redirect_hosts', [ self::class, 'allowCurrentHostRedirect' ] );
+		try {
+			wp_safe_redirect( self::withCurrentHost( $url ) );
+		} finally {
+			remove_filter( 'allowed_redirect_hosts', [ self::class, 'allowCurrentHostRedirect' ] );
+		}
 	}
 
 	/**
@@ -91,7 +190,7 @@ final class OrderReturn {
 		// This also covers unexpired references created before the plugin update.
 		self::rememberGuestOrder( $order );
 
-		wp_safe_redirect( $order->get_checkout_order_received_url() );
+		self::redirect( $order->get_checkout_order_received_url() );
 		exit;
 	}
 
@@ -144,7 +243,7 @@ final class OrderReturn {
 	 */
 	private static function unavailable(): void {
 		if ( is_user_logged_in() ) {
-			wp_safe_redirect( wc_get_account_endpoint_url( 'orders' ) );
+			self::redirect( wc_get_account_endpoint_url( 'orders' ) );
 			exit;
 		}
 
@@ -156,7 +255,7 @@ final class OrderReturn {
 			$title,
 			[
 				'response'  => 200,
-				'link_url'  => wc_get_page_permalink( 'myaccount' ),
+				'link_url'  => self::withCurrentHost( wc_get_page_permalink( 'myaccount' ) ),
 				'link_text' => esc_html__( 'Log in to your account', 'btcpay-greenfield-for-woocommerce' ),
 			]
 		);
