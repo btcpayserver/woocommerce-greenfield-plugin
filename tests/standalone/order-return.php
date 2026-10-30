@@ -39,6 +39,10 @@ namespace {
 		public static int $noCacheCalls = 0;
 		public static array $orders = [];
 		public static object $wc;
+		public static string $homeUrl = 'https://shop.example';
+		public static bool $isSsl = true;
+		public static string $httpHost = 'shop.example';
+		public static ?string $filteredReturnUrl = null;
 	}
 
 	class OrderReturnResponse extends RuntimeException {
@@ -76,7 +80,15 @@ namespace {
 	function wp_unslash($value) { return stripslashes($value); }
 	function absint($value) { return abs((int) $value); }
 	function esc_html__($value, ...$args) { return htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); }
-	function home_url($path) { return 'https://shop.example' . $path; }
+	function home_url($path) { return OrderReturnTestState::$homeUrl . $path; }
+	function is_ssl() { return OrderReturnTestState::$isSsl; }
+	function wp_parse_url($url, $component = -1) { return parse_url($url, $component); }
+	function apply_filters($tag, $value, ...$args) {
+		if ($tag === 'btcpay_gf_return_url' && OrderReturnTestState::$filteredReturnUrl !== null) {
+			return OrderReturnTestState::$filteredReturnUrl;
+		}
+		return $value;
+	}
 	function add_query_arg($key, $value, $url) { return $url . '?' . http_build_query([$key => $value]); }
 	function wc_get_page_permalink($page) { return 'https://shop.example/' . $page . '/'; }
 	function wc_get_account_endpoint_url($endpoint) { return wc_get_page_permalink('myaccount') . $endpoint . '/'; }
@@ -108,6 +120,11 @@ namespace {
 		OrderReturnTestState::$noCacheCalls = 0;
 		OrderReturnTestState::$orders = [];
 		OrderReturnTestState::$wc = (object) ['session' => new OrderReturnSession()];
+		OrderReturnTestState::$homeUrl = 'https://shop.example';
+		OrderReturnTestState::$isSsl = true;
+		OrderReturnTestState::$httpHost = 'shop.example';
+		OrderReturnTestState::$filteredReturnUrl = null;
+		$_SERVER['HTTP_HOST'] = OrderReturnTestState::$httpHost;
 		$_GET = [];
 		$order = new WC_Order(42, $customerId);
 		WC()->session->set($marker, $order->get_id());
@@ -291,6 +308,99 @@ namespace {
 		fixture();
 		OrderReturn::handle();
 		check(0, OrderReturnTestState::$noCacheCalls, 'No response changes without query argument');
+	};
+	$tests['return link keeps the host the customer is browsing'] = static function () {
+		$order = fixture(7);
+		OrderReturnTestState::$httpHost = 'abcdef.onion';
+		OrderReturnTestState::$isSsl = false;
+		$_SERVER['HTTP_HOST'] = 'abcdef.onion';
+		$url = OrderReturn::createUrl($order);
+		check('http://abcdef.onion/', substr($url, 0, strpos($url, '?')), 'Onion host preserved');
+		check(1, preg_match('/\?btcpaygf-return=[a-f0-9]{64}\z/', $url), 'Reference appended');
+	};
+	$tests['return link keeps a subdirectory install path on another host'] = static function () {
+		$order = fixture(7);
+		OrderReturnTestState::$homeUrl = 'https://shop.example/subdir';
+		OrderReturnTestState::$httpHost = 'abcdef.onion';
+		OrderReturnTestState::$isSsl = false;
+		$_SERVER['HTTP_HOST'] = 'abcdef.onion';
+		$url = OrderReturn::createUrl($order);
+		check('http://abcdef.onion/subdir/', substr($url, 0, strpos($url, '?')), 'Subdirectory path preserved');
+	};
+	$tests['return link uses the canonical URL on the configured host'] = static function () {
+		$order = fixture(7);
+		$url = OrderReturn::createUrl($order);
+		check('https://shop.example/', substr($url, 0, strpos($url, '?')), 'Canonical host');
+	};
+	$tests['return link falls back to the configured host for unusable Host headers'] = static function () {
+		foreach (['', 'bad host', 'evil.com/foo'] as $host) {
+			$order = fixture(7);
+			$_SERVER['HTTP_HOST'] = $host;
+			$url = OrderReturn::createUrl($order);
+			check('https://shop.example/', substr($url, 0, strpos($url, '?')), 'Fallback for ' . var_export($host, true));
+		}
+	};
+	$tests['authorized return redirects to the order received page on the current host'] = static function () {
+		$order = fixture(0, 'order_awaiting_payment');
+		$reference = createLink($order);
+		OrderReturnTestState::$httpHost = 'abcdef.onion';
+		OrderReturnTestState::$isSsl = false;
+		$_SERVER['HTTP_HOST'] = 'abcdef.onion';
+		check(
+			['redirect' => 'http://abcdef.onion/order-received/42/?key=private-order-key'],
+			visit($reference),
+			'Onion order received URL'
+		);
+	};
+	$tests['expired guest return keeps the current host for the login link'] = static function () {
+		$order = fixture(0);
+		$reference = createLink($order);
+		OrderReturnTestState::$now += 86400;
+		OrderReturnTestState::$httpHost = 'abcdef.onion';
+		OrderReturnTestState::$isSsl = false;
+		$_SERVER['HTTP_HOST'] = 'abcdef.onion';
+		$response = visit($reference);
+		check('http://abcdef.onion/myaccount/', $response['args']['link_url'], 'Onion login link');
+	};
+	$tests['expired account return keeps the current host for the orders redirect'] = static function () {
+		$order = fixture(7);
+		$reference = createLink($order);
+		OrderReturnTestState::$now += 86400;
+		OrderReturnTestState::$httpHost = 'abcdef.onion';
+		OrderReturnTestState::$isSsl = false;
+		$_SERVER['HTTP_HOST'] = 'abcdef.onion';
+		check(['redirect' => 'http://abcdef.onion/myaccount/orders/'], visit($reference), 'Onion account redirect');
+	};
+	$tests['return link base URL can be filtered'] = static function () {
+		$order = fixture(7);
+		OrderReturnTestState::$filteredReturnUrl = 'https://custom.example/base/';
+		$url = OrderReturn::createUrl($order);
+		check('https://custom.example/base/', substr($url, 0, strpos($url, '?')), 'Filtered base URL');
+	};
+	$tests['withCurrentHost rewrites an order URL to the current host'] = static function () {
+		$_SERVER['HTTP_HOST'] = 'abcdef.onion';
+		OrderReturnTestState::$isSsl = false;
+		check(
+			'http://abcdef.onion/checkout/order-received/42/?key=abc',
+			OrderReturn::withCurrentHost('https://shop.example/checkout/order-received/42/?key=abc'),
+			'Order URL rewritten'
+		);
+	};
+	$tests['withCurrentHost keeps the URL on the configured host'] = static function () {
+		$_SERVER['HTTP_HOST'] = 'shop.example';
+		check(
+			'https://shop.example/checkout/order-received/42/?key=abc',
+			OrderReturn::withCurrentHost('https://shop.example/checkout/order-received/42/?key=abc'),
+			'Canonical URL unchanged'
+		);
+	};
+	$tests['current host is allowed for safe redirects'] = static function () {
+		$_SERVER['HTTP_HOST'] = 'abcdef.onion';
+		check(['shop.example', 'abcdef.onion'], OrderReturn::allowCurrentHostRedirect(['shop.example']), 'Onion host allowed');
+		$_SERVER['HTTP_HOST'] = 'shop.example';
+		check(['shop.example'], OrderReturn::allowCurrentHostRedirect(['shop.example']), 'No duplicate host');
+		$_SERVER['HTTP_HOST'] = '';
+		check(['shop.example'], OrderReturn::allowCurrentHostRedirect(['shop.example']), 'Empty host ignored');
 	};
 
 	$failures = 0;

@@ -22,6 +22,31 @@ final class OrderReturn {
 	 */
 	public static function register(): void {
 		add_action( 'template_redirect', [ self::class, 'handle' ], 0 );
+		// The return handler may redirect to the host the customer is currently
+		// using (for example a Tor .onion address), which is not the configured
+		// home host. Allow it for wp_safe_redirect().
+		add_filter( 'allowed_redirect_hosts', [ self::class, 'allowCurrentHostRedirect' ] );
+	}
+
+	/**
+	 * Allow redirects to the host of the current request.
+	 *
+	 * @param string[] $hosts Allowed redirect hosts.
+	 * @return string[]
+	 */
+	public static function allowCurrentHostRedirect( array $hosts ): array {
+		$host = self::getCurrentHost();
+		if ( $host === '' ) {
+			return $hosts;
+		}
+
+		$parts    = wp_parse_url( 'http://' . $host );
+		$hostName = isset( $parts['host'] ) ? $parts['host'] : '';
+		if ( $hostName !== '' && ! in_array( $hostName, $hosts, true ) ) {
+			$hosts[] = $hostName;
+		}
+
+		return $hosts;
 	}
 
 	/**
@@ -35,7 +60,107 @@ final class OrderReturn {
 		$order->save();
 		self::rememberGuestOrder( $order );
 
-		return add_query_arg( self::QUERY_ARG, $reference, home_url( '/' ) );
+		/**
+		 * Filters the base URL used for the temporary BTCPay return link.
+		 *
+		 * The default keeps the host the customer is currently browsing, so
+		 * stores reachable over both clearnet and Tor .onion addresses return
+		 * shoppers to the same host and keep their WooCommerce session.
+		 *
+		 * @param string    $baseUrl Store URL on the current request host.
+		 * @param \WC_Order $order   Order being returned to.
+		 */
+		$baseUrl = apply_filters( 'btcpay_gf_return_url', self::getStoreUrl(), $order );
+
+		return add_query_arg( self::QUERY_ARG, $reference, $baseUrl );
+	}
+
+	/**
+	 * Return the store URL on the host the customer is currently browsing.
+	 *
+	 * Stores reachable both on clearnet and on a Tor .onion address must send
+	 * the customer back to the host they came from. The WooCommerce session
+	 * cookie is scoped to that host, so using the configured clearnet URL would
+	 * make the return link fail authorization for onion shoppers.
+	 */
+	private static function getStoreUrl(): string {
+		$homeUrl     = home_url( '/' );
+		$currentHost = self::getCurrentHost();
+
+		if ( $currentHost === '' ) {
+			return $homeUrl;
+		}
+
+		$homeParts     = wp_parse_url( $homeUrl );
+		$homeHost      = isset( $homeParts['host'] ) ? strtolower( $homeParts['host'] ) : '';
+		$homePort      = isset( $homeParts['port'] ) ? ':' . $homeParts['port'] : '';
+		$canonicalHost = $homeHost . $homePort;
+
+		// Already on the configured host: keep the canonical URL and its scheme.
+		if ( $canonicalHost !== '' && strcasecmp( $currentHost, $canonicalHost ) === 0 ) {
+			return $homeUrl;
+		}
+
+		// Keep the configured path (supports subdirectory installs) but use the
+		// host and scheme the customer is currently browsing.
+		$path   = isset( $homeParts['path'] ) && $homeParts['path'] !== '' ? $homeParts['path'] : '/';
+		$scheme = is_ssl() ? 'https' : 'http';
+
+		return $scheme . '://' . $currentHost . $path;
+	}
+
+	/**
+	 * Return the host of the current request, or an empty string if unusable.
+	 */
+	private static function getCurrentHost(): string {
+		if ( ! isset( $_SERVER['HTTP_HOST'] ) || ! is_string( $_SERVER['HTTP_HOST'] ) ) {
+			return '';
+		}
+
+		$host = strtolower( trim( sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) ) );
+
+		// DNS name, IPv4 or bracketed IPv6, optionally with a port. Reject
+		// malformed values so a bad Host header falls back to the home URL.
+		if ( ! preg_match( '/\A(?:[a-z0-9_](?:[a-z0-9_.-]*[a-z0-9_])?\.?|\[[0-9a-f:.]+\])(?::\d{1,5})?\z/i', $host ) ) {
+			return '';
+		}
+
+		return $host;
+	}
+
+	/**
+	 * Rewrite a WooCommerce-generated URL to the host of the current request.
+	 */
+	public static function withCurrentHost( string $url ): string {
+		$currentHost = self::getCurrentHost();
+		if ( $currentHost === '' ) {
+			return $url;
+		}
+
+		$homeParts = wp_parse_url( home_url( '/' ) );
+		$homeHost  = isset( $homeParts['host'] ) ? strtolower( $homeParts['host'] ) : '';
+		$homePort  = isset( $homeParts['port'] ) ? ':' . $homeParts['port'] : '';
+		if ( $homeHost !== '' && strcasecmp( $currentHost, $homeHost . $homePort ) === 0 ) {
+			return $url;
+		}
+
+		$parts = wp_parse_url( $url );
+		if ( ! is_array( $parts ) || empty( $parts['host'] ) ) {
+			return $url;
+		}
+
+		$rewritten = ( is_ssl() ? 'https' : 'http' ) . '://' . $currentHost;
+		if ( isset( $parts['path'] ) ) {
+			$rewritten .= $parts['path'];
+		}
+		if ( isset( $parts['query'] ) ) {
+			$rewritten .= '?' . $parts['query'];
+		}
+		if ( isset( $parts['fragment'] ) ) {
+			$rewritten .= '#' . $parts['fragment'];
+		}
+
+		return $rewritten;
 	}
 
 	/**
@@ -91,7 +216,7 @@ final class OrderReturn {
 		// This also covers unexpired references created before the plugin update.
 		self::rememberGuestOrder( $order );
 
-		wp_safe_redirect( $order->get_checkout_order_received_url() );
+		wp_safe_redirect( self::withCurrentHost( $order->get_checkout_order_received_url() ) );
 		exit;
 	}
 
@@ -144,7 +269,7 @@ final class OrderReturn {
 	 */
 	private static function unavailable(): void {
 		if ( is_user_logged_in() ) {
-			wp_safe_redirect( wc_get_account_endpoint_url( 'orders' ) );
+			wp_safe_redirect( self::withCurrentHost( wc_get_account_endpoint_url( 'orders' ) ) );
 			exit;
 		}
 
@@ -156,7 +281,7 @@ final class OrderReturn {
 			$title,
 			[
 				'response'  => 200,
-				'link_url'  => wc_get_page_permalink( 'myaccount' ),
+				'link_url'  => self::withCurrentHost( wc_get_page_permalink( 'myaccount' ) ),
 				'link_text' => esc_html__( 'Log in to your account', 'btcpay-greenfield-for-woocommerce' ),
 			]
 		);
