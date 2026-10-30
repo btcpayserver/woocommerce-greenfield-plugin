@@ -5,7 +5,7 @@ Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.8.6
+Stable tag: 2.8.7
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -113,6 +113,10 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
+= 2.8.7 =
+
+Bug fix for order return links on Tor/onion stores.
+
 = 2.8.6 =
 
 Security hardening and webhook reliability fixes, including retries when settled invoice verification fails.
@@ -122,6 +126,10 @@ Security hardening and webhook reliability fixes, including retries when settled
 * Improvement: Allow order return link to be valid 24h, handle expired links gracefully.
 
 == Changelog ==
+
+= 2.8.7 :: 2026-10-30 =
+
+* Fix: Keep the checkout return link on the host the customer is browsing, so Tor/onion shoppers keep their WooCommerce session and reach the order confirmation. (#96)
 
 = 2.8.6 :: 2026-10-20 =
 
