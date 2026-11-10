@@ -4,6 +4,8 @@
  * Update 2.4.1
  */
 
+defined( 'ABSPATH' ) || exit();
+
 /**
  * Set new option to protect wc-processing and wc-completed orders by default.
  */

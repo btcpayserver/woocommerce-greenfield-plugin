@@ -4,6 +4,8 @@
  * Update 1.0.3
 */
 
+defined( 'ABSPATH' ) || exit();
+
 /**
  * Update order states and add default for the ExpiredPaidLate state.
  */
