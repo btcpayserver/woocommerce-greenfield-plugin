@@ -18,6 +18,7 @@ php tests/standalone/webhook-processing.php
 These exercise the real webhook handler, signature validation and invoice client
 with in-memory WooCommerce orders and mocked request/HTTP boundaries. Each request
 runs in a subprocess so WordPress response stubs terminate normally. They cover
+method rejection with 405, invalid signatures and empty bodies with 400,
 verification failures returning 503, successful redelivery, duplicate suppression,
 legacy payloads, and HTTP 200 for unmatched orders and verified non-settled invoices.
 They do not exercise a real WordPress HTTP endpoint or BTCPay's delivery queue.
