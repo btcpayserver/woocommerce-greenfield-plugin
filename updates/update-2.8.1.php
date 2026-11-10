@@ -4,6 +4,8 @@
  * Update 2.8.1
  */
 
+defined( 'ABSPATH' ) || exit();
+
 /**
  * Remove the retired option that enabled sending customer data to BTCPay Server.
  */
