@@ -491,6 +491,11 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 	 * Process webhooks from BTCPay.
 	 */
 	public function processWebhook() {
+		if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+			header('Allow: POST');
+			wp_die('Method not allowed.', '', ['response' => 405]);
+		}
+
 		if ($rawPostData = file_get_contents("php://input")) {
 			// Validate webhook request.
 			// Note: getallheaders() CamelCases all headers for PHP-FPM/Nginx but for others maybe not, so "BTCPay-Sig" may becomes "Btcpay-Sig".
@@ -503,7 +508,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 
 			if (!isset($signature) || !$this->apiHelper->validWebhookRequest($signature, $rawPostData)) {
 				Logger::debug('Failed to validate signature of webhook request.');
-				wp_die('Webhook request validation failed.');
+				wp_die('Webhook request validation failed.', '', ['response' => 400]);
 			}
 
 			try {
@@ -569,6 +574,8 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 				Logger::debug('Error decoding webook payload: ' . $e->getMessage());
 				Logger::debug($rawPostData);
 			}
+		} else {
+			wp_die('Empty webhook request.', '', ['response' => 400]);
 		}
 	}
 

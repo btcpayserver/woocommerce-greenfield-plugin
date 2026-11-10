@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 // Replace only the request input/headers; exercise the real webhook handler and signature check.
 namespace BTCPayServer\WC\Gateway {
-	function file_get_contents($path) { return \WebhookProcessingState::$payload; }
+	function file_get_contents($path) {
+		\WebhookProcessingState::$inputReads++;
+		return \WebhookProcessingState::$payload;
+	}
 	function getallheaders() {
+		\WebhookProcessingState::$headerReads++;
+		if (\WebhookProcessingState::$signatureMode === 'missing') {
+			return [];
+		}
+		if (\WebhookProcessingState::$signatureMode === 'bad') {
+			return ['Btcpay-Sig' => 'sha256=' . str_repeat('0', 64)];
+		}
 		return ['Btcpay-Sig' => 'sha256=' . hash_hmac('sha256', \WebhookProcessingState::$payload, \WebhookProcessingState::SECRET)];
 	}
+	function header($value) { \WebhookProcessingState::$responseHeaders[] = $value; }
 }
 
 namespace {
@@ -22,6 +33,11 @@ namespace {
 		public static string $payload;
 		public static array $orders = [];
 		public static WC_Order $order;
+		public static string $signatureMode = 'valid';
+		public static int $inputReads = 0;
+		public static int $headerReads = 0;
+		public static int $orderLookups = 0;
+		public static array $responseHeaders = [];
 	}
 
 	class WC_Payment_Gateway {}
@@ -51,7 +67,10 @@ namespace {
 		public function getPaymentMethods(): array { return ['BTC']; }
 	}
 
-	function wc_get_orders($query) { return WebhookProcessingState::$orders; }
+	function wc_get_orders($query) {
+		WebhookProcessingState::$orderLookups++;
+		return WebhookProcessingState::$orders;
+	}
 	function finishWebhook(int $status): void {
 		echo json_encode([
 			'response' => $status,
@@ -59,6 +78,10 @@ namespace {
 			'requests' => CurlClient::$requests,
 			'logs' => WebhookTestState::$logs,
 			'unexpectedRequests' => CurlClient::$unexpectedRequests,
+			'inputReads' => WebhookProcessingState::$inputReads,
+			'headerReads' => WebhookProcessingState::$headerReads,
+			'orderLookups' => WebhookProcessingState::$orderLookups,
+			'responseHeaders' => WebhookProcessingState::$responseHeaders,
 		], JSON_THROW_ON_ERROR);
 		exit;
 	}
@@ -69,6 +92,12 @@ namespace {
 
 	if (($argv[1] ?? '') === '--request') {
 		$fixture = json_decode(file_get_contents('php://stdin'), true, 512, JSON_THROW_ON_ERROR);
+		if (($fixture['method'] ?? null) === 'unset') {
+			unset($_SERVER['REQUEST_METHOD']);
+		} else {
+			$_SERVER['REQUEST_METHOD'] = $fixture['method'] ?? 'POST';
+		}
+		WebhookProcessingState::$signatureMode = $fixture['signature'] ?? 'valid';
 		WebhookTestState::$options = [
 			'btcpay_gf_url' => 'https://btcpay.example',
 			'btcpay_gf_api_key' => 'test-key',
@@ -85,6 +114,9 @@ namespace {
 		WebhookProcessingState::$payload = json_encode($fixture['payload'] ?? [
 			'type' => 'InvoiceSettled', 'invoiceId' => 'invoice-a', 'deliveryId' => 'delivery-a',
 		], JSON_THROW_ON_ERROR);
+		if (array_key_exists('rawBody', $fixture)) {
+			WebhookProcessingState::$payload = $fixture['rawBody'];
+		}
 		CurlClient::$invoiceData = $fixture['invoice'] ?? ['status' => 'Settled', 'additionalStatus' => 'None'];
 		CurlClient::$invoiceStatus = $fixture['apiStatus'] ?? 200;
 		CurlClient::$invoiceTimeout = $fixture['timeout'] ?? false;
@@ -112,6 +144,32 @@ namespace {
 			throw new RuntimeException($message . ': expected ' . var_export($expected, true) . ', got ' . var_export($actual, true));
 		}
 	}
+
+	foreach (['GET', 'HEAD', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'post', 'unset'] as $method) {
+		$result = requestWebhook(['method' => $method]);
+		checkSame(405, $result['response'], 'Non-POST method rejected');
+		checkSame(['Allow: POST'], $result['responseHeaders'], 'Allowed method advertised');
+		checkSame(0, $result['inputReads'], 'Method rejected before reading input');
+		checkSame(0, $result['headerReads'], 'Method rejected before checking signature headers');
+		checkSame(0, $result['orderLookups'], 'Method rejected before order lookup');
+		checkSame([], $result['requests'], 'Non-POST request never contacts API');
+		checkSame(0, $result['order']['completions'], 'Non-POST request cannot complete payment');
+	}
+	foreach (['missing', 'bad'] as $signature) {
+		$result = requestWebhook(['signature' => $signature]);
+		checkSame(400, $result['response'], 'Invalid signature is a client error');
+		checkSame(0, $result['orderLookups'], 'Bad signature rejected before order lookup');
+		checkSame([], $result['requests'], 'Bad signature never contacts API');
+		checkSame(0, $result['order']['completions'], 'Bad signature cannot complete payment');
+	}
+	$result = requestWebhook(['rawBody' => 'wc-api=btcpaygf_default', 'signature' => 'missing']);
+	checkSame(400, $result['response'], 'Unsigned form body is rejected');
+	checkSame(0, $result['orderLookups'], 'Unsigned form body never looks up orders');
+	checkSame([], $result['requests'], 'Unsigned form body never contacts API');
+	$result = requestWebhook(['rawBody' => '']);
+	checkSame(400, $result['response'], 'Empty POST is a client error');
+	checkSame(0, $result['orderLookups'], 'Empty POST rejected before order lookup');
+	checkSame([], $result['requests'], 'Empty POST never contacts API');
 
 	foreach (['pending', 'on-hold'] as $status) {
 		foreach ([['apiStatus' => 503], ['apiStatus' => 403], ['apiStatus' => 404], ['timeout' => true]] as $failure) {
@@ -165,5 +223,5 @@ namespace {
 	$result = requestWebhook(['payload' => ['type' => 'InvoiceSettled', 'invoiceId' => 'invoice-a'], 'apiStatus' => 503]);
 	checkSame(503, $result['response'], 'Legacy payload also requests redelivery after verification failure');
 
-	echo "PASS: webhook verification failures, recovery, duplicates and legacy acknowledgement behavior\n";
+	echo "PASS: method/signature rejection, verification failures, recovery, duplicates and legacy acknowledgement behavior\n";
 }
