@@ -75,7 +75,7 @@ class DefaultGateway extends AbstractGateway {
 		// If payment tokens are not enforced or separate gateways are not enabled.
 		$separateGateways = \BTCPayServer\WC\Helper\GreenfieldApiHelper::supportedPaymentMethods();
 		foreach ($separateGateways as $sgw) {
-			$btcPayPaymentGW[] = $sgw['symbol'];
+			$btcPayPaymentGW[] = $sgw['name'] ?? $sgw['symbol'];
 		}
 
 		return $btcPayPaymentGW;
