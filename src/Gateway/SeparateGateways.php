@@ -41,7 +41,7 @@ class SeparateGateways {
 			$fileName = $className . '.php';
 			$symbol = $gw['symbol'];
 			$id = 'btcpaygf_' . strtolower($symbol);
-			$paymentMethodId = $gw['name'] ?? $gw['symbol'];
+			$paymentMethodId = var_export($gw['name'] ?? $gw['symbol'], true);
 
 			// Build the class structure.
 			$classCode = "use BTCPayServer\WC\Gateway\AbstractGateway;
@@ -52,11 +52,11 @@ class SeparateGateways {
 				                  \$this->method_title = 'BTCPay Gateway: {$symbol}';
 				                  \$this->method_description = 'This is separate payment gateway managed by BTCPay.';
 				                  \$this->tokenType = \$this->getTokenType();
-				                  \$this->primaryPaymentMethod = '{$paymentMethodId}';
+				                  \$this->primaryPaymentMethod = {$paymentMethodId};
 			                    }
 
 								public function getPaymentMethods(): array {
-									return ['{$paymentMethodId}']; // todo: add feature to add other pm
+									return [{$paymentMethodId}]; // todo: add feature to add other pm
 		                        }
 
 		                        public function getTitle(): string {
