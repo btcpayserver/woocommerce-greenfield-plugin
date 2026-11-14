@@ -152,7 +152,8 @@ class GreenfieldApiHelper {
 							// Convert - to _ and escape value for later use in gateway class generator.
 							$symbol = sanitize_html_class(str_replace('-', '_', $pmName));
 							$paymentMethods[] = [
-								'symbol' => $symbol,
+								'symbol'    => $symbol,
+								'name'      => $pmName,
 								'className' => self::PM_CLASS_NAME_PREFIX . $symbol
 							];
 						}

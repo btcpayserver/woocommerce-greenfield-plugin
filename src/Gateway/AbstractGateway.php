@@ -251,8 +251,11 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 		// Get payment methods.
 		$paymentMethods = $this->getPaymentMethods();
 		// Remove unsupported payment methods for refunds.
+		// Normalize to underscore format before comparing to handle both BTC-LNURLPAY and BTC_LNURLPAY forms.
 		$unsupportedPaymentMethods = ['BTC_LNURLPAY', 'BTC_LNURL', 'XMR_CHAIN'];
-		$paymentMethods = array_diff($paymentMethods, $unsupportedPaymentMethods);
+		$paymentMethods = array_values(array_filter($paymentMethods, function($pm) use ($unsupportedPaymentMethods) {
+			return !in_array(str_replace('-', '_', $pm), $unsupportedPaymentMethods);
+		}));
 
 		// Refund name is limited for 50 chars, but we do not have description field available until php lib v3 is out.
 		$refundName = __('Refund of order ', 'btcpay-greenfield-for-woocommerce') . $order->get_order_number() . '; ' . $reason;
@@ -820,7 +823,7 @@ abstract class AbstractGateway extends \WC_Payment_Gateway {
 						$pmInvoice = $invoice->getData()['checkout']['paymentMethods'];
 						$pmInvoice = str_replace('-', '_', $pmInvoice);
 						sort($pmInvoice);
-						$pm = $this->getPaymentMethods();
+						$pm = array_map(function($p) { return str_replace('-', '_', $p); }, $this->getPaymentMethods());
 						sort($pm);
 						Logger::debug( 'validInvoiceExists: pmInvoice: ' . print_r($pmInvoice, true) . ' pm: ' . print_r($pm, true) . ' match: ' . ($pm === $pmInvoice ? 'yes' : 'no') );
 						if ($pm === $pmInvoice) {
