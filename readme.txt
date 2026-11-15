@@ -5,7 +5,7 @@ Tags: Bitcoin, Lightning Network, BTCPay Server, WooCommerce, payment gateway
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 2.8.8
+Stable tag: 2.8.9
 License: MIT
 License URI: https://github.com/btcpayserver/woocommerce-greenfield-plugin/blob/master/license.txt
 
@@ -113,6 +113,10 @@ You'll find extensive documentation and answers to many of your questions on [BT
 
 == Upgrade Notice ==
 
+= 2.8.9 =
+
+Fix invoice creation for additional payment methods: payment method IDs derived from hyphenated methods (e.g. USDC-FLINT) were sent with an underscore, which the invoice API rejects for anything but the default methods ("Invalid PaymentMethodId").
+
 = 2.8.8 =
 
 Webhook hardening: invalid webhook requests now receive proper client error responses. Note that BTCPay Server does not automatically retry on 4xx responses, so redeliver affected events manually after fixing a webhook secret mismatch.
@@ -130,6 +134,10 @@ Security hardening and webhook reliability fixes, including retries when settled
 * Improvement: Allow order return link to be valid 24h, handle expired links gracefully.
 
 == Changelog ==
+
+= 2.8.9 :: 2026-11-15 =
+
+* Fix: Fix invoice creation for additional payment methods other than the defaults: hyphenated payment method IDs (e.g. USDC-FLINT) were converted to underscores and rejected by the invoice API with "Invalid PaymentMethodId". (#100)
 
 = 2.8.8 :: 2026-11-10 =
 
